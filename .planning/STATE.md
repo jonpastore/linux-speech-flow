@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Hold a key, speak, release -- transcribed text appears in whatever you're typing in.
-**Current focus:** Phase 5 (next phase — Phase 4 complete)
+**Current focus:** Phase 6 — Conversation Mode (Phase 5 complete)
 
 ## Current Position
 
-Phase: 5 of 9 — Complete
-Plan: 4/4 complete (05-04 done)
-Status: Phase 5 complete; all HIST-01, HIST-02, HIST-03 human-verified — history records, persists across restart, live HistoryWindow updates, Settings Maintenance section with Clear All History dialog
-Last activity: 2026-02-21 -- 05-04 complete (human verification passed, two bugs fixed: clear_all VACUUM transaction and stale icon cache)
+Phase: 6 of 9 — In Progress
+Plan: 1/4 complete (06-01 done)
+Status: Phase 6 scaffold complete; config defaults, HotkeyManager F11/F12 state machine, tray conv_recording, SVG badges, openai+google-genai installed
+Last activity: 2026-02-21 -- 06-01 complete (Phase 6 foundation: 18 config keys, HotkeyManager _STATE_CONVERSATION, CONV_RECORDING_FRAMES, 3 SVG icons)
 
 Progress: [████████████████████████] 85%
 
@@ -54,6 +54,7 @@ Progress: [███████████████████████
 | Phase 05-pipeline-history P01 | 1 | 2 tasks | 2 files |
 | Phase 05-pipeline-history P02 | 1 | 1 tasks | 1 files |
 | Phase 05-pipeline-history P03 | 2 | 2 tasks | 4 files |
+| Phase 06-conversation-mode P01 | 3 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,10 @@ Recent decisions affecting current work:
 - [Phase 05-03]: history_max_entries read from config per-call in _process() — always uses current setting without restart
 - [Phase 05-04]: SQLite VACUUM must run outside any active transaction; clear_all() committed DELETE first then called VACUUM separately to avoid rollback undoing the delete
 - [Phase 05-04]: gtk-update-icon-cache must be called after install_icons() renames icons; stale OS icon theme cache reverts tray to old icon without invalidation
+- [06-01]: conv_hotkey_start defaults to f11 (not Fn+C): Fn key combos are hardware-firmware intercepted on Linux and never reach the OS input layer; f11 is the practical substitute; Phase 7 makes this configurable
+- [06-01]: conv_hotkey_feedback defaults to f12 (not Fn+D): same Fn key Linux limitation
+- [06-01]: F11 during _STATE_RECORDING is silently ignored (IDLE-guard) — prevents accidental conversation start mid-dictation
+- [06-01]: openai upgraded to 2.21.0 in venv (system had 0.27.5) to get 1.x API for Grok xAI base_url override
 
 ### Roadmap Evolution
 
@@ -152,5 +157,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 05-04-PLAN.md — Phase 5 fully human-verified; HIST-01, HIST-02, HIST-03 satisfied
+Stopped at: Completed 06-01-PLAN.md — Phase 6 scaffold (config defaults, HotkeyManager, tray icons, SVGs, deps)
 Resume file: None
