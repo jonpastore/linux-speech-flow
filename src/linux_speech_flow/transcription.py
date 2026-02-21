@@ -12,6 +12,7 @@ import groq
 from gi.repository import GLib
 
 from linux_speech_flow.config import load_config
+from linux_speech_flow.history import HistoryStore
 from linux_speech_flow.injector import paste_text
 from linux_speech_flow.notify import send_notification
 from linux_speech_flow.sounds import play_sound
@@ -109,11 +110,14 @@ class TranscriptionPipeline:
       active pipeline add to the queue; the caller shows a "Recording queued" notification.
     """
 
-    def __init__(self, on_paste_complete=None, on_error=None, on_failed_count_changed=None):
+    def __init__(self, on_paste_complete=None, on_error=None, on_failed_count_changed=None,
+                 history_store=None, on_history_entry=None):
         self._queue: queue.Queue = queue.Queue()
         self._on_paste_complete = on_paste_complete
         self._on_error = on_error
         self._on_failed_count_changed = on_failed_count_changed
+        self._history_store = history_store
+        self._on_history_entry = on_history_entry
         self._worker = threading.Thread(target=self._run, daemon=True, name="transcription-worker")
         self._worker.start()
 
@@ -183,6 +187,7 @@ class TranscriptionPipeline:
                 self._queue.task_done()
 
     def _process(self, wav_path: str, window_info: dict, config: dict):
+        started_at = datetime.utcnow()
         api_key = config.get("groq_api_key", "")
         client = groq.Groq(api_key=api_key, max_retries=0)
 
@@ -271,6 +276,30 @@ class TranscriptionPipeline:
             os.unlink(wav_path)
         except OSError:
             pass
+
+        duration = (datetime.utcnow() - started_at).total_seconds()
+        if self._history_store:
+            max_entries = config.get('history_max_entries', 20)
+            self._history_store.insert({
+                'entry_type': 'transcription',
+                'created_at': started_at.isoformat(),
+                'duration_sec': duration,
+                'raw_text': raw_transcript,
+                'processed_text': final_text.strip(),
+                'app_name': window_info.get('wm_class', ''),
+                'window_title': window_info.get('title', ''),
+            }, max_entries=max_entries)
+        if self._on_history_entry:
+            GLib.idle_add(self._on_history_entry, {
+                'entry_type': 'transcription',
+                'created_at': started_at.isoformat(),
+                'duration_sec': duration,
+                'raw_text': raw_transcript,
+                'processed_text': final_text.strip(),
+                'app_name': window_info.get('wm_class', ''),
+                'window_title': window_info.get('title', ''),
+            })
+
         self._notify_failed_count()
 
         if llm_failed:
