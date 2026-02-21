@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 6 of 9 — In Progress
-Plan: 5/8 complete (06-01, 06-02, 06-03, 06-04, 06-05 done)
-Status: ConversationViewer two-panel GTK4 file browser implemented; ready for App.py integration
-Last activity: 2026-02-21 -- 06-05 complete (ConversationViewer: Paned layout, directory scan, metadata parsing, Continue Q&A callback)
+Plan: 6/8 complete (06-01, 06-02, 06-03, 06-04, 06-05, 06-06 done)
+Status: ConversationDialog and ConversationQAWindow implemented; ready for App.py integration
+Last activity: 2026-02-21 -- 06-06 complete (ConversationDialog: qualifying questions, model checkboxes; ConversationQAWindow: iterative Q&A, confidence-gated finalisation, Speak button)
 
 Progress: [████████████████████████] 85%
 
@@ -60,6 +60,7 @@ Progress: [███████████████████████
 | Phase 06-conversation-mode P04 | 2 min | 2 tasks | 2 files |
 | Phase 06-conversation-mode P05 | 1 min | 1 tasks | 1 files |
 | Phase 06-conversation-mode P05 | 1 | 1 tasks | 1 files |
+| Phase 06-conversation-mode P06 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,7 @@ Recent decisions affecting current work:
 - [06-04]: Gtk.Window(modal=True) used for silence warning dialog — consistent with project pattern avoiding deprecated Gtk.Dialog (GTK 4.10)
 - [Phase 06-05]: Paned divider set to 280px with set_resize_start_child(False) so left panel stays fixed and right panel expands on resize
 - [Phase 06-05]: on_continue_qa button only rendered if callback is non-None — viewer works standalone without Q&A feature
+- [Phase 06-06]: ConversationDialog _on_submit fallback always includes groq if no model selected; Speak button fills answer entry for review not auto-submit; confidence >= 0.95 requires explicit user confirmation before _finalise runs
 
 ### Roadmap Evolution
 
