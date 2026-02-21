@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Transcription & Text Injection** - Groq Whisper transcription, LLM post-processing with context, clipboard paste into focused app (completed 2026-02-21)
 - [x] **Phase 4: System Tray & Desktop Integration** - AppIndicator tray icon with state feedback, menu actions, and desktop notifications
 - [x] **Phase 5: Pipeline History** - SQLite run log storage, retention policy, and GTK history viewer (completed 2026-02-21)
-- [ ] **Phase 6: Conversation Mode** - Long-form recording, silence-chunked transcription, multi-provider AI analysis, iterative Q&A, coalesced file output
+- [x] **Phase 6: Conversation Mode** - Long-form recording, silence-chunked transcription, multi-provider AI analysis, iterative Q&A, coalesced file output (completed 2026-02-21)
 - [ ] **Phase 7: Hotkey Customization** - Configurable hotkeys in Settings, key combination support
 - [ ] **Phase 8: Slack Integration** - Output to Slack, join Slack huddles as a bot
 - [ ] **Phase 9: Packaging & Distribution** - .deb with bundled venv, XDG autostart, PyPI publishing, and dependency documentation
@@ -141,14 +141,14 @@ Plans:
 **Plans**: 8 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Foundation: Phase 6 config defaults, openai/google-genai deps, HotkeyManager F11/F12, tray badge SVGs
-- [ ] 06-02-PLAN.md — ConversationRecorder: chunked silence-bounded WAV writer
-- [ ] 06-03-PLAN.md — ConversationPipeline: multi-model AI analysis, synthesis, file coalescing
-- [ ] 06-04-PLAN.md — ConversationManager state machine + ConversationStatusWindow
-- [ ] 06-05-PLAN.md — ConversationViewer: two-panel GTK file browser (Gtk.Paned)
-- [ ] 06-06-PLAN.md — ConversationDialog + ConversationQAWindow
-- [ ] 06-07-PLAN.md — App wiring + Settings Phase 6 section
-- [ ] 06-08-PLAN.md — Pre-verification checks + human verification
+- [x] 06-01-PLAN.md — Foundation: Phase 6 config defaults, openai/google-genai deps, HotkeyManager F11/F12, tray badge SVGs
+- [x] 06-02-PLAN.md — ConversationRecorder: chunked silence-bounded WAV writer
+- [x] 06-03-PLAN.md — ConversationPipeline: multi-model AI analysis, synthesis, file coalescing
+- [x] 06-04-PLAN.md — ConversationManager state machine + ConversationStatusWindow
+- [x] 06-05-PLAN.md — ConversationViewer: two-panel GTK file browser (Gtk.Paned)
+- [x] 06-06-PLAN.md — ConversationDialog + ConversationQAWindow
+- [x] 06-07-PLAN.md — App wiring + Settings Phase 6 section
+- [x] 06-08-PLAN.md — Pre-verification checks + human verification
 
 ### Phase 7: Hotkey Customization
 **Goal**: User can configure all hotkeys (recording start/stop, replay, conversation mode) through Settings with support for key combinations
@@ -204,7 +204,7 @@ Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 | 4. System Tray & Desktop Integration | 3/3 | Complete | 2026-02-21 |
 | 4.1. FreeFlow Rename and Codebase Cleanup | 3/3 | Complete   | 2026-02-21 |
 | 5. Pipeline History | 4/4 | Complete | 2026-02-21 |
-| 6. Conversation Mode | 7/8 | In Progress|  |
+| 6. Conversation Mode | 8/8 | Complete | 2026-02-21 |
 | 7. Hotkey Customization | 0/? | Not started | - |
 | 8. Slack Integration | 0/? | Not started | - |
 | 9. Packaging & Distribution | 0/? | Not started | - |

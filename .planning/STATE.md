@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 
 ## Current Position
 
-Phase: 6 of 9 — In Progress
-Plan: 7/8 complete (06-01, 06-02, 06-03, 06-04, 06-05, 06-06, 06-07 done)
-Status: ConversationManager wired into App; Conversation History in tray; Settings Phase 6 section complete; ready for final Phase 6 plan
-Last activity: 2026-02-21 -- 06-07 complete (ConversationManager wiring in app.py, tray Conversation History menu item, Settings Conversation Mode section with Grok/Gemini keys, save dir, feedback mode, Q&A iterations, auto-analyze, default prompt, qualifying questions editor)
+Phase: 6 of 9 — Complete
+Plan: 8/8 complete (06-01, 06-02, 06-03, 06-04, 06-05, 06-06, 06-07, 06-08 done)
+Status: Phase 6 Conversation Mode complete — all CONV-01 through CONV-05 requirements verified by human sign-off; ready for Phase 7 Hotkey Customization
+Last activity: 2026-02-21 -- 06-08 complete (pre-verification automated checks + human sign-off on full Conversation Mode UX flow)
 
-Progress: [████████████████████████] 85%
+Progress: [████████████████████████████] 90%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [███████████████████████
 | Phase 06-conversation-mode P05 | 1 | 1 tasks | 1 files |
 | Phase 06-conversation-mode P06 | 2 | 2 tasks | 2 files |
 | Phase 06-conversation-mode P07 | 2 | 2 tasks | 3 files |
+| Phase 06-conversation-mode P08 | 5 min | 2 tasks | 0 files (verification only) |
 
 ## Accumulated Context
 
@@ -179,5 +180,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 06-07-PLAN.md — ConversationManager wiring, tray Conversation History, Settings Phase 6 section
+Stopped at: Completed 06-08-PLAN.md — Phase 6 Conversation Mode pre-verification and human sign-off; Phase 6 complete
 Resume file: None

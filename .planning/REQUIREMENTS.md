@@ -43,6 +43,14 @@
 - [x] **HIST-02**: Up to 20 most recent runs are retained (SQLite in ~/.local/share/linux-speech-flow/)
 - [x] **HIST-03**: User can view run log as a GTK window launched from tray menu
 
+### Conversation Mode
+
+- [x] **CONV-01**: User can press F11 to start/stop long-form conversation recording (silence-chunked, background-transcribed per chunk)
+- [x] **CONV-02**: Auto-stop timers: 180s silence prompts "Continue or Stop?" modal, 300s auto-stops with audio cue, 4hr hard limit with warning sound (all configurable)
+- [x] **CONV-03**: Post-stop ConversationDialog: qualifying questions, prompt, model checkboxes (grayed if no API key), save/inject options; Q&A window opens
+- [x] **CONV-04**: Coalesced output file: ISO8601_ai-title.txt with metadata header, ## Summary, ## Q&A, ## Transcript sections; file renamed from _untitled to _ai-title after AI analysis
+- [x] **CONV-05**: AI iterative Q&A loop (Groq/Grok/Gemini configurable) runs until 95% confidence or max iterations; typed or spoken answers; Conversation History viewer in tray
+
 ### Distribution
 
 - [ ] **DIST-01**: App is packaged as a .deb file installable via `apt install ./linux-speech-flow_*.deb` on Ubuntu 22.04+, Debian 12+, Pop!_OS 22.04+
@@ -114,11 +122,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HIST-01 | Phase 5 | Complete |
 | HIST-02 | Phase 5 | Complete |
 | HIST-03 | Phase 5 | Complete |
-| DIST-01 | Phase 6 | Pending |
-| DIST-02 | Phase 6 | Pending |
-| DIST-03 | Phase 6 | Pending |
-| DIST-04 | Phase 6 | Pending |
-| DIST-05 | Phase 6 | Pending |
+| CONV-01 | Phase 6 | Complete |
+| CONV-02 | Phase 6 | Complete |
+| CONV-03 | Phase 6 | Complete |
+| CONV-04 | Phase 6 | Complete |
+| CONV-05 | Phase 6 | Complete |
+| DIST-01 | Phase 9 | Pending |
+| DIST-02 | Phase 9 | Pending |
+| DIST-03 | Phase 9 | Pending |
+| DIST-04 | Phase 9 | Pending |
+| DIST-05 | Phase 9 | Pending |
 
 **Coverage:**
 - v1 requirements: 28 total
@@ -127,4 +140,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-18*
-*Last updated: 2026-02-19 after 01-03 (CONF-01 complete: validate_api_key implemented)*
+*Last updated: 2026-02-21 after 06-08 (CONV-01 through CONV-05 complete: Phase 6 Conversation Mode verified)*
