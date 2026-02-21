@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 6 of 9 — In Progress
-Plan: 6/8 complete (06-01, 06-02, 06-03, 06-04, 06-05, 06-06 done)
-Status: ConversationDialog and ConversationQAWindow implemented; ready for App.py integration
-Last activity: 2026-02-21 -- 06-06 complete (ConversationDialog: qualifying questions, model checkboxes; ConversationQAWindow: iterative Q&A, confidence-gated finalisation, Speak button)
+Plan: 7/8 complete (06-01, 06-02, 06-03, 06-04, 06-05, 06-06, 06-07 done)
+Status: ConversationManager wired into App; Conversation History in tray; Settings Phase 6 section complete; ready for final Phase 6 plan
+Last activity: 2026-02-21 -- 06-07 complete (ConversationManager wiring in app.py, tray Conversation History menu item, Settings Conversation Mode section with Grok/Gemini keys, save dir, feedback mode, Q&A iterations, auto-analyze, default prompt, qualifying questions editor)
 
 Progress: [████████████████████████] 85%
 
@@ -61,6 +61,7 @@ Progress: [███████████████████████
 | Phase 06-conversation-mode P05 | 1 min | 1 tasks | 1 files |
 | Phase 06-conversation-mode P05 | 1 | 1 tasks | 1 files |
 | Phase 06-conversation-mode P06 | 2 | 2 tasks | 2 files |
+| Phase 06-conversation-mode P07 | 2 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -154,6 +155,9 @@ Recent decisions affecting current work:
 - [Phase 06-05]: Paned divider set to 280px with set_resize_start_child(False) so left panel stays fixed and right panel expands on resize
 - [Phase 06-05]: on_continue_qa button only rendered if callback is non-None — viewer works standalone without Q&A feature
 - [Phase 06-06]: ConversationDialog _on_submit fallback always includes groq if no model selected; Speak button fills answer entry for review not auto-submit; confidence >= 0.95 requires explicit user confirmation before _finalise runs
+- [Phase 06-07]: ConversationManager instantiated before TrayManager in do_startup() — on_tray_state uses lazy lambda to defer self._tray lookup until call time
+- [Phase 06-07]: Conversation History tray item added as second item after Transcription History for logical grouping
+- [Phase 06-07]: Settings dirty tracking extended to all Phase 6 widgets so unsaved-changes dialog triggers correctly for Conversation Mode fields
 
 ### Roadmap Evolution
 
@@ -175,5 +179,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 06-05-PLAN.md — ConversationViewer two-panel conversation file browser
+Stopped at: Completed 06-07-PLAN.md — ConversationManager wiring, tray Conversation History, Settings Phase 6 section
 Resume file: None
