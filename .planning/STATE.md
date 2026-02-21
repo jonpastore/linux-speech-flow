@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 
 ## Current Position
 
-Phase: 5 of 9 — In progress
-Plan: 2/? complete (05-02 done)
-Status: Phase 5 in progress; HistoryWindow GTK viewer created with expandable rows, clipboard copy, size persistence
-Last activity: 2026-02-21 -- 05-02 complete (HistoryWindow + HistoryRow GTK viewer)
+Phase: 5 of 9 — Complete
+Plan: 3/3 complete (05-03 done)
+Status: Phase 5 complete; full history pipeline wired — DB insert on worker thread, live HistoryWindow via GLib.idle_add, tray menu item, Settings Maintenance section
+Last activity: 2026-02-21 -- 05-03 complete (pipeline wiring, tray menu, settings maintenance)
 
 Progress: [████████████████████████] 85%
 
@@ -53,6 +53,7 @@ Progress: [███████████████████████
 | Phase 04.1-freeflow-rename-and-codebase-cleanup P03 | 2 | 2 tasks | 0 files |
 | Phase 05-pipeline-history P01 | 1 | 2 tasks | 2 files |
 | Phase 05-pipeline-history P02 | 1 | 1 tasks | 1 files |
+| Phase 05-pipeline-history P03 | 2 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,9 @@ Recent decisions affecting current work:
 - [Phase 05-02]: Gtk.ListBox selection_mode=NONE with row-activated toggle: rows manage own expand state
 - [Phase 05-02]: Closure capture (t=text) in Copy button lambda prevents late-binding bug
 - [Phase 05-02]: Gtk.Window(modal=True) not Gtk.Dialog: matches project pattern (GTK 4.10 deprecation)
+- [Phase 05-03]: HistoryStore.insert() called on worker thread inside _process() before GLib.idle_add — DB write never on GTK main thread
+- [Phase 05-03]: started_at captured at top of _process() before any API calls — measures total pipeline duration including Whisper + LLM
+- [Phase 05-03]: history_max_entries read from config per-call in _process() — always uses current setting without restart
 
 ### Roadmap Evolution
 
@@ -146,5 +150,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 05-02-PLAN.md — HistoryWindow GTK history viewer done
+Stopped at: Completed 05-03-PLAN.md — full history pipeline wiring done; Phase 5 complete
 Resume file: None
