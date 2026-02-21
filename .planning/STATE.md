@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 6 of 9 — In Progress
-Plan: 4/8 complete (06-01, 06-02, 06-03, 06-04 done)
-Status: ConversationManager and ConversationStatusWindow implemented; session state machine with silence timer cascade (180s warn/300s stop/4hr hard limit), per-chunk Whisper dispatch, ready for App.py integration
-Last activity: 2026-02-21 -- 06-04 complete (ConversationManager: start_session, stop_session, toggle_feedback, silence timers; ConversationStatusWindow: elapsed timer, chunk status)
+Plan: 5/8 complete (06-01, 06-02, 06-03, 06-04, 06-05 done)
+Status: ConversationViewer two-panel GTK4 file browser implemented; ready for App.py integration
+Last activity: 2026-02-21 -- 06-05 complete (ConversationViewer: Paned layout, directory scan, metadata parsing, Continue Q&A callback)
 
 Progress: [████████████████████████] 85%
 
@@ -58,6 +58,8 @@ Progress: [███████████████████████
 | Phase 06-conversation-mode P02 | 1 | 1 tasks | 1 files |
 | Phase 06-conversation-mode P03 | 1 min | 1 tasks | 1 files |
 | Phase 06-conversation-mode P04 | 2 min | 2 tasks | 2 files |
+| Phase 06-conversation-mode P05 | 1 min | 1 tasks | 1 files |
+| Phase 06-conversation-mode P05 | 1 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -148,6 +150,8 @@ Recent decisions affecting current work:
 - [06-04]: silence_stop timer created inside _on_silence_warn callback (not pre-created) — ensures timer only starts after warn fires
 - [06-04]: stop_session defers _finish_session 500ms via GLib.timeout_add to allow last chunk GLib.idle_add to flush before transcript assembly
 - [06-04]: Gtk.Window(modal=True) used for silence warning dialog — consistent with project pattern avoiding deprecated Gtk.Dialog (GTK 4.10)
+- [Phase 06-05]: Paned divider set to 280px with set_resize_start_child(False) so left panel stays fixed and right panel expands on resize
+- [Phase 06-05]: on_continue_qa button only rendered if callback is non-None — viewer works standalone without Q&A feature
 
 ### Roadmap Evolution
 
@@ -169,5 +173,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 06-04-PLAN.md — ConversationManager session state machine and ConversationStatusWindow
+Stopped at: Completed 06-05-PLAN.md — ConversationViewer two-panel conversation file browser
 Resume file: None
