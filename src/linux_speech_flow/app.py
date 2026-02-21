@@ -7,6 +7,7 @@ from gi.repository import Gtk, Gio, GLib
 from pathlib import Path
 
 from linux_speech_flow.config import load_config
+from linux_speech_flow.conversation_manager import ConversationManager
 from linux_speech_flow.debug_window import DebugWindow
 from linux_speech_flow.history import HistoryStore, DB_PATH
 from linux_speech_flow.history_window import HistoryWindow
@@ -32,6 +33,8 @@ class App(Gtk.Application):
         self._pipeline: TranscriptionPipeline | None = None
         self._history_window: HistoryWindow | None = None
         self._history_store: HistoryStore | None = None
+        self._conv_manager: ConversationManager | None = None
+        self._conv_viewer = None
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -56,6 +59,9 @@ class App(Gtk.Application):
             on_recording_complete=self._on_recording_complete,
             on_recording_error=self._on_recording_error,
             on_reprocess=self._on_reprocess_hotkey,
+            on_conversation_start=self._on_conv_start,
+            on_conversation_stop=self._on_conv_stop,
+            on_conversation_feedback_toggle=self._on_conv_feedback_toggle,
         )
         self._hotkey_manager.start()
         GLib.idle_add(self._hotkey_manager.mark_started)
@@ -67,6 +73,11 @@ class App(Gtk.Application):
             history_store=self._history_store,
             on_history_entry=self._on_history_entry_received,
         )
+        self._conv_manager = ConversationManager(
+            application=self,
+            on_session_complete=self._on_conv_session_complete,
+            on_tray_state=lambda state: self._tray.set_state(state) if self._tray else None,
+        )
 
         self._tray = TrayManager(
             app=self,
@@ -74,6 +85,7 @@ class App(Gtk.Application):
             on_debug_log=self._on_open_debug_log,
             on_reprocess=self._on_reprocess_hotkey,
             on_history=self._on_open_history,
+            on_conv_history=self._on_open_conv_viewer,
         )
         self._tray.setup()
 
@@ -193,6 +205,118 @@ class App(Gtk.Application):
             )
             dialog.present()
 
+    def _on_conv_start(self) -> None:
+        if self._conv_manager:
+            self._conv_manager.start_session()
+
+    def _on_conv_stop(self) -> None:
+        if self._conv_manager:
+            self._conv_manager.stop_session()
+
+    def _on_conv_feedback_toggle(self) -> None:
+        if self._conv_manager:
+            self._conv_manager.toggle_feedback()
+
+    def _on_conv_session_complete(self, transcript: str, metadata: dict) -> bool:
+        """Called on GTK main thread by ConversationManager when session ends."""
+        from linux_speech_flow.conversation_dialog import ConversationDialog
+        dialog = ConversationDialog(
+            application=self,
+            transcript=transcript,
+            metadata=metadata,
+            on_submit=self._on_conv_dialog_submit,
+        )
+        dialog.present()
+        return False
+
+    def _on_conv_dialog_submit(self, transcript, prompt, qualifying_answers,
+                               selected_models, save_to_file, inject_to_window, metadata):
+        import threading
+        from pathlib import Path
+        from linux_speech_flow.conversation_pipeline import conv_filename, coalesce_file
+        from linux_speech_flow.conversation_qa import ConversationQAWindow
+
+        config = load_config()
+        save_dir = Path(config.get("conv_save_dir", "~/Documents/conversations")).expanduser()
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        initial_path = str(save_dir / conv_filename("untitled"))
+        if save_to_file:
+            coalesce_file(initial_path, metadata, "", [], transcript)
+
+        def on_finalised(final_path: str) -> None:
+            if inject_to_window and self._pipeline:
+                try:
+                    content = Path(final_path).read_text(encoding="utf-8")
+                    from linux_speech_flow.injector import inject_text
+                    inject_text(content)
+                except Exception:
+                    pass
+
+        if not selected_models:
+            if save_to_file:
+                on_finalised(initial_path)
+            return
+
+        pipeline = self._conv_manager._pipeline if self._conv_manager else None
+        if pipeline is None:
+            from linux_speech_flow.conversation_pipeline import ConversationPipeline
+            pipeline = ConversationPipeline()
+
+        def _analyze_thread():
+            result = pipeline.analyze(transcript, prompt, qualifying_answers, selected_models)
+            GLib.idle_add(_open_qa, result)
+
+        def _open_qa(result):
+            qa_window = ConversationQAWindow(
+                application=self,
+                transcript=transcript,
+                metadata=metadata,
+                pipeline=pipeline,
+                initial_result=result,
+                save_path=initial_path,
+                on_finalised=on_finalised,
+                selected_models=selected_models,
+            )
+            qa_window.present()
+            return False
+
+        threading.Thread(target=_analyze_thread, daemon=True).start()
+
+    def _on_open_conv_viewer(self, _btn=None):
+        if self._conv_viewer is None:
+            from linux_speech_flow.conversation_viewer import ConversationViewer
+            self._conv_viewer = ConversationViewer(
+                application=self,
+                on_continue_qa=self._on_conv_continue_qa,
+            )
+            self._conv_viewer.connect("close-request", self._on_conv_viewer_closed)
+        self._conv_viewer.present()
+
+    def _on_conv_viewer_closed(self, _window):
+        self._conv_viewer = None
+        return False
+
+    def _on_conv_continue_qa(self, file_path: str) -> None:
+        """Re-open Q&A for an existing conversation file. Reads transcript from file."""
+        from pathlib import Path
+        try:
+            content = Path(file_path).read_text(encoding="utf-8")
+            if "## Transcript" in content:
+                transcript = content.split("## Transcript", 1)[1].strip()
+            else:
+                transcript = content
+        except OSError:
+            return
+        metadata = {}
+        for line in content.splitlines()[:6]:
+            if ":" in line and not line.startswith("#"):
+                k, v = line.split(":", 1)
+                metadata[k.strip().lower().replace(" ", "_")] = v.strip()
+        self._on_conv_dialog_submit(
+            transcript, "", "", ["groq"], False, False, metadata
+        )
+
     def _on_reprocess_selected(self, wav_paths: list[str], mode: str) -> None:
         """Callback from ReprocessDialog with selected paths and mode.
 
@@ -208,6 +332,8 @@ class App(Gtk.Application):
     def do_shutdown(self):
         if self._hotkey_manager:
             self._hotkey_manager.stop()
+        if self._conv_manager and hasattr(self._conv_manager, '_recorder') and self._conv_manager._recorder:
+            self._conv_manager._recorder.stop()
         Gtk.Application.do_shutdown(self)
 
 
