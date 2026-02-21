@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 5 of 9 — Complete
-Plan: 3/3 complete (05-03 done)
-Status: Phase 5 complete; full history pipeline wired — DB insert on worker thread, live HistoryWindow via GLib.idle_add, tray menu item, Settings Maintenance section
-Last activity: 2026-02-21 -- 05-03 complete (pipeline wiring, tray menu, settings maintenance)
+Plan: 4/4 complete (05-04 done)
+Status: Phase 5 complete; all HIST-01, HIST-02, HIST-03 human-verified — history records, persists across restart, live HistoryWindow updates, Settings Maintenance section with Clear All History dialog
+Last activity: 2026-02-21 -- 05-04 complete (human verification passed, two bugs fixed: clear_all VACUUM transaction and stale icon cache)
 
 Progress: [████████████████████████] 85%
 
@@ -129,6 +129,8 @@ Recent decisions affecting current work:
 - [Phase 05-03]: HistoryStore.insert() called on worker thread inside _process() before GLib.idle_add — DB write never on GTK main thread
 - [Phase 05-03]: started_at captured at top of _process() before any API calls — measures total pipeline duration including Whisper + LLM
 - [Phase 05-03]: history_max_entries read from config per-call in _process() — always uses current setting without restart
+- [Phase 05-04]: SQLite VACUUM must run outside any active transaction; clear_all() committed DELETE first then called VACUUM separately to avoid rollback undoing the delete
+- [Phase 05-04]: gtk-update-icon-cache must be called after install_icons() renames icons; stale OS icon theme cache reverts tray to old icon without invalidation
 
 ### Roadmap Evolution
 
@@ -150,5 +152,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 05-03-PLAN.md — full history pipeline wiring done; Phase 5 complete
+Stopped at: Completed 05-04-PLAN.md — Phase 5 fully human-verified; HIST-01, HIST-02, HIST-03 satisfied
 Resume file: None

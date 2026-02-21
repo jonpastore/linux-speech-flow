@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Audio Capture & Hotkey** - Hold-to-record via F9 with pasimple audio recording, sound feedback, and device error handling
 - [x] **Phase 3: Transcription & Text Injection** - Groq Whisper transcription, LLM post-processing with context, clipboard paste into focused app (completed 2026-02-21)
 - [x] **Phase 4: System Tray & Desktop Integration** - AppIndicator tray icon with state feedback, menu actions, and desktop notifications
-- [ ] **Phase 5: Pipeline History** - SQLite run log storage, retention policy, and GTK history viewer
+- [x] **Phase 5: Pipeline History** - SQLite run log storage, retention policy, and GTK history viewer (completed 2026-02-21)
 - [ ] **Phase 6: Conversation Mode** - Long-form recording, silence-chunked transcription, multi-provider AI analysis, iterative Q&A, coalesced file output
 - [ ] **Phase 7: Hotkey Customization** - Configurable hotkeys in Settings, key combination support
 - [ ] **Phase 8: Slack Integration** - Output to Slack, join Slack huddles as a bot
@@ -123,10 +123,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — HistoryStore (SQLite, WAL mode, insert+prune, extensible schema) + config defaults
-- [ ] 05-02-PLAN.md — HistoryWindow GTK class (expandable rows, copy buttons, live updates, size persistence)
-- [ ] 05-03-PLAN.md — Integration wiring: transcription.py + app.py + tray menu item + settings Maintenance section
-- [ ] 05-04-PLAN.md — Pre-verification checks + human verification of complete history feature
+- [x] 05-01-PLAN.md — HistoryStore (SQLite, WAL mode, insert+prune, extensible schema) + config defaults
+- [x] 05-02-PLAN.md — HistoryWindow GTK class (expandable rows, copy buttons, live updates, size persistence)
+- [x] 05-03-PLAN.md — Integration wiring: transcription.py + app.py + tray menu item + settings Maintenance section
+- [x] 05-04-PLAN.md — Pre-verification checks + human verification of complete history feature
 
 ### Phase 6: Conversation Mode
 **Goal**: User can record long-form conversations (calls, huddles, brain-dumps) and get a fully transcribed, AI-analyzed output file with iterative Q&A for requirements/action item extraction
@@ -196,7 +196,7 @@ Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 | 3. Transcription & Text Injection | 4/6 | Complete    | 2026-02-21 |
 | 4. System Tray & Desktop Integration | 3/3 | Complete | 2026-02-21 |
 | 4.1. FreeFlow Rename and Codebase Cleanup | 3/3 | Complete   | 2026-02-21 |
-| 5. Pipeline History | 3/4 | In Progress|  |
+| 5. Pipeline History | 4/4 | Complete | 2026-02-21 |
 | 6. Conversation Mode | 0/? | Not started | - |
 | 7. Hotkey Customization | 0/? | Not started | - |
 | 8. Slack Integration | 0/? | Not started | - |
