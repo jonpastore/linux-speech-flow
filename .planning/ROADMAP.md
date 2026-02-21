@@ -120,10 +120,13 @@ Plans:
   1. Each transcription run stores timestamp, raw transcript, processed transcript, window context, and duration
   2. Only the N most recent runs are retained in SQLite at ~/.local/share/linux-speech-flow/ (N configurable, default 20)
   3. User can open a GTK run log window from the tray menu showing all stored runs with their details
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md — HistoryStore (SQLite, WAL mode, insert+prune, extensible schema) + config defaults
+- [ ] 05-02-PLAN.md — HistoryWindow GTK class (expandable rows, copy buttons, live updates, size persistence)
+- [ ] 05-03-PLAN.md — Integration wiring: transcription.py + app.py + tray menu item + settings Maintenance section
+- [ ] 05-04-PLAN.md — Pre-verification checks + human verification of complete history feature
 
 ### Phase 6: Conversation Mode
 **Goal**: User can record long-form conversations (calls, huddles, brain-dumps) and get a fully transcribed, AI-analyzed output file with iterative Q&A for requirements/action item extraction
@@ -193,7 +196,7 @@ Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 | 3. Transcription & Text Injection | 4/6 | Complete    | 2026-02-21 |
 | 4. System Tray & Desktop Integration | 3/3 | Complete | 2026-02-21 |
 | 4.1. FreeFlow Rename and Codebase Cleanup | 3/3 | Complete   | 2026-02-21 |
-| 5. Pipeline History | 0/? | Not started | - |
+| 5. Pipeline History | 0/4 | Not started | - |
 | 6. Conversation Mode | 0/? | Not started | - |
 | 7. Hotkey Customization | 0/? | Not started | - |
 | 8. Slack Integration | 0/? | Not started | - |
