@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 
 ## Current Position
 
-Phase: 5 of 9 — Not started (Phase 4.1 complete)
-Plan: 0/? ready to begin
-Status: Phase 4.1 complete; git history squashed to single "Initial commit: Linux Speech Flow"; human verified tray icon, no freeflow strings, old artifacts removed
-Last activity: 2026-02-21 -- 04.1-03 complete (all 3 plans of Phase 4.1 done)
+Phase: 5 of 9 — In progress
+Plan: 1/? complete (05-01 done)
+Status: Phase 5 in progress; HistoryStore SQLite layer created; config defaults added
+Last activity: 2026-02-21 -- 05-01 complete (HistoryStore + config defaults)
 
 Progress: [████████████████████████] 85%
 
@@ -51,6 +51,7 @@ Progress: [███████████████████████
 | Phase 04.1 P02 | 1 | 2 tasks | 2 files |
 | Phase 04.1 P03 | 1 | 1 tasks | 0 files (git history rewrite) |
 | Phase 04.1-freeflow-rename-and-codebase-cleanup P03 | 2 | 2 tasks | 0 files |
+| Phase 05-pipeline-history P01 | 1 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,9 @@ Recent decisions affecting current work:
 - [Phase 04.1]: [04.1-02]: shutil.copy2 + rmtree for config migration; import logging inside except block to avoid circular import
 - [04.1-03]: git reset --soft <root> + commit --amend pattern squashes all 97 commits into single "Initial commit: Linux Speech Flow"; untracked files (venv, pycache) present in porcelain output do not block squash
 - [Phase 04.1]: git reset --soft to root + amend pattern squashes 97 commits into single 'Initial commit: Linux Speech Flow'; untracked files do not block squash
+- [Phase 05-01]: Per-call connection pattern: HistoryStore._connect() called fresh in each method — thread-safe by design without locks
+- [Phase 05-01]: Safe subquery prune form: DELETE WHERE id NOT IN (SELECT id ... LIMIT ?) avoids SQLITE_ENABLE_UPDATE_DELETE_LIMIT dependency
+- [Phase 05-01]: entry_type + extra_json columns added in Phase 5 schema for Phase 6 conversation-mode extensibility without migration
 
 ### Roadmap Evolution
 
@@ -138,5 +142,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Phase 4.1 complete — all 3 plans done; ready to begin Phase 5
+Stopped at: Completed 05-01-PLAN.md — HistoryStore and config defaults done
 Resume file: None
