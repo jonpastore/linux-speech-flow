@@ -8,6 +8,8 @@ from pathlib import Path
 
 from linux_speech_flow.config import load_config
 from linux_speech_flow.debug_window import DebugWindow
+from linux_speech_flow.history import HistoryStore, DB_PATH
+from linux_speech_flow.history_window import HistoryWindow
 from linux_speech_flow.notify import send_notification
 from linux_speech_flow.transcription import TranscriptionPipeline, FAILED_DIR
 from linux_speech_flow.tray import TrayManager, install_icons
@@ -28,6 +30,8 @@ class App(Gtk.Application):
         self._debug_window = None
         self._hotkey_manager = None
         self._pipeline: TranscriptionPipeline | None = None
+        self._history_window: HistoryWindow | None = None
+        self._history_store: HistoryStore | None = None
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -55,10 +59,13 @@ class App(Gtk.Application):
         )
         self._hotkey_manager.start()
         GLib.idle_add(self._hotkey_manager.mark_started)
+        self._history_store = HistoryStore()
         self._pipeline = TranscriptionPipeline(
             on_paste_complete=self._on_paste_complete,
             on_error=self._on_pipeline_error,
             on_failed_count_changed=self._on_failed_count_changed,
+            history_store=self._history_store,
+            on_history_entry=self._on_history_entry_received,
         )
 
         self._tray = TrayManager(
@@ -66,6 +73,7 @@ class App(Gtk.Application):
             on_settings=self._on_open_settings,
             on_debug_log=self._on_open_debug_log,
             on_reprocess=self._on_reprocess_hotkey,
+            on_history=self._on_open_history,
         )
         self._tray.setup()
 
@@ -90,6 +98,24 @@ class App(Gtk.Application):
 
     def _on_settings_closed(self, _window):
         self._settings = None
+        return False
+
+    def _on_open_history(self, _btn=None):
+        if self._history_window is None:
+            self._history_window = HistoryWindow(
+                application=self,
+                history_store=self._history_store,
+            )
+            self._history_window.connect("close-request", self._on_history_closed)
+        self._history_window.present()
+
+    def _on_history_closed(self, _window):
+        self._history_window = None
+        return False
+
+    def _on_history_entry_received(self, entry: dict) -> bool:
+        if self._history_window is not None:
+            self._history_window.prepend_entry(entry)
         return False
 
     def _on_open_debug_log(self, _btn=None):

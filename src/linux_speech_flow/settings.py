@@ -18,6 +18,8 @@ LLM_MODELS = [
 from linux_speech_flow.audio import list_microphones
 from linux_speech_flow.config import load_config, save_config
 from linux_speech_flow.groq_client import validate_api_key
+from linux_speech_flow.history import HistoryStore, DB_PATH
+from linux_speech_flow.transcription import FAILED_DIR
 
 import pulsectl
 
@@ -322,6 +324,48 @@ class SettingsWindow(Gtk.ApplicationWindow):
         if editors:
             self._editors_view.get_buffer().set_text("\n".join(editors))
 
+        sep_maint = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        sep_maint.set_margin_top(8)
+        sep_maint.set_margin_bottom(8)
+        content.append(sep_maint)
+
+        maint_title = Gtk.Label(label="Maintenance")
+        maint_title.add_css_class("title-4")
+        maint_title.set_xalign(0)
+        content.append(maint_title)
+
+        history_header = Gtk.Label(label="History")
+        attrs_bold = Pango.AttrList()
+        attrs_bold.insert(Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold")))
+        history_header.set_attributes(attrs_bold)
+        history_header.set_xalign(0)
+        history_header.set_margin_top(4)
+        content.append(history_header)
+
+        max_entries_label = Gtk.Label(label="Max entries to keep")
+        max_entries_label.set_xalign(0)
+        content.append(max_entries_label)
+
+        self._history_max_entries_spin = Gtk.SpinButton.new_with_range(5, 500, 1)
+        self._history_max_entries_spin.set_value(self._config.get('history_max_entries', 20))
+        _block_scroll_spin(self._history_max_entries_spin)
+        content.append(self._history_max_entries_spin)
+
+        clear_history_btn = Gtk.Button(label="Clear All History")
+        clear_history_btn.set_margin_top(4)
+        clear_history_btn.connect("clicked", self._on_clear_all_history)
+        content.append(clear_history_btn)
+
+        clear_temp_btn = Gtk.Button(label="Clear Temp Audio Files")
+        clear_temp_btn.set_margin_top(4)
+        clear_temp_btn.connect("clicked", self._on_clear_temp_audio_files)
+        content.append(clear_temp_btn)
+
+        self._maint_status_label = Gtk.Label(label="")
+        self._maint_status_label.set_xalign(0)
+        self._maint_status_label.add_css_class("dim-label")
+        content.append(self._maint_status_label)
+
         advanced_expander = Gtk.Expander(label="Advanced — changing the prompt may break post-processing")
         advanced_expander.set_margin_top(8)
         content.append(advanced_expander)
@@ -521,6 +565,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
         config["processing_sound_file"] = self._config.get("processing_sound_file", "")
         config["success_sound_enabled"] = self._success_sound_switch.get_active()
         config["success_sound_file"] = self._config.get("success_sound_file", "")
+        config["history_max_entries"] = int(self._history_max_entries_spin.get_value())
 
         def _buf_lines(view):
             buf = view.get_buffer()
@@ -597,6 +642,55 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._terminals_view.get_buffer().connect("changed", md)
         self._editors_view.get_buffer().connect("changed", md)
         self._prompt_view.get_buffer().connect("changed", md)
+        self._history_max_entries_spin.connect("value-changed", md)
+
+    def _on_clear_all_history(self, _btn):
+        dialog = Gtk.Window(title="Confirm Clear History")
+        dialog.set_modal(True)
+        dialog.set_transient_for(self)
+        dialog.set_default_size(360, 140)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.set_margin_start(24)
+        box.set_margin_end(24)
+        box.set_margin_top(24)
+        box.set_margin_bottom(24)
+        dialog.set_child(box)
+
+        msg = Gtk.Label(label="Clear all transcription history? This cannot be undone.")
+        msg.set_wrap(True)
+        msg.set_xalign(0.0)
+        box.append(msg)
+
+        btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        btn_row.set_halign(Gtk.Align.END)
+        box.append(btn_row)
+
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _b: dialog.close())
+        btn_row.append(cancel_btn)
+
+        clear_btn = Gtk.Button(label="Clear")
+        clear_btn.add_css_class("destructive-action")
+        def _do_clear(_b):
+            dialog.close()
+            HistoryStore().clear_all()
+            self._maint_status_label.set_label("History cleared.")
+        clear_btn.connect("clicked", _do_clear)
+        btn_row.append(clear_btn)
+
+        dialog.present()
+
+    def _on_clear_temp_audio_files(self, _btn):
+        count = 0
+        if FAILED_DIR.exists():
+            for wav_file in FAILED_DIR.glob("*.wav"):
+                try:
+                    wav_file.unlink()
+                    count += 1
+                except OSError:
+                    pass
+        self._maint_status_label.set_label(f"Temp audio files cleared ({count} removed).")
 
     def _is_dirty(self):
         return self._dirty
