@@ -41,7 +41,7 @@
 
 - [x] **HIST-01**: Each transcription run is stored locally: timestamp, raw transcript, processed transcript, window context, duration
 - [x] **HIST-02**: Up to 20 most recent runs are retained (SQLite in ~/.local/share/linux-speech-flow/)
-- [ ] **HIST-03**: User can view run log as a GTK window launched from tray menu
+- [x] **HIST-03**: User can view run log as a GTK window launched from tray menu
 
 ### Distribution
 
@@ -113,7 +113,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRAY-04 | Phase 4 | Complete |
 | HIST-01 | Phase 5 | Complete |
 | HIST-02 | Phase 5 | Complete |
-| HIST-03 | Phase 5 | Pending |
+| HIST-03 | Phase 5 | Complete |
 | DIST-01 | Phase 6 | Pending |
 | DIST-02 | Phase 6 | Pending |
 | DIST-03 | Phase 6 | Pending |

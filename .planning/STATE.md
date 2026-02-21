@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 5 of 9 — In progress
-Plan: 1/? complete (05-01 done)
-Status: Phase 5 in progress; HistoryStore SQLite layer created; config defaults added
-Last activity: 2026-02-21 -- 05-01 complete (HistoryStore + config defaults)
+Plan: 2/? complete (05-02 done)
+Status: Phase 5 in progress; HistoryWindow GTK viewer created with expandable rows, clipboard copy, size persistence
+Last activity: 2026-02-21 -- 05-02 complete (HistoryWindow + HistoryRow GTK viewer)
 
 Progress: [████████████████████████] 85%
 
@@ -52,6 +52,7 @@ Progress: [███████████████████████
 | Phase 04.1 P03 | 1 | 1 tasks | 0 files (git history rewrite) |
 | Phase 04.1-freeflow-rename-and-codebase-cleanup P03 | 2 | 2 tasks | 0 files |
 | Phase 05-pipeline-history P01 | 1 | 2 tasks | 2 files |
+| Phase 05-pipeline-history P02 | 1 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,9 @@ Recent decisions affecting current work:
 - [Phase 05-01]: Per-call connection pattern: HistoryStore._connect() called fresh in each method — thread-safe by design without locks
 - [Phase 05-01]: Safe subquery prune form: DELETE WHERE id NOT IN (SELECT id ... LIMIT ?) avoids SQLITE_ENABLE_UPDATE_DELETE_LIMIT dependency
 - [Phase 05-01]: entry_type + extra_json columns added in Phase 5 schema for Phase 6 conversation-mode extensibility without migration
+- [Phase 05-02]: Gtk.ListBox selection_mode=NONE with row-activated toggle: rows manage own expand state
+- [Phase 05-02]: Closure capture (t=text) in Copy button lambda prevents late-binding bug
+- [Phase 05-02]: Gtk.Window(modal=True) not Gtk.Dialog: matches project pattern (GTK 4.10 deprecation)
 
 ### Roadmap Evolution
 
@@ -142,5 +146,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 05-01-PLAN.md — HistoryStore and config defaults done
+Stopped at: Completed 05-02-PLAN.md — HistoryWindow GTK history viewer done
 Resume file: None
