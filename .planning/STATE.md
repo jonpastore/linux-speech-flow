@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 6 of 9 — In Progress
-Plan: 1/4 complete (06-01 done)
-Status: Phase 6 scaffold complete; config defaults, HotkeyManager F11/F12 state machine, tray conv_recording, SVG badges, openai+google-genai installed
-Last activity: 2026-02-21 -- 06-01 complete (Phase 6 foundation: 18 config keys, HotkeyManager _STATE_CONVERSATION, CONV_RECORDING_FRAMES, 3 SVG icons)
+Plan: 2/4 complete (06-01, 06-02 done)
+Status: ConversationRecorder implemented; chunked WAV audio engine with silence detection ready for ConversationManager integration
+Last activity: 2026-02-21 -- 06-02 complete (ConversationRecorder: silence-bounded WAV chunks, GLib.idle_add dispatch, thread-safe stop/cleanup)
 
 Progress: [████████████████████████] 85%
 
@@ -55,6 +55,7 @@ Progress: [███████████████████████
 | Phase 05-pipeline-history P02 | 1 | 1 tasks | 1 files |
 | Phase 05-pipeline-history P03 | 2 | 2 tasks | 4 files |
 | Phase 06-conversation-mode P01 | 3 min | 2 tasks | 7 files |
+| Phase 06-conversation-mode P02 | 1 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,7 @@ Recent decisions affecting current work:
 - [06-01]: conv_hotkey_feedback defaults to f12 (not Fn+D): same Fn key Linux limitation
 - [06-01]: F11 during _STATE_RECORDING is silently ignored (IDLE-guard) — prevents accidental conversation start mid-dictation
 - [06-01]: openai upgraded to 2.21.0 in venv (system had 0.27.5) to get 1.x API for Grok xAI base_url override
+- [Phase 06-02]: ConversationRecorder standalone class (not AudioRecorder subclass): chunked multi-chunk model requires separate architecture from single-file AudioRecorder
 
 ### Roadmap Evolution
 
@@ -157,5 +159,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 06-01-PLAN.md — Phase 6 scaffold (config defaults, HotkeyManager, tray icons, SVGs, deps)
+Stopped at: Completed 06-02-PLAN.md — ConversationRecorder chunked audio engine
 Resume file: None
