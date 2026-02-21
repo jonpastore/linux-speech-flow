@@ -25,8 +25,12 @@ class HotkeyManager:
 
     _STATE_IDLE = "idle"
     _STATE_RECORDING = "recording"
+    _STATE_CONVERSATION = "conversation"
 
-    def __init__(self, on_recording_complete, on_recording_start=None, on_recording_error=None, on_reprocess=None):
+    def __init__(self, on_recording_complete, on_recording_start=None,
+                 on_recording_error=None, on_reprocess=None,
+                 on_conversation_start=None, on_conversation_stop=None,
+                 on_conversation_feedback_toggle=None):
         """
         Args:
             on_recording_complete: Callable(wav_path: str) — called on GTK main
@@ -38,11 +42,20 @@ class HotkeyManager:
                 main thread on mic error. If None, errors are shown but not propagated.
             on_reprocess: Optional callable() — called on GTK main thread when F10
                 is pressed to reprocess failed recordings.
+            on_conversation_start: Optional callable() — called on GTK main thread
+                when F11 pressed in IDLE state to start conversation mode.
+            on_conversation_stop: Optional callable() — called on GTK main thread
+                when F11 pressed in CONVERSATION state to stop conversation mode.
+            on_conversation_feedback_toggle: Optional callable() — called on GTK
+                main thread when F12 pressed in CONVERSATION state.
         """
         self._on_complete_cb = on_recording_complete
         self._on_recording_start_cb = on_recording_start
         self._on_error_cb = on_recording_error
         self._on_reprocess_cb = on_reprocess
+        self._on_conv_start_cb = on_conversation_start
+        self._on_conv_stop_cb = on_conversation_stop
+        self._on_conv_feedback_cb = on_conversation_feedback_toggle
         self._state = self._STATE_IDLE
         self._recorder: AudioRecorder | None = None
         self._notif_id: int | None = None
@@ -85,6 +98,12 @@ class HotkeyManager:
             GLib.idle_add(self._stop_recording, False)
         elif key == keyboard.Key.f10:
             GLib.idle_add(self._on_f10)
+        elif key == keyboard.Key.f11 and self._state == self._STATE_IDLE:
+            GLib.idle_add(self._conv_start)
+        elif key == keyboard.Key.f11 and self._state == self._STATE_CONVERSATION:
+            GLib.idle_add(self._conv_stop)
+        elif key == keyboard.Key.f12 and self._state == self._STATE_CONVERSATION:
+            GLib.idle_add(self._conv_feedback_toggle)
 
     def _on_f10(self) -> bool:
         if self._on_reprocess_cb:
@@ -164,6 +183,27 @@ class HotkeyManager:
         self._state = self._STATE_IDLE
         if self._on_complete_cb:
             self._on_complete_cb(wav_path, self._stop_was_f9)
+        return False
+
+    def _conv_start(self) -> bool:
+        if self._state != self._STATE_IDLE:
+            return False
+        self._state = self._STATE_CONVERSATION
+        if self._on_conv_start_cb:
+            self._on_conv_start_cb()
+        return False
+
+    def _conv_stop(self) -> bool:
+        if self._state != self._STATE_CONVERSATION:
+            return False
+        self._state = self._STATE_IDLE
+        if self._on_conv_stop_cb:
+            self._on_conv_stop_cb()
+        return False
+
+    def _conv_feedback_toggle(self) -> bool:
+        if self._on_conv_feedback_cb:
+            self._on_conv_feedback_cb()
         return False
 
     def _on_recorder_error(self, message: str) -> bool:

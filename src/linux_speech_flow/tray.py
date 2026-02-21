@@ -15,12 +15,20 @@ RECORDING_FRAMES = ['linux-speech-flow-recording-1', 'linux-speech-flow-recordin
 PROCESSING_FRAMES = ['linux-speech-flow-processing-1', 'linux-speech-flow-processing-2', 'linux-speech-flow-processing-3']
 RECORDING_INTERVAL_MS = 500
 PROCESSING_INTERVAL_MS = 400
+CONV_RECORDING_FRAMES = [
+    'linux-speech-flow-conv-recording-1',
+    'linux-speech-flow-conv-recording-2',
+    'linux-speech-flow-conv-recording-3',
+]
 
 ICON_NAMES = [
     'linux-speech-flow-idle',
     'linux-speech-flow-recording-1', 'linux-speech-flow-recording-2', 'linux-speech-flow-recording-3',
     'linux-speech-flow-processing-1', 'linux-speech-flow-processing-2', 'linux-speech-flow-processing-3',
     'linux-speech-flow-error',
+    'linux-speech-flow-conv-recording-1',
+    'linux-speech-flow-conv-recording-2',
+    'linux-speech-flow-conv-recording-3',
 ]
 
 
@@ -92,6 +100,8 @@ class TrayManager:
         elif state == 'idle':
             self._stop_animation()
             self._tray.change_icon('linux-speech-flow-idle')
+        elif state == 'conv_recording':
+            self._start_animation(CONV_RECORDING_FRAMES, RECORDING_INTERVAL_MS)
         elif state == 'error':
             self._stop_animation()
             self._tray.change_icon('linux-speech-flow-error')
