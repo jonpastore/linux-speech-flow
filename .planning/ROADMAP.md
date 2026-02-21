@@ -133,15 +133,22 @@ Plans:
 **Depends on**: Phase 5
 **Requirements**: CONV-01, CONV-02, CONV-03, CONV-04, CONV-05
 **Success Criteria** (what must be TRUE):
-  1. User presses Fn+C to start/stop a long-form conversation recording (silence-chunked, auto-transcribed per chunk)
+  1. User presses F11 to start/stop a long-form conversation recording (silence-chunked, auto-transcribed per chunk)
   2. Auto-stop triggers: 180s silence prompts user, 300s auto-stops with audio cue; max 4hr hard limit with warning sound; all timers configurable
   3. Post-stop dialog lets user save to file, inject to active window, or both; AI analysis optional per session with auto-analyze setting
   4. Coalesced output file: ISO8601+AI-title.txt with AI summary → Q&A rounds → full transcript
-  5. AI iterative Q&A loop (configurable API: Groq/Grok/Claude/etc.) continues until 95% confidence or max iterations; user answers by speaking or typing
-**Plans**: TBD
+  5. AI iterative Q&A loop (configurable API: Groq/Grok/Gemini) continues until 95% confidence or max iterations; user answers by speaking or typing
+**Plans**: 8 plans
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md — Foundation: Phase 6 config defaults, openai/google-genai deps, HotkeyManager F11/F12, tray badge SVGs
+- [ ] 06-02-PLAN.md — ConversationRecorder: chunked silence-bounded WAV writer
+- [ ] 06-03-PLAN.md — ConversationPipeline: multi-model AI analysis, synthesis, file coalescing
+- [ ] 06-04-PLAN.md — ConversationManager state machine + ConversationStatusWindow
+- [ ] 06-05-PLAN.md — ConversationViewer: two-panel GTK file browser (Gtk.Paned)
+- [ ] 06-06-PLAN.md — ConversationDialog + ConversationQAWindow
+- [ ] 06-07-PLAN.md — App wiring + Settings Phase 6 section
+- [ ] 06-08-PLAN.md — Pre-verification checks + human verification
 
 ### Phase 7: Hotkey Customization
 **Goal**: User can configure all hotkeys (recording start/stop, replay, conversation mode) through Settings with support for key combinations
