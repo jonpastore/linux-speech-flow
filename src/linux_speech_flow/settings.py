@@ -392,6 +392,124 @@ class SettingsWindow(Gtk.ApplicationWindow):
         reset_btn.connect("clicked", self._on_reset_prompt)
         advanced_box.append(reset_btn)
 
+        sep_conv = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        sep_conv.set_margin_top(8)
+        sep_conv.set_margin_bottom(8)
+        content.append(sep_conv)
+
+        conv_title = Gtk.Label(label="Conversation Mode")
+        conv_title.add_css_class("title-4")
+        conv_title.set_xalign(0)
+        content.append(conv_title)
+
+        api_sub = Gtk.Label(label="Additional API Keys")
+        api_sub.add_css_class("caption")
+        api_sub.set_xalign(0)
+        content.append(api_sub)
+
+        grok_label = Gtk.Label(label="Grok API Key (xAI)")
+        grok_label.set_xalign(0)
+        content.append(grok_label)
+        self._grok_key_entry = Gtk.PasswordEntry()
+        self._grok_key_entry.set_show_peek_icon(True)
+        self._grok_key_entry.set_property("placeholder-text", "xai-...")
+        if self._config.get("grok_api_key"):
+            self._grok_key_entry.set_text(self._config["grok_api_key"])
+        content.append(self._grok_key_entry)
+
+        gemini_label = Gtk.Label(label="Gemini API Key (Google)")
+        gemini_label.set_xalign(0)
+        content.append(gemini_label)
+        self._gemini_key_entry = Gtk.PasswordEntry()
+        self._gemini_key_entry.set_show_peek_icon(True)
+        self._gemini_key_entry.set_property("placeholder-text", "AIza...")
+        if self._config.get("gemini_api_key"):
+            self._gemini_key_entry.set_text(self._config["gemini_api_key"])
+        content.append(self._gemini_key_entry)
+
+        save_label = Gtk.Label(label="Conversation Files Location")
+        save_label.set_xalign(0)
+        content.append(save_label)
+        self._conv_save_entry = Gtk.Entry()
+        self._conv_save_entry.set_text(
+            self._config.get("conv_save_dir", "~/Documents/conversations")
+        )
+        content.append(self._conv_save_entry)
+
+        feedback_label = Gtk.Label(label="In-session Feedback")
+        feedback_label.set_xalign(0)
+        content.append(feedback_label)
+        self._feedback_combo = Gtk.ComboBoxText()
+        _block_scroll(self._feedback_combo)
+        self._feedback_combo.append("status_window", "Status Window")
+        self._feedback_combo.append("tray_only", "Tray Only (quiet)")
+        self._feedback_combo.set_active_id(
+            self._config.get("conv_feedback_mode", "status_window")
+        )
+        content.append(self._feedback_combo)
+
+        qa_label = Gtk.Label(label="Max Q&A Rounds (before 'continue?' prompt)")
+        qa_label.set_xalign(0)
+        content.append(qa_label)
+        self._qa_spin = Gtk.SpinButton()
+        _block_scroll_spin(self._qa_spin)
+        self._qa_spin.configure(
+            Gtk.Adjustment.new(
+                self._config.get("conv_max_qa_iterations", 3), 1, 20, 1, 1, 0
+            ), 1, 0
+        )
+        content.append(self._qa_spin)
+
+        self._auto_analyze_check = Gtk.CheckButton(
+            label="Auto-enable AI analysis in post-stop dialog"
+        )
+        self._auto_analyze_check.set_active(
+            self._config.get("conv_auto_analyze", True)
+        )
+        content.append(self._auto_analyze_check)
+
+        conv_prompt_label = Gtk.Label(label="Default Analysis Prompt")
+        conv_prompt_label.set_xalign(0)
+        content.append(conv_prompt_label)
+        conv_prompt_scroll = Gtk.ScrolledWindow()
+        conv_prompt_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        conv_prompt_scroll.set_min_content_height(80)
+        conv_prompt_scroll.set_max_content_height(120)
+        self._conv_prompt_buf = Gtk.TextBuffer()
+        self._conv_prompt_buf.set_text(
+            self._config.get("conv_default_prompt", "")
+        )
+        conv_prompt_tv = Gtk.TextView(buffer=self._conv_prompt_buf)
+        conv_prompt_tv.set_wrap_mode(Gtk.WrapMode.WORD)
+        conv_prompt_scroll.set_child(conv_prompt_tv)
+        content.append(conv_prompt_scroll)
+
+        qq_label = Gtk.Label(label="Qualifying Questions (one per line)")
+        qq_label.set_xalign(0)
+        content.append(qq_label)
+        qq_sub = Gtk.Label(label="Shown in the post-stop dialog to help calibrate AI response complexity")
+        qq_sub.add_css_class("caption")
+        qq_sub.set_xalign(0)
+        content.append(qq_sub)
+        qq_scroll = Gtk.ScrolledWindow()
+        qq_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        qq_scroll.set_min_content_height(100)
+        qq_scroll.set_max_content_height(160)
+        self._conv_qq_buf = Gtk.TextBuffer()
+        _default_qq = [
+            "Who is the intended audience for this content?",
+            "What level of technical detail is appropriate?",
+            "What is the primary purpose of this conversation?",
+            "Should the output be formal or informal in tone?",
+            "Are there specific topics or sections to prioritize?",
+        ]
+        existing_qq = self._config.get("conv_qualifying_questions", _default_qq)
+        self._conv_qq_buf.set_text("\n".join(existing_qq) if isinstance(existing_qq, list) else existing_qq)
+        qq_tv = Gtk.TextView(buffer=self._conv_qq_buf)
+        qq_tv.set_wrap_mode(Gtk.WrapMode.WORD)
+        qq_scroll.set_child(qq_tv)
+        content.append(qq_scroll)
+
         btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         btn_row.set_margin_start(24)
         btn_row.set_margin_end(24)
@@ -566,6 +684,23 @@ class SettingsWindow(Gtk.ApplicationWindow):
         config["success_sound_enabled"] = self._success_sound_switch.get_active()
         config["success_sound_file"] = self._config.get("success_sound_file", "")
         config["history_max_entries"] = int(self._history_max_entries_spin.get_value())
+        config["grok_api_key"] = self._grok_key_entry.get_text().strip()
+        config["gemini_api_key"] = self._gemini_key_entry.get_text().strip()
+        config["conv_save_dir"] = self._conv_save_entry.get_text().strip()
+        config["conv_feedback_mode"] = self._feedback_combo.get_active_id() or "status_window"
+        config["conv_max_qa_iterations"] = int(self._qa_spin.get_value())
+        config["conv_auto_analyze"] = self._auto_analyze_check.get_active()
+        config["conv_default_prompt"] = self._conv_prompt_buf.get_text(
+            self._conv_prompt_buf.get_start_iter(),
+            self._conv_prompt_buf.get_end_iter(), False
+        )
+        _qq_raw = self._conv_qq_buf.get_text(
+            self._conv_qq_buf.get_start_iter(),
+            self._conv_qq_buf.get_end_iter(), False
+        )
+        config["conv_qualifying_questions"] = [
+            q.strip() for q in _qq_raw.splitlines() if q.strip()
+        ]
 
         def _buf_lines(view):
             buf = view.get_buffer()
@@ -643,6 +778,14 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._editors_view.get_buffer().connect("changed", md)
         self._prompt_view.get_buffer().connect("changed", md)
         self._history_max_entries_spin.connect("value-changed", md)
+        self._grok_key_entry.connect("changed", md)
+        self._gemini_key_entry.connect("changed", md)
+        self._conv_save_entry.connect("changed", md)
+        self._feedback_combo.connect("changed", md)
+        self._qa_spin.connect("value-changed", md)
+        self._auto_analyze_check.connect("toggled", md)
+        self._conv_prompt_buf.connect("changed", md)
+        self._conv_qq_buf.connect("changed", md)
 
     def _on_clear_all_history(self, _btn):
         dialog = Gtk.Window(title="Confirm Clear History")
