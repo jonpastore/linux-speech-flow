@@ -46,6 +46,10 @@ DEFAULT_CONFIG = {
         "terminals": ["gnome-terminal", "kitty", "alacritty", "xterm", "konsole", "tilix", "xfce4-terminal"],
         "editors": ["code", "vim", "nvim", "neovim", "emacs", "sublime_text", "gedit", "kate"],
     },
+    # Phase 5 additions
+    "history_max_entries": 20,
+    "history_window_width": 700,
+    "history_window_height": 500,
     "llm_system_prompt": (
         "You are a transcription cleanup assistant. The user dictated the text below.\n"
         "Your task:\n"
