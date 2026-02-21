@@ -204,7 +204,7 @@ Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 | 4. System Tray & Desktop Integration | 3/3 | Complete | 2026-02-21 |
 | 4.1. FreeFlow Rename and Codebase Cleanup | 3/3 | Complete   | 2026-02-21 |
 | 5. Pipeline History | 4/4 | Complete | 2026-02-21 |
-| 6. Conversation Mode | 2/8 | In Progress|  |
+| 6. Conversation Mode | 4/8 | In Progress|  |
 | 7. Hotkey Customization | 0/? | Not started | - |
 | 8. Slack Integration | 0/? | Not started | - |
 | 9. Packaging & Distribution | 0/? | Not started | - |

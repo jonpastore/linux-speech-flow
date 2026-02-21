@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 6 of 9 — In Progress
-Plan: 3/8 complete (06-01, 06-02, 06-03 done)
-Status: ConversationPipeline implemented; multi-model AI analysis engine with parallel Groq/Grok/Gemini fan-out, JSON-mode output, meta-model synthesis, and coalesce_file ready for ConversationManager integration
-Last activity: 2026-02-21 -- 06-03 complete (ConversationPipeline: transcribe_chunk, analyze via ThreadPoolExecutor, synthesize, continue_qa, conv_filename, coalesce_file)
+Plan: 4/8 complete (06-01, 06-02, 06-03, 06-04 done)
+Status: ConversationManager and ConversationStatusWindow implemented; session state machine with silence timer cascade (180s warn/300s stop/4hr hard limit), per-chunk Whisper dispatch, ready for App.py integration
+Last activity: 2026-02-21 -- 06-04 complete (ConversationManager: start_session, stop_session, toggle_feedback, silence timers; ConversationStatusWindow: elapsed timer, chunk status)
 
 Progress: [████████████████████████] 85%
 
@@ -57,6 +57,7 @@ Progress: [███████████████████████
 | Phase 06-conversation-mode P01 | 3 min | 2 tasks | 7 files |
 | Phase 06-conversation-mode P02 | 1 | 1 tasks | 1 files |
 | Phase 06-conversation-mode P03 | 1 min | 1 tasks | 1 files |
+| Phase 06-conversation-mode P04 | 2 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,10 @@ Recent decisions affecting current work:
 - [06-03]: synthesize() falls back to first non-error model result if meta-model call fails — prevents total analysis failure
 - [06-03]: coalesce_file() omits ## Q&A section entirely when qa_rounds is empty — no empty headers in output files
 - [06-03]: continue_qa() delegates to analyze() — Q&A refinement uses same ThreadPoolExecutor fan-out path as initial analysis
+- [06-04]: ConversationStatusWindow imported lazily inside _show_status_window to avoid circular import risk
+- [06-04]: silence_stop timer created inside _on_silence_warn callback (not pre-created) — ensures timer only starts after warn fires
+- [06-04]: stop_session defers _finish_session 500ms via GLib.timeout_add to allow last chunk GLib.idle_add to flush before transcript assembly
+- [06-04]: Gtk.Window(modal=True) used for silence warning dialog — consistent with project pattern avoiding deprecated Gtk.Dialog (GTK 4.10)
 
 ### Roadmap Evolution
 
@@ -164,5 +169,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 06-03-PLAN.md — ConversationPipeline multi-model AI analysis engine
+Stopped at: Completed 06-04-PLAN.md — ConversationManager session state machine and ConversationStatusWindow
 Resume file: None
