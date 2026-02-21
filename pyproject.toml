@@ -12,6 +12,8 @@ dependencies = [
     "pynput>=1.8",
     "pasimple>=0.0.3",
     "groq>=1.0.0",
+    "openai>=1.0.0",
+    "google-genai",
     "trayer==0.1.1",
 ]
 

@@ -61,6 +61,39 @@ DEFAULT_CONFIG = {
         "- Interpret spoken formatting commands literally: \"new line\" becomes a newline character, \"new paragraph\" becomes two newlines\n\n"
         "Return ONLY the cleaned text. No explanations, no prefixes, no markdown."
     ),
+    # Phase 6 additions
+    "conv_silence_warn_sec": 180,       # seconds of session silence before GTK prompt
+    "conv_silence_stop_sec": 300,       # seconds of silence before auto-stop (after warn dismissed)
+    "conv_hard_limit_sec": 14400,       # 4 hours in seconds; hard recording limit
+    "conv_chunk_silence_sec": 3,        # intra-session chunk boundary silence (ConversationRecorder)
+    "conv_hotkey_start": "f11",         # pynput Key name for conversation start/stop (Fn+C not interceptable on Linux; f11 is the practical substitute; Phase 7 makes this configurable)
+    "conv_hotkey_feedback": "f12",      # pynput Key name for feedback mode toggle (Fn+D not interceptable on Linux; f12 is the practical substitute; Phase 7 makes this configurable)
+    "conv_save_dir": "~/Documents/conversations",  # expanded at use time via Path.expanduser()
+    "conv_feedback_mode": "status_window",  # "tray_only" or "status_window"
+    "conv_default_prompt": (
+        "Analyze the following conversation transcript. Produce a structured output with:\n"
+        "- An executive summary (2–4 paragraphs)\n"
+        "- A list of key decisions made\n"
+        "- A list of action items with owners if identifiable\n"
+        "Calibrate detail level to the audience and complexity indicated by the qualifying answers."
+    ),
+    "conv_qualifying_questions": [
+        "Who is the intended audience? (e.g., technical team, executive, general public)",
+        "What is the primary purpose? (e.g., meeting notes, brain dump, planning session, client call)",
+        "What is the desired output complexity? (e.g., concise summary, detailed action plan, full transcript only)",
+        "Are there specific deliverables expected? (e.g., requirements doc, email, Jira tickets)",
+        "Any context the AI should know? (e.g., project name, key names, terminology)",
+    ],
+    "conv_max_qa_iterations": 3,        # default Q&A rounds before "continue?" prompt
+    "conv_auto_analyze": True,          # pre-check AI analysis in post-stop dialog
+    "conv_groq_model": "meta-llama/llama-4-scout-17b-16e-instruct",
+    "grok_api_key": "",
+    "grok_model": "grok-3-mini",
+    "gemini_api_key": "",
+    "gemini_model": "gemini-2.5-flash",
+    "conv_meta_model": "groq",          # which model performs synthesis: "groq", "grok", "gemini"
+    "conv_viewer_width": 900,
+    "conv_viewer_height": 600,
 }
 
 
