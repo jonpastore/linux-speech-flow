@@ -1,6 +1,7 @@
 import logging
 import importlib.resources
 import shutil
+import subprocess
 from pathlib import Path
 
 import dbus
@@ -40,6 +41,14 @@ def install_icons():
             dest = dest_dir / filename
             shutil.copy2(src, dest)
             logger.debug('Installed icon: %s', dest)
+    hicolor_dir = Path.home() / '.local' / 'share' / 'icons' / 'hicolor'
+    try:
+        subprocess.run(
+            ['gtk-update-icon-cache', '-f', '-t', str(hicolor_dir)],
+            check=False, capture_output=True,
+        )
+    except FileNotFoundError:
+        pass
 
 
 class TrayManager:

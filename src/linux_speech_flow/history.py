@@ -79,4 +79,6 @@ class HistoryStore:
     def clear_all(self):
         with self._connect() as conn:
             conn.execute("DELETE FROM history")
-            conn.execute("VACUUM")
+        conn = sqlite3.connect(self._db_path)
+        conn.execute("VACUUM")
+        conn.close()
