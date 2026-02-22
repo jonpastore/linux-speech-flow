@@ -20,6 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: Conversation Mode** - Long-form recording, silence-chunked transcription, multi-provider AI analysis, iterative Q&A, coalesced file output (completed 2026-02-21)
 - [ ] **Phase 7: Hotkey Customization** - Configurable hotkeys in Settings, key combination support
 - [ ] **Phase 8: Slack Integration** - Output to Slack, join Slack huddles as a bot
+- [ ] **Phase 8.1: Help Dialog** - Comprehensive in-app help window with feature explanations and hotkey reference
 - [ ] **Phase 9: Packaging & Distribution** - .deb with bundled venv, XDG autostart, PyPI publishing, and dependency documentation
 
 ## Phase Details
@@ -174,6 +175,18 @@ Plans:
 Plans:
 - [ ] 08-01: TBD
 
+### Phase 8.1: Help Dialog
+**Goal**: User can access a comprehensive in-app help window from the tray that explains every feature, hotkey, and workflow in plain language
+**Depends on**: Phase 8
+**Requirements**: HELP-01, HELP-02
+**Success Criteria** (what must be TRUE):
+  1. Tray "Help" menu item opens a detailed help window with sections for each feature (transcription, conversation mode, settings, hotkeys)
+  2. Each section explains what the feature does, how to use it, and any prerequisites (e.g. API key required)
+**Plans**: TBD
+
+Plans:
+- [ ] 8.1-01: TBD
+
 ### Phase 9: Packaging & Distribution
 **Goal**: User can install linux-speech-flow as a .deb package or via pip and have it launch automatically at login
 **Depends on**: Phase 1, Phase 2, Phase 3, Phase 4, Phase 5
@@ -193,7 +206,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 8.1 -> 9
 Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 
 | Phase | Plans Complete | Status | Completed |
@@ -204,7 +217,8 @@ Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 | 4. System Tray & Desktop Integration | 3/3 | Complete | 2026-02-21 |
 | 4.1. FreeFlow Rename and Codebase Cleanup | 3/3 | Complete   | 2026-02-21 |
 | 5. Pipeline History | 4/4 | Complete | 2026-02-21 |
-| 6. Conversation Mode | 8/8 | Complete    | 2026-02-21 |
+| 6. Conversation Mode | 8/8 | Active testing | 2026-02-21 |
 | 7. Hotkey Customization | 0/? | Not started | - |
 | 8. Slack Integration | 0/? | Not started | - |
+| 8.1. Help Dialog | 0/? | Not started | - |
 | 9. Packaging & Distribution | 0/? | Not started | - |

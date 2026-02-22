@@ -60,7 +60,7 @@ def install_icons():
 
 
 class TrayManager:
-    def __init__(self, app, on_settings, on_debug_log, on_reprocess, on_history=None, on_conv_history=None):
+    def __init__(self, app, on_settings, on_debug_log, on_reprocess, on_history=None, on_conv_history=None, on_help=None):
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
         self._reprocess_item = {
@@ -78,9 +78,12 @@ class TrayManager:
         self._tray.menu_items = [
             {'type': 'item', 'label': 'Transcription History', 'callback': on_history, 'enabled': True, 'visible': True},
             {'type': 'item', 'label': 'Conversation History', 'callback': on_conv_history, 'enabled': True, 'visible': True},
+            {'type': 'separator'},
             {'type': 'item', 'label': 'Settings', 'callback': on_settings, 'enabled': True, 'visible': True},
+            {'type': 'item', 'label': 'Hotkeys', 'callback': on_help, 'enabled': True, 'visible': True},
             {'type': 'item', 'label': 'Open Debug Log', 'callback': on_debug_log, 'enabled': True, 'visible': True},
             self._reprocess_item,
+            {'type': 'separator'},
             {'type': 'item', 'label': 'Quit', 'callback': app.quit, 'enabled': True, 'visible': True},
         ]
         self._tray.set_left_click(on_settings)

@@ -86,6 +86,7 @@ class App(Gtk.Application):
             on_reprocess=self._on_reprocess_hotkey,
             on_history=self._on_open_history,
             on_conv_history=self._on_open_conv_viewer,
+            on_help=self._on_open_help,
         )
         self._tray.setup()
 
@@ -132,6 +133,13 @@ class App(Gtk.Application):
 
     def _on_open_debug_log(self, _btn=None):
         self._debug_window.present()
+
+    def _on_open_help(self, _btn=None):
+        from linux_speech_flow.help_window import HelpWindow
+        if not hasattr(self, '_help_window') or not self._help_window:
+            self._help_window = HelpWindow(application=self)
+            self._help_window.connect("close-request", lambda _w: setattr(self, '_help_window', None))
+        self._help_window.present()
 
     def _on_recording_start(self) -> None:
         if self._tray:

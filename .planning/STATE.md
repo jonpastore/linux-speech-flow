@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 
 ## Current Position
 
-Phase: 6 of 9 — Complete
+Phase: 6 of 9 — Partially verified (active testing)
 Plan: 8/8 complete (06-01, 06-02, 06-03, 06-04, 06-05, 06-06, 06-07, 06-08 done)
-Status: Phase 6 Conversation Mode complete — all CONV-01 through CONV-05 requirements verified by human sign-off; ready for Phase 7 Hotkey Customization
-Last activity: 2026-02-21 -- 06-08 complete (pre-verification automated checks + human sign-off on full Conversation Mode UX flow)
+Status: Phase 6 Conversation Mode code complete — human sign-off reset pending further testing. Chunked recording confirmed working in real use. Known issue: silence timer triggering too aggressively (180s warn fired while user was still actively speaking — likely silence threshold config needs tuning or chunk heartbeat timing is off). Help tray menu item added (F9/F10/F11/F12 hotkeys display). Next: debug silence timer sensitivity, then re-verify.
+Last activity: 2026-02-21 -- Post-execution real-world testing; silence timer sensitivity issue identified; help hotkey window added to tray
 
 Progress: [████████████████████████████] 90%
 
@@ -176,6 +176,7 @@ None.
 
 - Validate pasimple is actively maintained and supports mic selection/device enumeration before committing to it in Phase 2
 - Test AppIndicator extension default state on fresh Pop!_OS install before Phase 4
+- [Phase 06 — active]: Silence timer fires too aggressively during conversation recording — 180s warn triggered while user was actively speaking. Likely cause: silence detection RMS threshold in ConversationRecorder is too sensitive (treating low-energy speech as silence), causing chunk gaps that reset the timer incorrectly. Needs investigation before Phase 6 sign-off.
 
 ## Session Continuity
 

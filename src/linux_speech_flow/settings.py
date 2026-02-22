@@ -41,6 +41,15 @@ class SettingsWindow(Gtk.ApplicationWindow):
         super().__init__(application=application, title="Settings")
         self.set_default_size(480, 700)
         self.set_resizable(True)
+
+        _css = Gtk.CssProvider()
+        _css.load_from_data(b".success { color: @success_color; }")
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            _css,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
         self._mics = []
         self._config = load_config()
         self._closing = False
@@ -65,10 +74,17 @@ class SettingsWindow(Gtk.ApplicationWindow):
         content.set_margin_bottom(12)
         scroll.set_child(content)
 
-        api_title = Gtk.Label(label="Groq API Key")
+        api_title = Gtk.Label(label="AI Integrations")
         api_title.add_css_class("title-4")
         api_title.set_xalign(0)
         content.append(api_title)
+
+        groq_sub = Gtk.Label(label="Groq")
+        groq_sub.set_xalign(0)
+        _attrs = Pango.AttrList()
+        _attrs.insert(Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold")))
+        groq_sub.set_attributes(_attrs)
+        content.append(groq_sub)
 
         self._api_key_entry = Gtk.PasswordEntry()
         self._api_key_entry.set_show_peek_icon(True)
@@ -77,19 +93,77 @@ class SettingsWindow(Gtk.ApplicationWindow):
             self._api_key_entry.set_text(self._config["groq_api_key"])
         content.append(self._api_key_entry)
 
-        validate_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self._validate_btn = Gtk.Button(label="Validate Key")
+        groq_test_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self._validate_btn = Gtk.Button(label="Test")
         self._validate_btn.connect("clicked", self._on_validate)
-        validate_row.append(self._validate_btn)
-        self._spinner = Gtk.Spinner()
-        validate_row.append(self._spinner)
-        content.append(validate_row)
+        groq_test_row.append(self._validate_btn)
+        self._groq_spinner = Gtk.Spinner()
+        groq_test_row.append(self._groq_spinner)
+        content.append(groq_test_row)
 
-        self._api_key_error = Gtk.Label(label="")
-        self._api_key_error.set_xalign(0)
-        self._api_key_error.set_wrap(True)
-        self._api_key_error.add_css_class("error")
-        content.append(self._api_key_error)
+        self._groq_status = Gtk.Label(label="")
+        self._groq_status.set_xalign(0)
+        self._groq_status.set_wrap(True)
+        self._groq_status.add_css_class("error")
+        content.append(self._groq_status)
+
+        grok_sub = Gtk.Label(label="Grok (xAI)")
+        grok_sub.set_xalign(0)
+        grok_sub.set_margin_top(8)
+        _attrs2 = Pango.AttrList()
+        _attrs2.insert(Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold")))
+        grok_sub.set_attributes(_attrs2)
+        content.append(grok_sub)
+
+        self._grok_key_entry = Gtk.PasswordEntry()
+        self._grok_key_entry.set_show_peek_icon(True)
+        self._grok_key_entry.set_property("placeholder-text", "xai-...")
+        if self._config.get("grok_api_key"):
+            self._grok_key_entry.set_text(self._config["grok_api_key"])
+        content.append(self._grok_key_entry)
+
+        grok_test_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self._grok_test_btn = Gtk.Button(label="Test")
+        self._grok_test_btn.connect("clicked", self._on_test_grok)
+        grok_test_row.append(self._grok_test_btn)
+        self._grok_spinner = Gtk.Spinner()
+        grok_test_row.append(self._grok_spinner)
+        content.append(grok_test_row)
+
+        self._grok_status = Gtk.Label(label="")
+        self._grok_status.set_xalign(0)
+        self._grok_status.set_wrap(True)
+        self._grok_status.add_css_class("error")
+        content.append(self._grok_status)
+
+        gemini_sub = Gtk.Label(label="Gemini (Google)")
+        gemini_sub.set_xalign(0)
+        gemini_sub.set_margin_top(8)
+        _attrs3 = Pango.AttrList()
+        _attrs3.insert(Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold")))
+        gemini_sub.set_attributes(_attrs3)
+        content.append(gemini_sub)
+
+        self._gemini_key_entry = Gtk.PasswordEntry()
+        self._gemini_key_entry.set_show_peek_icon(True)
+        self._gemini_key_entry.set_property("placeholder-text", "AIza...")
+        if self._config.get("gemini_api_key"):
+            self._gemini_key_entry.set_text(self._config["gemini_api_key"])
+        content.append(self._gemini_key_entry)
+
+        gemini_test_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self._gemini_test_btn = Gtk.Button(label="Test")
+        self._gemini_test_btn.connect("clicked", self._on_test_gemini)
+        gemini_test_row.append(self._gemini_test_btn)
+        self._gemini_spinner = Gtk.Spinner()
+        gemini_test_row.append(self._gemini_spinner)
+        content.append(gemini_test_row)
+
+        self._gemini_status = Gtk.Label(label="")
+        self._gemini_status.set_xalign(0)
+        self._gemini_status.set_wrap(True)
+        self._gemini_status.add_css_class("error")
+        content.append(self._gemini_status)
 
         sep1 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         sep1.set_margin_top(8)
@@ -402,31 +476,6 @@ class SettingsWindow(Gtk.ApplicationWindow):
         conv_title.set_xalign(0)
         content.append(conv_title)
 
-        api_sub = Gtk.Label(label="Additional API Keys")
-        api_sub.add_css_class("caption")
-        api_sub.set_xalign(0)
-        content.append(api_sub)
-
-        grok_label = Gtk.Label(label="Grok API Key (xAI)")
-        grok_label.set_xalign(0)
-        content.append(grok_label)
-        self._grok_key_entry = Gtk.PasswordEntry()
-        self._grok_key_entry.set_show_peek_icon(True)
-        self._grok_key_entry.set_property("placeholder-text", "xai-...")
-        if self._config.get("grok_api_key"):
-            self._grok_key_entry.set_text(self._config["grok_api_key"])
-        content.append(self._grok_key_entry)
-
-        gemini_label = Gtk.Label(label="Gemini API Key (Google)")
-        gemini_label.set_xalign(0)
-        content.append(gemini_label)
-        self._gemini_key_entry = Gtk.PasswordEntry()
-        self._gemini_key_entry.set_show_peek_icon(True)
-        self._gemini_key_entry.set_property("placeholder-text", "AIza...")
-        if self._config.get("gemini_api_key"):
-            self._gemini_key_entry.set_text(self._config["gemini_api_key"])
-        content.append(self._gemini_key_entry)
-
         save_label = Gtk.Label(label="Conversation Files Location")
         save_label.set_xalign(0)
         content.append(save_label)
@@ -634,10 +683,16 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._vu_bar.set_value(level)
         return False
 
+    def _set_status(self, label: Gtk.Label, ok: bool, message: str):
+        label.remove_css_class("error")
+        label.remove_css_class("success")
+        label.add_css_class("success" if ok else "error")
+        label.set_text(message)
+
     def _on_validate(self, _btn):
         key = self._api_key_entry.get_text().strip()
-        self._api_key_error.set_text("")
-        self._spinner.start()
+        self._groq_status.set_text("")
+        self._groq_spinner.start()
         self._validate_btn.set_sensitive(False)
 
         def run():
@@ -648,12 +703,66 @@ class SettingsWindow(Gtk.ApplicationWindow):
         threading.Thread(target=run, daemon=True).start()
 
     def _on_validation_done(self, result: dict):
-        self._spinner.stop()
+        self._groq_spinner.stop()
         self._validate_btn.set_sensitive(True)
         if result["ok"]:
-            self._api_key_error.set_text("API key is valid.")
+            self._set_status(self._groq_status, True, "API key is valid.")
         else:
-            self._api_key_error.set_text(result.get("message", "Validation failed"))
+            self._set_status(self._groq_status, False, result.get("message", "Validation failed"))
+        return False
+
+    def _on_test_grok(self, _btn):
+        key = self._grok_key_entry.get_text().strip()
+        self._grok_status.set_text("")
+        self._grok_spinner.start()
+        self._grok_test_btn.set_sensitive(False)
+
+        def run():
+            try:
+                from openai import OpenAI
+                client = OpenAI(api_key=key, base_url="https://api.x.ai/v1")
+                client.models.list()
+                GLib.idle_add(self._on_test_grok_done, {"ok": True})
+            except Exception as exc:
+                GLib.idle_add(self._on_test_grok_done, {"ok": False, "message": str(exc)})
+            return False
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _on_test_grok_done(self, result: dict):
+        self._grok_spinner.stop()
+        self._grok_test_btn.set_sensitive(True)
+        if result["ok"]:
+            self._set_status(self._grok_status, True, "API key is valid.")
+        else:
+            self._set_status(self._grok_status, False, result.get("message", "Test failed"))
+        return False
+
+    def _on_test_gemini(self, _btn):
+        key = self._gemini_key_entry.get_text().strip()
+        self._gemini_status.set_text("")
+        self._gemini_spinner.start()
+        self._gemini_test_btn.set_sensitive(False)
+
+        def run():
+            try:
+                from google import genai
+                client = genai.Client(api_key=key)
+                list(client.models.list())
+                GLib.idle_add(self._on_test_gemini_done, {"ok": True})
+            except Exception as exc:
+                GLib.idle_add(self._on_test_gemini_done, {"ok": False, "message": str(exc)})
+            return False
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _on_test_gemini_done(self, result: dict):
+        self._gemini_spinner.stop()
+        self._gemini_test_btn.set_sensitive(True)
+        if result["ok"]:
+            self._set_status(self._gemini_status, True, "API key is valid.")
+        else:
+            self._set_status(self._gemini_status, False, result.get("message", "Test failed"))
         return False
 
     def _on_save(self, _btn):
