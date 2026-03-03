@@ -8,7 +8,7 @@ progress:
   total_phases: 11
   completed_phases: 8
   total_plans: 40
-  completed_plans: 37
+  completed_plans: 38
 ---
 
 # Project State
@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 7 of 9 — In Progress
-Plan: 1/4 complete (07-01 done)
-Status: Phase 7 plan 01 complete — hotkey backend refactored: parse_combo/combo_display helpers, _modifiers_held set dispatch, reload_bindings() wired from app.py
-Last activity: 2026-03-03 -- Executed plan 07-01; config-driven HotkeyManager backend with hot-reload
+Plan: 2/4 complete (07-02 done)
+Status: Phase 7 plan 02 complete — Hotkeys section added to SettingsWindow with press-to-capture state machine, conflict/danger detection, per-hotkey and Reset All buttons, apply_binding_override for immediate hot-reload
+Last activity: 2026-03-03 -- Executed plan 07-02; GNOME-style hotkey capture UI in Settings
 
 Progress: [█████████████████████████████] 92%
 
@@ -77,6 +77,7 @@ Progress: [███████████████████████
 | Phase 06-conversation-mode P07 | 2 | 2 tasks | 3 files |
 | Phase 06-conversation-mode P08 | 5 min | 2 tasks | 0 files (verification only) |
 | Phase 07-hotkey-customization P01 | 6 | 3 tasks | 4 files |
+| Phase 07-hotkey-customization P02 | 4 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -182,6 +183,10 @@ Recent decisions affecting current work:
 - [Phase 07-01]: _matches_binding checks len(key_id)==1 before Key enum lookup to avoid MagicMock always returning truthy on [] access
 - [Phase 07-01]: record binding checked before stop in _on_press so Ctrl+Alt+R while RECORDING uses _stop_recording_hotkey (stop_was_hotkey=True)
 - [Phase 07-01]: parse_combo and combo_display are module-level functions for Settings UI import without needing HotkeyManager instance
+- [Phase 07-02]: set_focus(None) clears GTK focus from capture button so window-level EventControllerKey receives key events
+- [Phase 07-02]: apply_binding_override updates in-memory _bindings dict directly for pre-save hot-reload; reload_bindings() remains full config-sync path on settings close
+- [Phase 07-02]: Lazy _GTK_MODIFIER_KEYSYMS via try/except NameError inside _handle_capture_key prevents Gdk import before gi.require_version guarantee
+- [Phase 07-02]: Canonical modifier order enforced in _handle_capture_key combo_str construction to match DANGEROUS_COMBOS frozenset exactly
 
 ### Roadmap Evolution
 
@@ -204,5 +209,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 7 Tasks 1-3 complete — 6 bug fixes, 16 new tests (149 total), PROJECT.md+ROADMAP.md audited
+Stopped at: Completed 07-02-PLAN.md — Hotkeys section in SettingsWindow with press-to-capture state machine
 Resume file: .planning/phases/07-hotkey-customization/.continue-here.md
