@@ -189,16 +189,23 @@ class HotkeyManager:
         if self._state != self._STATE_IDLE:
             return False
         self._state = self._STATE_CONVERSATION
-        if self._on_conv_start_cb:
-            self._on_conv_start_cb()
+        try:
+            if self._on_conv_start_cb:
+                self._on_conv_start_cb()
+        except Exception:
+            logger.exception("_conv_start callback raised — resetting state to IDLE")
+            self._state = self._STATE_IDLE
         return False
 
     def _conv_stop(self) -> bool:
         if self._state != self._STATE_CONVERSATION:
             return False
         self._state = self._STATE_IDLE
-        if self._on_conv_stop_cb:
-            self._on_conv_stop_cb()
+        try:
+            if self._on_conv_stop_cb:
+                self._on_conv_stop_cb()
+        except Exception:
+            logger.exception("_conv_stop callback raised")
         return False
 
     def _conv_feedback_toggle(self) -> bool:
