@@ -18,8 +18,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: System Tray & Desktop Integration** - AppIndicator tray icon with state feedback, menu actions, and desktop notifications
 - [x] **Phase 5: Pipeline History** - SQLite run log storage, retention policy, and GTK history viewer (completed 2026-02-21)
 - [x] **Phase 6: Conversation Mode** - Long-form recording, silence-chunked transcription, multi-provider AI analysis, iterative Q&A, coalesced file output (completed 2026-02-21)
+- [ ] **Phase 6.1: Conversation Status Enhancements** - Live silence timer and last-chunk transcript display in ConversationStatusWindow
 - [ ] **Phase 7: Hotkey Customization** - Configurable hotkeys in Settings, key combination support
-- [ ] **Phase 8: Slack Integration** - Output to Slack, join Slack huddles as a bot
+- [ ] **Phase 8: Slack Integration** - Output to Slack, join Slack huddles as a bot; huddle end triggers transcription pipeline
 - [ ] **Phase 8.1: Help Dialog** - Comprehensive in-app help window with feature explanations and hotkey reference
 - [ ] **Phase 9: Packaging & Distribution** - .deb with bundled venv, XDG autostart, PyPI publishing, and dependency documentation
 
@@ -151,6 +152,19 @@ Plans:
 - [x] 06-07-PLAN.md — App wiring + Settings Phase 6 section
 - [x] 06-08-PLAN.md — Pre-verification checks + human verification
 
+### Phase 6.1: Conversation Status Enhancements
+**Goal**: ConversationStatusWindow gives real-time feedback on silence and transcription so the user can tell at a glance whether voice input is being detected and what was captured in the last chunk
+**Depends on**: Phase 6
+**Requirements**: CONV-06, CONV-07
+**Success Criteria** (what must be TRUE):
+  1. A silence timer is visible in the status window, counting up in whole seconds from when silence begins; it resets to 0 immediately when voice is detected
+  2. The most recent chunk's transcript text is displayed in the status window, updating each time a chunk completes transcription
+**Plans**: 2 plans
+
+Plans:
+- [ ] 06.1-01-PLAN.md — Add on_silence_tick callback to ConversationRecorder; add silence + transcript labels to ConversationStatusWindow
+- [ ] 06.1-02-PLAN.md — Wire silence tick and transcript forwarding in ConversationManager; human verification
+
 ### Phase 7: Hotkey Customization
 **Goal**: User can configure all hotkeys (recording start/stop, replay, conversation mode) through Settings with support for key combinations
 **Depends on**: Phase 6
@@ -164,12 +178,15 @@ Plans:
 - [ ] 07-01: TBD
 
 ### Phase 8: Slack Integration
-**Goal**: User can send transcription output to Slack and linux-speech-flow can join Slack huddles as a bot
+**Goal**: User can send transcription output to Slack and linux-speech-flow can join Slack huddles as a bot; huddle end automatically stops and transcribes the session
 **Depends on**: Phase 6
-**Requirements**: SLACK-01, SLACK-02
+**Requirements**: SLACK-01, SLACK-02, SLACK-03, SLACK-04, SLACK-05
 **Success Criteria** (what must be TRUE):
   1. User can configure a Slack workspace/channel in Settings and transcription output is posted there
-  2. linux-speech-flow can join a Slack huddle as a bot participant
+  2. linux-speech-flow can join a Slack huddle as a bot participant and record the session
+  3. In huddle mode, silence is used to create chunk boundaries but silence audio is not recorded — chunks contain voice-only audio
+  4. In huddle mode, the silence timer in ConversationStatusWindow is hidden (not meaningful in a call context)
+  5. When the Slack huddle ends, linux-speech-flow automatically stops the session and triggers the full transcription and analysis pipeline
 **Plans**: TBD
 
 Plans:
@@ -206,18 +223,19 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 8.1 -> 9
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 6.1 -> 7 -> 8 -> 8.1 -> 9
 Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Configuration | 5/5 | Complete | 2026-02-19 |
 | 2. Audio Capture & Hotkey | 5/5 | Complete | 2026-02-19 |
-| 3. Transcription & Text Injection | 4/6 | Complete    | 2026-02-21 |
+| 3. Transcription & Text Injection | 4/6 | Complete | 2026-02-21 |
 | 4. System Tray & Desktop Integration | 3/3 | Complete | 2026-02-21 |
-| 4.1. FreeFlow Rename and Codebase Cleanup | 3/3 | Complete   | 2026-02-21 |
+| 4.1. FreeFlow Rename and Codebase Cleanup | 3/3 | Complete | 2026-02-21 |
 | 5. Pipeline History | 4/4 | Complete | 2026-02-21 |
-| 6. Conversation Mode | 8/8 | Active testing | 2026-02-21 |
+| 6. Conversation Mode | 8/8 | Complete | 2026-02-21 |
+| 6.1. Conversation Status Enhancements | 0/2 | Not started | - |
 | 7. Hotkey Customization | 0/? | Not started | - |
 | 8. Slack Integration | 0/? | Not started | - |
 | 8.1. Help Dialog | 0/? | Not started | - |
