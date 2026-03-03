@@ -14,7 +14,7 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
 
     def __init__(self, application):
         super().__init__(application=application, title="Conversation Recording")
-        self.set_default_size(360, 200)
+        self.set_default_size(360, 220)
         self.set_resizable(False)
         self.set_deletable(False)  # prevent window manager close during recording
 
@@ -37,11 +37,23 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         self._silence_label.set_halign(Gtk.Align.START)
         box.append(self._silence_label)
 
+        transcript_frame = Gtk.Frame()
+        transcript_frame.add_css_class("card")
+        transcript_inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        transcript_inner.set_margin_start(10)
+        transcript_inner.set_margin_end(10)
+        transcript_inner.set_margin_top(8)
+        transcript_inner.set_margin_bottom(8)
+        transcript_frame.set_child(transcript_inner)
+
         self._transcript_label = Gtk.Label(label="")
         self._transcript_label.set_wrap(True)
         self._transcript_label.set_halign(Gtk.Align.START)
         self._transcript_label.set_max_width_chars(48)
-        box.append(self._transcript_label)
+        self._transcript_label.add_css_class("body")
+        transcript_inner.append(self._transcript_label)
+
+        box.append(transcript_frame)
 
         self._started_at = None
         self._timer_id = None
