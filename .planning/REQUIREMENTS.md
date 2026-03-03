@@ -50,6 +50,8 @@
 - [x] **CONV-03**: Post-stop ConversationDialog: qualifying questions, prompt, model checkboxes (grayed if no API key), save/inject options; Q&A window opens
 - [x] **CONV-04**: Coalesced output file: ISO8601_ai-title.txt with metadata header, ## Summary, ## Q&A, ## Transcript sections; file renamed from _untitled to _ai-title after AI analysis
 - [x] **CONV-05**: AI iterative Q&A loop (Groq/Grok/Gemini configurable) runs until 95% confidence or max iterations; typed or spoken answers; Conversation History viewer in tray
+- [x] **CONV-06**: Silence timer visible in ConversationStatusWindow, counting up in whole seconds from when silence begins; resets to 0 immediately when voice is detected
+- [x] **CONV-07**: Most recent chunk transcript text displayed in ConversationStatusWindow (styled card), updating each time a chunk completes transcription
 
 ### Distribution
 
@@ -127,6 +129,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONV-03 | Phase 6 | Complete |
 | CONV-04 | Phase 6 | Complete |
 | CONV-05 | Phase 6 | Complete |
+| CONV-06 | Phase 6.1 | Complete |
+| CONV-07 | Phase 6.1 | Complete |
 | DIST-01 | Phase 9 | Pending |
 | DIST-02 | Phase 9 | Pending |
 | DIST-03 | Phase 9 | Pending |
@@ -134,10 +138,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DIST-05 | Phase 9 | Pending |
 
 **Coverage:**
-- v1 requirements: 28 total
-- Mapped to phases: 28
+- v1 requirements: 30 total
+- Mapped to phases: 30
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-18*
-*Last updated: 2026-02-21 after 06-08 (CONV-01 through CONV-05 complete: Phase 6 Conversation Mode verified)*
+*Last updated: 2026-03-03 after 06.1 (CONV-06, CONV-07 complete: Phase 6.1 Conversation Status Enhancements verified)*
