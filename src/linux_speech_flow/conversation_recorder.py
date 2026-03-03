@@ -1,3 +1,4 @@
+import logging
 import math
 import os
 import pasimple
@@ -8,6 +9,8 @@ import threading
 import wave
 
 from gi.repository import GLib
+
+logger = logging.getLogger(__name__)
 
 SAMPLE_RATE = 16000
 CHANNELS = 1
@@ -76,6 +79,10 @@ class ConversationRecorder:
         self._stop_event.clear()
         threading.Thread(target=self._record_loop, daemon=True).start()
 
+    def set_threshold(self, value: float) -> None:
+        """Update silence RMS threshold live. Safe to call from any thread."""
+        self._silence_rms_threshold = value
+
     def stop(self) -> None:
         """Signal the recording thread to finalise the current chunk and stop.
         Safe to call from any thread. The last incomplete chunk is emitted
@@ -92,6 +99,11 @@ class ConversationRecorder:
     def _record_loop(self) -> None:
         silence_limit_frames = int(self._chunk_silence_sec / CHUNK_DURATION)
         chunk_index = 0
+        logger.info(
+            "record_loop: start device=%r chunk_silence_frames=%d (%.1fs) rms_threshold=%.4f",
+            self._device_name or "default", silence_limit_frames, self._chunk_silence_sec,
+            self._silence_rms_threshold,
+        )
 
         try:
             with pasimple.PaSimple(
@@ -108,12 +120,20 @@ class ConversationRecorder:
                         self._chunk_dir, f"chunk_{chunk_index:04d}.wav"
                     )
                     frames_written, had_audio = self._record_one_chunk(
-                        pa, chunk_path, silence_limit_frames
+                        pa, chunk_path, silence_limit_frames, chunk_index,
                     )
                     if frames_written > 0 and had_audio:
+                        logger.info(
+                            "record_loop: chunk %d complete (audio) frames=%d — dispatching",
+                            chunk_index, frames_written,
+                        )
                         chunk_index += 1
                         GLib.idle_add(self._on_chunk_ready, chunk_path)
                     elif frames_written > 0:
+                        logger.info(
+                            "record_loop: chunk %d complete (silence-only) frames=%d — discarding",
+                            chunk_index, frames_written,
+                        )
                         # Pure silence chunk (e.g. noise floor at start); discard
                         try:
                             os.unlink(chunk_path)
@@ -121,9 +141,12 @@ class ConversationRecorder:
                             pass
 
         except pasimple.PaSimpleError as exc:
+            logger.error("record_loop: PaSimpleError: %s", exc)
             GLib.idle_add(self._on_error, str(exc))
 
-    def _record_one_chunk(self, pa, wav_path: str, silence_limit_frames: int):
+        logger.info("record_loop: exit — stop_event was set")
+
+    def _record_one_chunk(self, pa, wav_path: str, silence_limit_frames: int, chunk_index: int = 0):
         """Record until a silence boundary or stop_event is set.
 
         Returns (frames_written: int, had_audio: bool).
@@ -134,6 +157,9 @@ class ConversationRecorder:
         frames_written = 0
         had_audio = False
         last_emitted_silence = -1
+        # Log silence state every LOG_SILENCE_EVERY frames (~10s)
+        LOG_SILENCE_EVERY = 100
+        last_logged_frame = 0
 
         with wave.open(wav_path, "wb") as wf:
             wf.setnchannels(CHANNELS)
@@ -161,8 +187,28 @@ class ConversationRecorder:
                         last_emitted_silence = silence_frames
                         GLib.idle_add(self._on_silence_tick, silence_frames)
 
+                    # Periodic silence state log (every ~10s)
+                    if frames_written - last_logged_frame >= LOG_SILENCE_EVERY:
+                        last_logged_frame = frames_written
+                        logger.debug(
+                            "chunk %d: frame=%d silence_frames=%d/%.0f had_audio=%s rms=%.4f threshold=%.4f",
+                            chunk_index, frames_written, silence_frames, silence_limit_frames,
+                            had_audio, rms, self._silence_rms_threshold,
+                        )
+
                     if silence_frames >= silence_limit_frames:
-                        # Silence boundary reached — end this chunk
+                        logger.info(
+                            "chunk %d: silence boundary reached at frame=%d "
+                            "(%.1fs silence) had_audio=%s",
+                            chunk_index, frames_written,
+                            silence_frames * CHUNK_DURATION, had_audio,
+                        )
                         break
+
+        if self._stop_event.is_set():
+            logger.info(
+                "chunk %d: stopped by stop_event at frame=%d had_audio=%s",
+                chunk_index, frames_written, had_audio,
+            )
 
         return frames_written, had_audio

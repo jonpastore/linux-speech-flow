@@ -54,6 +54,7 @@ class ConversationManager:
         self._warn_timer: int | None = None
         self._stop_timer: int | None = None
         self._hard_limit_timer: int | None = None
+        self._silence_dialog: Gtk.Window | None = None
 
         # Silence display accumulation (across chunk boundaries)
         self._silence_offset_sec: int = 0
@@ -62,6 +63,7 @@ class ConversationManager:
     def start_session(self) -> None:
         """Start a new conversation recording session. Called on GTK main thread."""
         if self._state != _STATE_IDLE:
+            logger.warning("start_session called but state=%s — ignoring", self._state)
             return
         self._state = _STATE_CONVERSATION
         self._chunk_texts = []
@@ -84,6 +86,17 @@ class ConversationManager:
         device_name = config.get("microphone", "")
         chunk_silence_sec = config.get("conv_chunk_silence_sec", 3)
         silence_rms_threshold = config.get("conv_silence_rms_threshold", 0.005)
+        warn_sec = config.get("conv_silence_warn_sec", 30)
+        stop_sec = config.get("conv_silence_stop_sec", 60)
+        hard_limit = config.get("conv_hard_limit_sec", 14400)
+
+        logger.info(
+            "start_session: device=%r chunk_silence=%ds rms_threshold=%.4f "
+            "warn=%ds stop=%ds hard_limit=%ds",
+            device_name or "default", chunk_silence_sec, silence_rms_threshold,
+            warn_sec, stop_sec, hard_limit,
+        )
+
         self._recorder = ConversationRecorder(
             device_name=device_name,
             chunk_silence_sec=chunk_silence_sec,
@@ -97,17 +110,22 @@ class ConversationManager:
         )
 
         # Hard limit timer
-        hard_limit = config.get("conv_hard_limit_sec", 14400)
         self._hard_limit_timer = GLib.timeout_add_seconds(
             hard_limit, self._on_hard_limit
         )
         # Start session silence detection timer immediately
-        self._reset_silence_timers()
+        self._reset_silence_timers(reason="session_start")
 
-    def stop_session(self) -> None:
+    def stop_session(self, reason: str = "user") -> None:
         """Stop recording and assemble final transcript. Called on GTK main thread."""
         if self._state != _STATE_CONVERSATION:
+            logger.debug("stop_session(%s) ignored — state=%s", reason, self._state)
             return
+        elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
+        logger.info(
+            "stop_session: reason=%s elapsed=%ds chunks=%d texts=%d",
+            reason, elapsed, self._chunk_count, len(self._chunk_texts),
+        )
         self._state = _STATE_IDLE
         self._cancel_all_timers()
 
@@ -142,7 +160,10 @@ class ConversationManager:
     def _show_status_window(self) -> None:
         from linux_speech_flow.conversation_status import ConversationStatusWindow
         if self._status_window is None:
-            self._status_window = ConversationStatusWindow(application=self._app)
+            self._status_window = ConversationStatusWindow(
+                application=self._app,
+                on_threshold_changed=self.set_threshold,
+            )
         self._status_window.start()
         self._status_window.present()
 
@@ -150,9 +171,13 @@ class ConversationManager:
         """Called on GTK main thread when recorder delivers a chunk."""
         if self._state != _STATE_CONVERSATION:
             return False
-        self._reset_silence_timers()
         self._chunk_count += 1
-        logger.info("Conversation chunk %d ready: %s", self._chunk_count, wav_path)
+        elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
+        logger.info(
+            "chunk_ready: chunk=%d elapsed=%ds wav=%s — resetting silence timers",
+            self._chunk_count, elapsed, wav_path,
+        )
+        self._reset_silence_timers(reason=f"chunk_{self._chunk_count}")
         if self._status_window:
             self._status_window.update_status(self._chunk_count, "transcribing...")
         threading.Thread(
@@ -180,6 +205,9 @@ class ConversationManager:
         """GTK main thread: store transcribed text."""
         if text:
             self._chunk_texts.append(text)
+            logger.info("chunk %d transcribed: %d chars — %r", chunk_num, len(text), text[:80])
+        else:
+            logger.info("chunk %d transcribed: empty (no speech detected)", chunk_num)
         if self._status_window:
             ts_ago = "just now"
             self._status_window.update_status(
@@ -193,8 +221,13 @@ class ConversationManager:
     def _on_recorder_error(self, message: str) -> bool:
         """GTK main thread: recorder mic error."""
         logger.error("Conversation recorder error: %s", message)
-        self.stop_session()
+        self.stop_session(reason="recorder_error")
         return False
+
+    def set_threshold(self, value: float) -> None:
+        """Update silence RMS threshold live. Safe to call from GTK main thread."""
+        if self._recorder:
+            self._recorder.set_threshold(value)
 
     def _on_audio_level(self, level: float) -> bool:
         """GTK main thread (via GLib.idle_add): forward mic level to status window."""
@@ -221,27 +254,45 @@ class ConversationManager:
             self._status_window.update_silence(silence_sec)
         return False
 
-    def _reset_silence_timers(self) -> None:
+    def _reset_silence_timers(self, reason: str = "") -> None:
         """Cancel existing session silence timers and start fresh."""
+        cancelled = []
         if self._warn_timer:
             GLib.source_remove(self._warn_timer)
             self._warn_timer = None
+            cancelled.append("warn")
         if self._stop_timer:
             GLib.source_remove(self._stop_timer)
             self._stop_timer = None
+            cancelled.append("stop")
+            if self._silence_dialog:
+                self._silence_dialog.close()
+                self._silence_dialog = None
+                cancelled.append("dialog")
         config = load_config()
-        warn_sec = config.get("conv_silence_warn_sec", 180)
+        warn_sec = config.get("conv_silence_warn_sec", 30)
         self._warn_timer = GLib.timeout_add_seconds(warn_sec, self._on_silence_warn)
+        elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
+        logger.info(
+            "silence_timers_reset: reason=%s elapsed=%ds warn_in=%ds cancelled=%s",
+            reason, elapsed, warn_sec, cancelled or "none",
+        )
 
     def _on_silence_warn(self) -> bool:
-        """180s silence: show GTK modal prompting Continue or Stop."""
+        """Session-level silence warn threshold reached: show continue/stop dialog."""
         self._warn_timer = None
-        self._show_silence_modal()
         config = load_config()
-        stop_sec = config.get("conv_silence_stop_sec", 300)
-        warn_sec = config.get("conv_silence_warn_sec", 180)
-        extra = max(stop_sec - warn_sec, 30)
+        stop_sec = config.get("conv_silence_stop_sec", 60)
+        warn_sec = config.get("conv_silence_warn_sec", 30)
+        extra = max(stop_sec - warn_sec, 5)
+        elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
+        logger.info(
+            "silence_warn_fired: elapsed=%ds warn_sec=%d stop_sec=%d extra_until_autostop=%ds",
+            elapsed, warn_sec, stop_sec, extra,
+        )
+        self._show_silence_modal()
         self._stop_timer = GLib.timeout_add_seconds(extra, self._on_silence_autostop)
+        logger.info("silence_autostop_scheduled: fires_in=%ds", extra)
         return False
 
     def _show_silence_modal(self) -> None:
@@ -275,35 +326,54 @@ class ConversationManager:
         btn_box.set_halign(Gtk.Align.END)
         box.append(btn_box)
 
+        def _close_dialog():
+            if self._silence_dialog:
+                self._silence_dialog.close()
+                self._silence_dialog = None
+
         stop_btn = Gtk.Button(label="Stop Recording")
-        stop_btn.connect("clicked", lambda _b: (dialog.close(), self.stop_session()))
+        stop_btn.connect("clicked", lambda _b: (
+            logger.info("silence_dialog: user clicked Stop Recording"),
+            _close_dialog(), self.stop_session(reason="silence_dialog_stop"),
+        ))
         btn_box.append(stop_btn)
 
         continue_btn = Gtk.Button(label="Continue")
         continue_btn.add_css_class("suggested-action")
-        continue_btn.connect("clicked", lambda _b: (dialog.close(), self._reset_silence_timers()))
+        continue_btn.connect("clicked", lambda _b: (
+            logger.info("silence_dialog: user clicked Continue"),
+            _close_dialog(), self._reset_silence_timers(reason="silence_dialog_continue"),
+        ))
         btn_box.append(continue_btn)
 
+        self._silence_dialog = dialog
         dialog.present()
 
     def _on_silence_autostop(self) -> bool:
-        """300s total silence: auto-stop with audio cue."""
+        """Auto-stop after silence stop threshold: close warn dialog and stop."""
         self._stop_timer = None
+        elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
+        logger.info("silence_autostop_fired: elapsed=%ds — closing dialog and stopping", elapsed)
+        if self._silence_dialog:
+            self._silence_dialog.close()
+            self._silence_dialog = None
         config = load_config()
         play_sound("stop.wav",
                    output_device=config.get("sounds_output_device", ""),
                    enabled=config.get("sounds_enabled", True))
-        self.stop_session()
+        self.stop_session(reason="silence_autostop")
         return False
 
     def _on_hard_limit(self) -> bool:
-        """4hr hard limit: play warning sound and stop."""
+        """Hard recording time limit reached: stop session."""
         self._hard_limit_timer = None
+        elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
+        logger.info("hard_limit_fired: elapsed=%ds", elapsed)
         config = load_config()
         play_sound("error.wav",
                    output_device=config.get("sounds_output_device", ""),
                    enabled=config.get("sounds_enabled", True))
-        self.stop_session()
+        self.stop_session(reason="hard_limit")
         return False
 
     def _cancel_all_timers(self) -> None:
@@ -315,6 +385,9 @@ class ConversationManager:
 
     def _finish_session(self) -> bool:
         """Assemble final transcript and fire on_session_complete. GTK main thread."""
+        logger.info(
+            "finish_session: assembling transcript from %d chunk(s)", len(self._chunk_texts)
+        )
         config = load_config()
         play_sound("stop.wav",
                    output_device=config.get("sounds_output_device", ""),
@@ -344,6 +417,10 @@ class ConversationManager:
             "models_used": "",  # filled by post-stop dialog after model selection
         }
         full_transcript = " ".join(self._chunk_texts)
+        logger.info(
+            "finish_session: transcript=%d chars duration=%s — firing on_session_complete",
+            len(full_transcript), duration_str,
+        )
 
         if self._on_session_complete:
             self._on_session_complete(full_transcript, metadata)

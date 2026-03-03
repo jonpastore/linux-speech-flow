@@ -7,9 +7,9 @@ from linux_speech_flow.config import load_config
 
 class ConversationDialog(Gtk.ApplicationWindow):
     def __init__(self, application, transcript: str, metadata: dict,
-                 on_submit, on_cancel=None):
+                 on_submit, on_cancel=None, window_info: dict | None = None):
         super().__init__(application=application, title="Conversation Analysis")
-        self.set_default_size(560, 680)
+        self.set_default_size(560, 720)
         self.set_resizable(True)
         self.set_modal(True)
 
@@ -17,6 +17,7 @@ class ConversationDialog(Gtk.ApplicationWindow):
         self._metadata = metadata
         self.on_submit_cb = on_submit
         self._on_cancel = on_cancel
+        self._window_info = window_info or {}
 
         config = load_config()
         self._questions = list(config.get("conv_qualifying_questions", []))
@@ -88,11 +89,39 @@ class ConversationDialog(Gtk.ApplicationWindow):
         sep2.set_margin_bottom(4)
         content.append(sep2)
 
-        self._save_check = Gtk.CheckButton(label="Save to file")
+        transcript_label = Gtk.Label(label="Transcript Output (immediate, raw text)")
+        transcript_label.add_css_class("title-4")
+        transcript_label.set_xalign(0)
+        transcript_label.set_margin_top(4)
+        content.append(transcript_label)
+
+        self._copy_check = Gtk.CheckButton(label="Copy transcript to clipboard")
+        self._copy_check.set_active(False)
+        content.append(self._copy_check)
+
+        can_paste = bool(self._window_info.get("window_id"))
+        self._paste_check = Gtk.CheckButton(label="Paste transcript to active window")
+        self._paste_check.set_active(False)
+        self._paste_check.set_sensitive(can_paste)
+        if not can_paste:
+            self._paste_check.set_tooltip_text("Window ID not captured (X11 only)")
+        content.append(self._paste_check)
+
+        sep_transcript = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        sep_transcript.set_margin_top(4)
+        sep_transcript.set_margin_bottom(4)
+        content.append(sep_transcript)
+
+        ai_label = Gtk.Label(label="AI Analysis Output")
+        ai_label.add_css_class("title-4")
+        ai_label.set_xalign(0)
+        content.append(ai_label)
+
+        self._save_check = Gtk.CheckButton(label="Save analysis to file")
         self._save_check.set_active(True)
         content.append(self._save_check)
 
-        self._inject_check = Gtk.CheckButton(label="Inject to active window")
+        self._inject_check = Gtk.CheckButton(label="Inject analysis to active window")
         self._inject_check.set_active(False)
         content.append(self._inject_check)
 
@@ -169,6 +198,9 @@ class ConversationDialog(Gtk.ApplicationWindow):
             self._save_check.get_active(),
             self._inject_check.get_active(),
             self._metadata,
+            copy_to_clipboard=self._copy_check.get_active(),
+            paste_to_window=self._paste_check.get_active(),
+            window_info=self._window_info,
         )
         self.close()
 

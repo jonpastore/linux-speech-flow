@@ -99,6 +99,38 @@ def _x11_paste(text: str, window_info: dict) -> None:
         logger.info("paste complete")
 
 
+def copy_to_clipboard(text: str) -> None:
+    """Write text to clipboard only — no paste keystroke.
+
+    X11: xclip writes both CLIPBOARD and PRIMARY selections.
+    Wayland: wl-copy writes the clipboard.
+    """
+    session = os.environ.get("XDG_SESSION_TYPE", "x11").lower()
+    if session == "wayland":
+        try:
+            proc = subprocess.Popen(
+                ["wl-copy"], stdin=subprocess.PIPE, stderr=subprocess.DEVNULL
+            )
+            proc.communicate(text.encode("utf-8"))
+        except FileNotFoundError:
+            logger.warning("wl-copy not found; clipboard copy failed")
+        return
+
+    for selection in ("clipboard", "primary"):
+        try:
+            proc = subprocess.Popen(
+                ["xclip", "-selection", selection],
+                stdin=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+            proc.stdin.write(text.encode("utf-8"))
+            proc.stdin.close()
+        except FileNotFoundError:
+            logger.warning("xclip not found; clipboard copy failed")
+            break
+    logger.info("transcript copied to clipboard (%d chars)", len(text))
+
+
 def _wayland_paste(text: str) -> None:
     try:
         proc = subprocess.Popen(

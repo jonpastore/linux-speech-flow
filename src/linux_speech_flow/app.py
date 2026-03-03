@@ -78,6 +78,7 @@ class App(Gtk.Application):
             on_session_complete=self._on_conv_session_complete,
             on_tray_state=lambda state: self._tray.set_state(state) if self._tray else None,
         )
+        self._conv_window_info: dict = {}
 
         self._tray = TrayManager(
             app=self,
@@ -219,7 +220,7 @@ class App(Gtk.Application):
 
     def _on_conv_stop(self) -> None:
         if self._conv_manager:
-            self._conv_manager.stop_session()
+            self._conv_manager.stop_session(reason="user_hotkey")
 
     def _on_conv_feedback_toggle(self) -> None:
         if self._conv_manager:
@@ -227,24 +228,49 @@ class App(Gtk.Application):
 
     def _on_conv_session_complete(self, transcript: str, metadata: dict) -> bool:
         """Called on GTK main thread by ConversationManager when session ends."""
+        import logging
+        logger = logging.getLogger(__name__)
+        from linux_speech_flow.window_context import get_active_window_info
+        self._conv_window_info = get_active_window_info(
+            app_categories=load_config().get("app_categories", {})
+        )
+        logger.info(
+            "conv_session_complete: transcript=%d chars window_id=%s wm_class=%r",
+            len(transcript), self._conv_window_info.get("window_id"), self._conv_window_info.get("wm_class"),
+        )
         from linux_speech_flow.conversation_dialog import ConversationDialog
         dialog = ConversationDialog(
             application=self,
             transcript=transcript,
             metadata=metadata,
             on_submit=self._on_conv_dialog_submit,
+            window_info=self._conv_window_info,
         )
         dialog.present()
         return False
 
     def _on_conv_dialog_submit(self, transcript, prompt, qualifying_answers,
-                               selected_models, save_to_file, inject_to_window, metadata):
+                               selected_models, save_to_file, inject_to_window, metadata,
+                               copy_to_clipboard=False, paste_to_window=False, window_info=None):
+        import logging
         import threading
         from pathlib import Path
         from linux_speech_flow.conversation_pipeline import conv_filename, coalesce_file
         from linux_speech_flow.conversation_qa import ConversationQAWindow
 
+        logger = logging.getLogger(__name__)
         config = load_config()
+
+        # Immediate raw transcript actions (before AI analysis)
+        if copy_to_clipboard:
+            from linux_speech_flow.injector import copy_to_clipboard as _copy
+            logger.info("conv_dialog_submit: copying transcript to clipboard (%d chars)", len(transcript))
+            _copy(transcript)
+
+        if paste_to_window and window_info and window_info.get("window_id"):
+            from linux_speech_flow.injector import paste_text
+            logger.info("conv_dialog_submit: pasting transcript to window_id=%s", window_info.get("window_id"))
+            paste_text(transcript, window_info)
         save_dir = Path(config.get("conv_save_dir", "~/Documents/conversations")).expanduser()
         save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -253,13 +279,14 @@ class App(Gtk.Application):
             coalesce_file(initial_path, metadata, "", [], transcript)
 
         def on_finalised(final_path: str) -> None:
-            if inject_to_window and self._pipeline:
+            if inject_to_window and window_info and window_info.get("window_id"):
                 try:
                     content = Path(final_path).read_text(encoding="utf-8")
-                    from linux_speech_flow.injector import inject_text
-                    inject_text(content)
-                except Exception:
-                    pass
+                    from linux_speech_flow.injector import paste_text
+                    logger.info("conv_on_finalised: injecting analysis to window_id=%s", window_info.get("window_id"))
+                    paste_text(content, window_info)
+                except Exception as exc:
+                    logger.error("conv_on_finalised: inject failed: %s", exc)
 
         if not selected_models:
             if save_to_file:
