@@ -84,6 +84,7 @@ class ConversationManager:
         self._recorder.start(
             on_chunk_ready=self._on_chunk_ready,
             on_error=self._on_recorder_error,
+            on_silence_tick=self._on_silence_tick,
         )
 
         # Hard limit timer
@@ -176,6 +177,8 @@ class ConversationManager:
                 len(self._chunk_texts),
                 f"last chunk: {ts_ago}"
             )
+            if text:
+                self._status_window.update_transcript(text)
         return False
 
     def _on_recorder_error(self, message: str) -> bool:
@@ -183,6 +186,13 @@ class ConversationManager:
         logger.error("Conversation recorder error: %s", message)
         self.stop_session()
         return False
+
+    def _on_silence_tick(self, silence_frames: int) -> bool:
+        """GTK main thread (via GLib.idle_add): forward silence counter to status window."""
+        if self._status_window:
+            silence_sec = int(silence_frames * 0.1)  # CHUNK_DURATION = 0.1
+            self._status_window.update_silence(silence_sec)
+        return False  # GLib.idle_add must return False to avoid re-invocation
 
     def _reset_silence_timers(self) -> None:
         """Cancel existing session silence timers and start fresh."""
