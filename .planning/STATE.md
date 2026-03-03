@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Hold a key, speak, release -- transcribed text appears in whatever you're typing in.
-**Current focus:** Phase 6.1 — Conversation Status Enhancements
+**Current focus:** Phase 7 — Hotkey Customization
 
 ## Current Position
 
-Phase: 6.1 of 9 — In progress
-Plan: 1/2 complete (06.1-01 done)
-Status: Phase 6.1 plan 01 complete — ConversationRecorder extended with on_silence_tick callback; ConversationStatusWindow gains silence timer label and last-transcript label. Plan 06.1-02 (wiring) is next.
-Last activity: 2026-03-03 -- Executed plan 06.1-01; silence tick callback + status window labels added
+Phase: 6.1 of 9 — Complete
+Plan: 2/2 complete (06.1-01, 06.1-02 done)
+Status: Phase 6.1 complete — silence counter counts continuously via cross-chunk accumulation; transcript displayed in GNOME card frame. CONV-06 and CONV-07 satisfied.
+Last activity: 2026-03-03 -- Executed plan 06.1-02; silence accumulation bug fixed + transcript card UI
 
-Progress: [████████████████████████████] 90%
+Progress: [█████████████████████████████] 92%
 
 ## Performance Metrics
 
@@ -162,6 +162,8 @@ Recent decisions affecting current work:
 - [06.1-01]: on_silence_tick emits raw silence_frames (not seconds) — manager converts to seconds using CHUNK_DURATION, keeping recorder concern-free of display logic
 - [06.1-01]: Debounce sentinel last_emitted_silence = -1 ensures first tick (silence_frames=0) always fires rather than being suppressed
 - [06.1-01]: update_silence/update_transcript placed before _update_elapsed to group public API together in ConversationStatusWindow
+- [06.1-02]: Cross-chunk silence accumulation via _silence_offset_sec: when silence_frames goes backwards (new chunk after boundary), prior chunk's count carried forward; voice detection (silence_frames==0) resets both offset and last value
+- [06.1-02]: GTK 'card' CSS class for transcript container gives native GNOME appearance without custom CSS; maintained by libadwaita design system
 
 ### Roadmap Evolution
 
@@ -184,5 +186,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 06.1-01-PLAN.md — silence tick callback + status window labels; ready for 06.1-02 wiring
+Stopped at: Completed 06.1-02-PLAN.md — silence accumulation bug fixed + transcript card UI; Phase 6.1 complete
 Resume file: None
