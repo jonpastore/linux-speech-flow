@@ -4,18 +4,18 @@ from gi.repository import Gtk, Pango
 
 
 HOTKEYS = [
-    ("F9", "Start / stop transcription"),
-    ("ESC", "Cancel recording"),
-    ("F10", "Reprocess last failed transcription"),
-    ("F11", "Start / stop conversation mode"),
-    ("F12", "Toggle conversation feedback (status window ↔ tray only)"),
+    ("Ctrl+Alt+R", "Start / stop transcription"),
+    ("ESC", "Stop recording (keeps audio)"),
+    ("Ctrl+Alt+P", "Reprocess last failed transcription"),
+    ("Ctrl+Alt+C", "Start / stop conversation mode"),
+    ("Ctrl+Alt+F", "Toggle conversation feedback (status window ↔ tray only)"),
 ]
 
 
 class HelpWindow(Gtk.ApplicationWindow):
     def __init__(self, application):
         super().__init__(application=application, title="Hotkeys")
-        self.set_default_size(420, 260)
+        self.set_default_size(480, 260)
         self.set_resizable(False)
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
