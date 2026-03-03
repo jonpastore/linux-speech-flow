@@ -83,14 +83,17 @@ class ConversationManager:
 
         device_name = config.get("microphone", "")
         chunk_silence_sec = config.get("conv_chunk_silence_sec", 3)
+        silence_rms_threshold = config.get("conv_silence_rms_threshold", 0.005)
         self._recorder = ConversationRecorder(
             device_name=device_name,
             chunk_silence_sec=chunk_silence_sec,
+            silence_rms_threshold=silence_rms_threshold,
         )
         self._recorder.start(
             on_chunk_ready=self._on_chunk_ready,
             on_error=self._on_recorder_error,
             on_silence_tick=self._on_silence_tick,
+            on_audio_level=self._on_audio_level,
         )
 
         # Hard limit timer
@@ -191,6 +194,12 @@ class ConversationManager:
         """GTK main thread: recorder mic error."""
         logger.error("Conversation recorder error: %s", message)
         self.stop_session()
+        return False
+
+    def _on_audio_level(self, level: float) -> bool:
+        """GTK main thread (via GLib.idle_add): forward mic level to status window."""
+        if self._status_window:
+            self._status_window.update_mic_level(level)
         return False
 
     def _on_silence_tick(self, silence_frames: int) -> bool:
