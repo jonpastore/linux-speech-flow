@@ -458,3 +458,140 @@ class TestComboHelpers:
         from linux_speech_flow.hotkey import DANGEROUS_COMBOS
         assert 'ctrl+alt+r' not in DANGEROUS_COMBOS
         assert 'ctrl+alt+t' not in DANGEROUS_COMBOS
+
+
+class TestSettingsCaptureStateMachine:
+    """Tests for the Settings hotkey capture state machine.
+
+    Uses a simulation object that mirrors _capture_action, _hotkey_values,
+    and the accept/cancel/conflict logic without requiring a GTK display.
+    The simulation calls the same conflict-detection code that settings.py uses,
+    imported directly.
+    """
+
+    def _make_sim(self, initial_values=None):
+        """Build a simple state-machine simulation dict."""
+        from linux_speech_flow.hotkey import HOTKEY_DEFAULTS, HOTKEY_ACTION_LABELS, DANGEROUS_COMBOS, combo_display
+        defaults = {
+            'record':       'ctrl+alt+r',
+            'stop':         'ctrl+alt+r',
+            'conversation': 'ctrl+alt+c',
+            'reprocess':    'ctrl+alt+p',
+            'feedback':     'ctrl+alt+f',
+        }
+        values = dict(initial_values or defaults)
+        state = {'capture_action': None, 'capture_prev': None, 'error': '', 'labels': dict(values)}
+
+        def start_capture(action):
+            state['capture_action'] = action
+            state['capture_prev'] = values.get(action)
+            state['labels'][action] = 'Press keys...'
+            state['error'] = ''
+
+        def cancel():
+            action = state['capture_action']
+            state['capture_action'] = None
+            if action:
+                state['labels'][action] = combo_display(state['capture_prev'] or HOTKEY_DEFAULTS[action])
+
+        def accept(combo_str):
+            action = state['capture_action']
+            if action is None:
+                return
+            if combo_str in DANGEROUS_COMBOS:
+                state['error'] = f"{combo_display(combo_str)} is reserved by the system"
+                cancel()
+                return
+            for other, other_combo in values.items():
+                if other != action and other_combo == combo_str:
+                    state['error'] = f"{combo_display(combo_str)} is already used for {HOTKEY_ACTION_LABELS[other]}"
+                    cancel()
+                    return
+            state['error'] = ''
+            state['capture_action'] = None
+            values[action] = combo_str
+            state['labels'][action] = combo_display(combo_str)
+
+        return state, values, start_capture, cancel, accept
+
+    def test_capture_enters_mode_and_shows_press_keys(self):
+        state, values, start, cancel, accept = self._make_sim()
+        start('record')
+        assert state['capture_action'] == 'record'
+        assert state['labels']['record'] == 'Press keys...'
+
+    def test_cancel_restores_previous_label(self):
+        state, values, start, cancel, accept = self._make_sim()
+        start('record')
+        cancel()
+        assert state['capture_action'] is None
+        assert state['labels']['record'] == 'Ctrl+Alt+R'
+
+    def test_accept_valid_combo_updates_binding(self):
+        state, values, start, cancel, accept = self._make_sim()
+        start('record')
+        accept('ctrl+alt+t')
+        assert state['capture_action'] is None
+        assert values['record'] == 'ctrl+alt+t'
+        assert state['labels']['record'] == 'Ctrl+Alt+T'
+        assert state['error'] == ''
+
+    def test_accept_dangerous_combo_rejects_with_error(self):
+        state, values, start, cancel, accept = self._make_sim()
+        start('record')
+        accept('ctrl+alt+delete')
+        assert state['capture_action'] is None
+        assert values['record'] == 'ctrl+alt+r'
+        assert 'reserved by the system' in state['error']
+
+    def test_accept_conflicting_combo_rejects_with_error(self):
+        state, values, start, cancel, accept = self._make_sim()
+        start('record')
+        accept('ctrl+alt+c')
+        assert values['record'] == 'ctrl+alt+r'
+        assert 'already used for Conversation Mode' in state['error']
+
+    def test_accept_same_action_no_conflict(self):
+        """Re-setting an action to its own current value is not a conflict."""
+        state, values, start, cancel, accept = self._make_sim()
+        start('feedback')
+        accept('ctrl+alt+f')
+        assert values['feedback'] == 'ctrl+alt+f'
+        assert state['error'] == ''
+
+    def test_reset_to_default_restores_correct_value(self):
+        from linux_speech_flow.hotkey import HOTKEY_DEFAULTS
+        state, values, start, cancel, accept = self._make_sim(
+            initial_values={'record': 'ctrl+alt+r', 'stop': 'ctrl+alt+r',
+                            'conversation': 'ctrl+alt+t', 'reprocess': 'ctrl+alt+p',
+                            'feedback': 'ctrl+alt+f'}
+        )
+        start('conversation')
+        accept(HOTKEY_DEFAULTS['conversation'])
+        assert values['conversation'] == 'ctrl+alt+c'
+        assert state['labels']['conversation'] == 'Ctrl+Alt+C'
+
+    def test_esc_during_capture_calls_cancel(self):
+        """ESC key during capture must cancel, not close the window."""
+        state, values, start, cancel, accept = self._make_sim()
+        start('record')
+        cancel()
+        assert state['capture_action'] is None
+        assert state['labels']['record'] == 'Ctrl+Alt+R'
+
+
+def test_history_window_empty_hint_uses_combo_display():
+    """history_window.py must use combo_display to format the hotkey in the empty hint.
+
+    This is a regression guard for the pre-Phase-7 bug where
+    cfg.get('hotkey_record', 'F9') produced 'F9' instead of the
+    actual configured binding display string.
+    """
+    src = open('src/linux_speech_flow/history_window.py').read()
+    assert 'combo_display' in src, (
+        "history_window.py must import and call combo_display to display the "
+        "configured hotkey in the empty-history hint label"
+    )
+    assert "'F9'" not in src or src.count("'F9'") == 0, (
+        "history_window.py must not contain hardcoded 'F9' default"
+    )

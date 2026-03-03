@@ -98,3 +98,42 @@ def test_config_path_is_xdg_location():
     from pathlib import Path
     expected = Path.home() / ".config" / "linux-speech-flow" / "config.json"
     assert CONFIG_PATH == expected
+
+
+class TestHotkeyConfigDefaults:
+
+    def test_default_config_contains_all_five_hotkey_keys(self):
+        from linux_speech_flow.config import DEFAULT_CONFIG
+        assert DEFAULT_CONFIG['hotkey_record']       == 'ctrl+alt+r'
+        assert DEFAULT_CONFIG['hotkey_stop']         == 'ctrl+alt+r'
+        assert DEFAULT_CONFIG['hotkey_conversation'] == 'ctrl+alt+c'
+        assert DEFAULT_CONFIG['hotkey_reprocess']    == 'ctrl+alt+p'
+        assert DEFAULT_CONFIG['hotkey_feedback']     == 'ctrl+alt+f'
+
+    def test_load_config_backfills_missing_hotkey_keys(self, tmp_path):
+        import json
+        from linux_speech_flow.config import load_config
+        cfg_path = tmp_path / "config.json"
+        cfg_path.write_text(json.dumps({
+            "groq_api_key": "gsk_test",
+            "setup_complete": True,
+        }))
+        result = load_config(_path=cfg_path)
+        assert result['hotkey_record']       == 'ctrl+alt+r'
+        assert result['hotkey_stop']         == 'ctrl+alt+r'
+        assert result['hotkey_conversation'] == 'ctrl+alt+c'
+        assert result['hotkey_reprocess']    == 'ctrl+alt+p'
+        assert result['hotkey_feedback']     == 'ctrl+alt+f'
+        assert result['groq_api_key'] == 'gsk_test'
+
+    def test_load_config_preserves_custom_hotkey_values(self, tmp_path):
+        import json
+        from linux_speech_flow.config import load_config
+        cfg_path = tmp_path / "config.json"
+        cfg_path.write_text(json.dumps({
+            "setup_complete": True,
+            "hotkey_record": "ctrl+shift+r",
+        }))
+        result = load_config(_path=cfg_path)
+        assert result['hotkey_record'] == 'ctrl+shift+r'
+        assert result['hotkey_conversation'] == 'ctrl+alt+c'
