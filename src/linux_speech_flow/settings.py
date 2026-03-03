@@ -6,6 +6,13 @@ import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Gdk, GLib, Gio, Pango
 
+from linux_speech_flow.hotkey import (
+    parse_combo, combo_display, HOTKEY_DEFAULTS, HOTKEY_CONFIG_KEYS,
+    HOTKEY_ACTION_LABELS, DANGEROUS_COMBOS,
+)
+
+_GTK_MODIFIER_KEYSYMS: frozenset
+
 LLM_MODELS = [
     "meta-llama/llama-4-scout-17b-16e-instruct",
     "meta-llama/llama-4-maverick-17b-128e-instruct",
@@ -37,8 +44,9 @@ def _block_scroll_spin(spin: Gtk.SpinButton) -> None:
 
 
 class SettingsWindow(Gtk.ApplicationWindow):
-    def __init__(self, application):
+    def __init__(self, application, hotkey_manager=None):
         super().__init__(application=application, title="Settings")
+        self._hotkey_manager = hotkey_manager
         self.set_default_size(480, 700)
         self.set_resizable(True)
 
@@ -164,6 +172,44 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._gemini_status.set_wrap(True)
         self._gemini_status.add_css_class("error")
         content.append(self._gemini_status)
+
+        sep_hotkeys = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        sep_hotkeys.set_margin_top(8)
+        sep_hotkeys.set_margin_bottom(8)
+        content.append(sep_hotkeys)
+
+        hotkeys_title = Gtk.Label(label="Hotkeys")
+        hotkeys_title.add_css_class("title-4")
+        hotkeys_title.set_xalign(0)
+        content.append(hotkeys_title)
+
+        self._capture_action: str | None = None
+        self._capture_prev_combo: str | None = None
+        self._capture_buttons: dict[str, Gtk.Button] = {}
+        self._hotkey_values: dict[str, str] = {}
+        self._hotkey_error_label = Gtk.Label(label="")
+        self._hotkey_error_label.set_xalign(0)
+        self._hotkey_error_label.add_css_class("error")
+        self._hotkey_error_label.set_wrap(True)
+
+        for action, cfg_key in HOTKEY_CONFIG_KEYS.items():
+            self._hotkey_values[action] = self._config.get(cfg_key, HOTKEY_DEFAULTS[action])
+
+        _ACTION_ROWS = [
+            ("Record Toggle",     "record"),
+            ("Stop Recording",    "stop"),
+            ("Conversation Mode", "conversation"),
+            ("Reprocess Failed",  "reprocess"),
+            ("Feedback Toggle",   "feedback"),
+        ]
+        for lbl_text, action in _ACTION_ROWS:
+            content.append(self._make_hotkey_row(lbl_text, action))
+
+        content.append(self._hotkey_error_label)
+
+        reset_all_btn = Gtk.Button(label="Reset All Hotkeys to Defaults")
+        reset_all_btn.connect("clicked", self._on_reset_all_hotkeys)
+        content.append(reset_all_btn)
 
         sep1 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         sep1.set_margin_top(8)
@@ -925,6 +971,8 @@ class SettingsWindow(Gtk.ApplicationWindow):
         config["llm_system_prompt"] = prompt_buf.get_text(
             prompt_buf.get_start_iter(), prompt_buf.get_end_iter(), False
         )
+        for action, cfg_key in HOTKEY_CONFIG_KEYS.items():
+            config[cfg_key] = self._hotkey_values[action]
         save_config(config)
         self._closing = True
         self.close()
@@ -997,6 +1045,153 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._auto_analyze_check.connect("toggled", md)
         self._conv_prompt_buf.connect("changed", md)
         self._conv_qq_buf.connect("changed", md)
+
+    def _make_hotkey_row(self, label_text: str, action: str) -> Gtk.Box:
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        lbl = Gtk.Label(label=label_text)
+        lbl.set_hexpand(True)
+        lbl.set_xalign(0)
+        btn = Gtk.Button(label=combo_display(self._hotkey_values[action]))
+        btn.connect("clicked", self._on_capture_click, action)
+        self._capture_buttons[action] = btn
+        reset_btn = Gtk.Button()
+        reset_btn.set_icon_name("view-refresh-symbolic")
+        reset_btn.set_tooltip_text(f"Reset to default ({combo_display(HOTKEY_DEFAULTS[action])})")
+        reset_btn.connect("clicked", self._on_reset_hotkey, action)
+        row.append(lbl)
+        row.append(btn)
+        row.append(reset_btn)
+        return row
+
+    def _on_capture_click(self, _btn, action: str) -> None:
+        if self._capture_action is not None:
+            self._cancel_capture()
+        self._capture_action = action
+        self._capture_prev_combo = self._hotkey_values.get(action)
+        self._capture_buttons[action].set_label("Press keys...")
+        self._hotkey_error_label.set_text("")
+        self.set_focus(None)
+
+    def _handle_capture_key(self, keyval: int, state) -> bool:
+        from gi.repository import Gdk as _Gdk
+        global _GTK_MODIFIER_KEYSYMS
+        try:
+            _GTK_MODIFIER_KEYSYMS
+        except NameError:
+            _GTK_MODIFIER_KEYSYMS = frozenset({
+                _Gdk.KEY_Control_L, _Gdk.KEY_Control_R,
+                _Gdk.KEY_Alt_L, _Gdk.KEY_Alt_R,
+                _Gdk.KEY_Shift_L, _Gdk.KEY_Shift_R,
+                _Gdk.KEY_Super_L, _Gdk.KEY_Super_R,
+                _Gdk.KEY_ISO_Level3_Shift,
+                _Gdk.KEY_Caps_Lock, _Gdk.KEY_Num_Lock,
+            })
+
+        if keyval == _Gdk.KEY_Escape:
+            self._cancel_capture()
+            return True
+
+        if keyval in _GTK_MODIFIER_KEYSYMS:
+            return True
+
+        mods = set()
+        if state & _Gdk.ModifierType.CONTROL_MASK: mods.add('ctrl')
+        if state & _Gdk.ModifierType.ALT_MASK:     mods.add('alt')
+        if state & _Gdk.ModifierType.SHIFT_MASK:   mods.add('shift')
+        if state & _Gdk.ModifierType.SUPER_MASK:   mods.add('super')
+
+        if not mods:
+            self._hotkey_error_label.set_text("Combo must include at least one modifier (Ctrl, Alt, Shift, Super)")
+            return True
+
+        key_id = self._gdk_keyval_to_id(keyval)
+        if key_id is None:
+            return True
+
+        mod_order = ['ctrl', 'alt', 'shift', 'super']
+        combo_str = '+'.join(m for m in mod_order if m in mods) + '+' + key_id
+        self._accept_capture(combo_str)
+        return True
+
+    @staticmethod
+    def _gdk_keyval_to_id(keyval: int) -> str | None:
+        from gi.repository import Gdk as _Gdk
+        _SPECIAL = {
+            _Gdk.KEY_Escape: 'esc',
+            _Gdk.KEY_Delete: 'delete',
+            _Gdk.KEY_Return: 'enter',
+            _Gdk.KEY_Tab: 'tab',
+            _Gdk.KEY_space: 'space',
+            _Gdk.KEY_Left: 'left',   _Gdk.KEY_Right: 'right',
+            _Gdk.KEY_Up: 'up',       _Gdk.KEY_Down: 'down',
+            _Gdk.KEY_Home: 'home',   _Gdk.KEY_End: 'end',
+            _Gdk.KEY_Page_Up: 'page_up', _Gdk.KEY_Page_Down: 'page_down',
+            _Gdk.KEY_Insert: 'insert',
+            _Gdk.KEY_F1: 'f1',   _Gdk.KEY_F2: 'f2',   _Gdk.KEY_F3: 'f3',
+            _Gdk.KEY_F4: 'f4',   _Gdk.KEY_F5: 'f5',   _Gdk.KEY_F6: 'f6',
+            _Gdk.KEY_F7: 'f7',   _Gdk.KEY_F8: 'f8',   _Gdk.KEY_F9: 'f9',
+            _Gdk.KEY_F10: 'f10', _Gdk.KEY_F11: 'f11', _Gdk.KEY_F12: 'f12',
+        }
+        if keyval in _SPECIAL:
+            return _SPECIAL[keyval]
+        char = chr(keyval).lower()
+        if char.isalpha() or char.isdigit():
+            return char
+        return None
+
+    def _accept_capture(self, combo_str: str) -> None:
+        action = self._capture_action
+        if action is None:
+            return
+
+        if combo_str in DANGEROUS_COMBOS:
+            self._hotkey_error_label.set_text(
+                f"{combo_display(combo_str)} is reserved by the system"
+            )
+            self._cancel_capture()
+            return
+
+        for other_action, current_combo in self._hotkey_values.items():
+            if other_action == action:
+                continue
+            if current_combo == combo_str:
+                self._hotkey_error_label.set_text(
+                    f"{combo_display(combo_str)} is already used for {HOTKEY_ACTION_LABELS[other_action]}"
+                )
+                self._cancel_capture()
+                return
+
+        self._hotkey_error_label.set_text("")
+        self._capture_action = None
+        self._apply_binding(action, combo_str)
+
+    def _cancel_capture(self) -> None:
+        action = self._capture_action
+        self._capture_action = None
+        if action and action in self._capture_buttons:
+            prev = self._capture_prev_combo or HOTKEY_DEFAULTS.get(action, '')
+            self._capture_buttons[action].set_label(combo_display(prev))
+
+    def _apply_binding(self, action: str, combo_str: str) -> None:
+        self._hotkey_values[action] = combo_str
+        if action in self._capture_buttons:
+            self._capture_buttons[action].set_label(combo_display(combo_str))
+        if self._hotkey_manager:
+            self._hotkey_manager.apply_binding_override(action, combo_str)
+        self._mark_dirty()
+
+    def _on_reset_hotkey(self, _btn, action: str) -> None:
+        if self._capture_action is not None:
+            self._cancel_capture()
+        self._hotkey_error_label.set_text("")
+        self._apply_binding(action, HOTKEY_DEFAULTS[action])
+
+    def _on_reset_all_hotkeys(self, _btn) -> None:
+        if self._capture_action is not None:
+            self._cancel_capture()
+        self._hotkey_error_label.set_text("")
+        for action, default_combo in HOTKEY_DEFAULTS.items():
+            self._apply_binding(action, default_combo)
 
     def _on_clear_all_history(self, _btn):
         dialog = Gtk.Window(title="Confirm Clear History")
@@ -1073,7 +1268,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
             self._closing = True
             self.close()
 
-    def _on_key_pressed(self, _ctrl, keyval, _keycode, _state):
+    def _on_key_pressed(self, _ctrl, keyval, _keycode, state):
+        if self._capture_action:
+            return self._handle_capture_key(keyval, state)
         if keyval == Gdk.KEY_Escape:
             self.close()
             return True

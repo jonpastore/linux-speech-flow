@@ -151,6 +151,10 @@ class HotkeyManager:
         """Hot-reload bindings from config. Safe to call from GTK main thread."""
         self._reload_bindings_from_config()
 
+    def apply_binding_override(self, action: str, combo_str: str) -> None:
+        """Apply a single binding immediately without requiring a config save."""
+        self._bindings[action] = parse_combo(combo_str)
+
     def _reload_bindings_from_config(self) -> None:
         config = load_config()
         self._bindings = {

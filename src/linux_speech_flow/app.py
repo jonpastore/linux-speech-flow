@@ -106,7 +106,7 @@ class App(Gtk.Application):
 
     def _on_open_settings(self, _btn=None):
         if self._settings is None:
-            self._settings = SettingsWindow(application=self)
+            self._settings = SettingsWindow(application=self, hotkey_manager=self._hotkey_manager)
             self._settings.connect("close-request", self._on_settings_closed)
         self._settings.present()
 
