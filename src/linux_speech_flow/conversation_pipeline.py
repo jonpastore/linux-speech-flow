@@ -55,7 +55,7 @@ def coalesce_file(save_path: str, metadata: dict, summary: str,
     lines.append("## Transcript")
     lines.append(transcript)
 
-    with open(save_path, "w") as f:
+    with open(save_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
 

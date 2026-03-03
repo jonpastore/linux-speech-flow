@@ -215,6 +215,10 @@ class App(Gtk.Application):
             dialog.present()
 
     def _on_conv_start(self) -> None:
+        from linux_speech_flow.window_context import get_active_window_info
+        self._conv_window_info = get_active_window_info(
+            app_categories=load_config().get("app_categories", {})
+        )
         if self._conv_manager:
             self._conv_manager.start_session()
 
@@ -230,10 +234,6 @@ class App(Gtk.Application):
         """Called on GTK main thread by ConversationManager when session ends."""
         import logging
         logger = logging.getLogger(__name__)
-        from linux_speech_flow.window_context import get_active_window_info
-        self._conv_window_info = get_active_window_info(
-            app_categories=load_config().get("app_categories", {})
-        )
         logger.info(
             "conv_session_complete: transcript=%d chars window_id=%s wm_class=%r",
             len(transcript), self._conv_window_info.get("window_id"), self._conv_window_info.get("wm_class"),

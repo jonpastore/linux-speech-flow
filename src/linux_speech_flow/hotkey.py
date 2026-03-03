@@ -12,15 +12,22 @@ logger = logging.getLogger(__name__)
 
 
 class HotkeyManager:
-    """Toggle-mode recording hotkey: F9 starts, ESC stops.
+    """Hotkey manager for recording and conversation mode.
+
+    Default bindings:
+      Ctrl+Alt+R  — start / stop recording
+      ESC         — stop recording
+      Ctrl+Alt+C  — start / stop conversation mode
+      Ctrl+Alt+P  — reprocess failed recordings
+      Ctrl+Alt+F  — toggle feedback mode (conversation only)
 
     Threading contract:
-    - pynput Listener callbacks (_on_press) fire from the Listener
-      daemon thread. They must NOT call GTK/GLib functions directly.
-    - All GTK operations (_start_recording, _stop_recording, etc.) are
-      dispatched via GLib.idle_add() to run on the GTK main thread.
-    - AudioRecorder callbacks (on_complete, on_error) already arrive on the
-      GTK main thread via GLib.idle_add in recorder.py.
+    - pynput Listener callbacks fire from the Listener daemon thread.
+      They must NOT call GTK/GLib functions directly.
+    - All GTK operations are dispatched via GLib.idle_add() to run on
+      the GTK main thread.
+    - AudioRecorder callbacks already arrive on the GTK main thread via
+      GLib.idle_add in recorder.py.
     """
 
     _STATE_IDLE = "idle"
@@ -31,24 +38,6 @@ class HotkeyManager:
                  on_recording_error=None, on_reprocess=None,
                  on_conversation_start=None, on_conversation_stop=None,
                  on_conversation_feedback_toggle=None):
-        """
-        Args:
-            on_recording_complete: Callable(wav_path: str) — called on GTK main
-                thread when recording finishes normally. wav_path is ready for
-                Phase 3 transcription. May be None for Phase 2 standalone testing.
-            on_recording_start: Optional callable() — called on GTK main thread
-                immediately when recording starts (tray state update).
-            on_recording_error: Optional callable(message: str) — called on GTK
-                main thread on mic error. If None, errors are shown but not propagated.
-            on_reprocess: Optional callable() — called on GTK main thread when F10
-                is pressed to reprocess failed recordings.
-            on_conversation_start: Optional callable() — called on GTK main thread
-                when F11 pressed in IDLE state to start conversation mode.
-            on_conversation_stop: Optional callable() — called on GTK main thread
-                when F11 pressed in CONVERSATION state to stop conversation mode.
-            on_conversation_feedback_toggle: Optional callable() — called on GTK
-                main thread when F12 pressed in CONVERSATION state.
-        """
         self._on_complete_cb = on_recording_complete
         self._on_recording_start_cb = on_recording_start
         self._on_error_cb = on_recording_error
@@ -61,63 +50,97 @@ class HotkeyManager:
         self._notif_id: int | None = None
         self._started = False
 
-        self._stop_was_f9 = False  # tracks which key ended the last recording
+        self._stop_was_hotkey = False  # True when record-stop hotkey ended recording
+        self._ctrl_held = False
+        self._alt_held = False
 
         self._listener = keyboard.Listener(
             on_press=self._on_press,
+            on_release=self._on_release,
         )
         self._listener.daemon = True
 
     def start(self) -> None:
-        """Start the global keyboard listener. Call from do_startup()."""
         self._listener.start()
 
     def stop(self) -> None:
-        """Stop the listener and cancel any in-progress recording."""
         if self._recorder:
             self._recorder.stop(cancel=True)
             self._recorder = None
         self._listener.stop()
 
     def mark_started(self) -> bool:
-        """Called via GLib.idle_add after first GTK main loop tick.
-        Guards against F9 being held when the app starts.
-        Returns False so GLib.idle_add removes this callback.
-        """
         self._started = True
         return False
 
+    @staticmethod
+    def _key_letter(key) -> str | None:
+        """Return the lowercase base letter for a key regardless of modifiers.
+
+        Checks vk (X11 keysym = ASCII for Latin letters) first, then
+        key.char for environments where vk is not available.
+        """
+        vk = getattr(key, 'vk', None)
+        if vk is not None:
+            if 65 <= vk <= 90:   # A-Z keysyms
+                return chr(vk + 32)
+            if 97 <= vk <= 122:  # a-z keysyms
+                return chr(vk)
+        char = getattr(key, 'char', None)
+        if char and len(char) == 1 and char.isalpha():
+            return char.lower()
+        return None
+
     def _on_press(self, key):
+        # Track modifier state (runs even before _started)
+        if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
+            self._ctrl_held = True
+            return
+        if key in (keyboard.Key.alt_l, keyboard.Key.alt_r, keyboard.Key.alt_gr):
+            self._alt_held = True
+            return
+
         if not self._started:
             return
-        if key == keyboard.Key.f9 and self._state == self._STATE_IDLE:
-            GLib.idle_add(self._start_recording)
-        elif key == keyboard.Key.f9 and self._state == self._STATE_RECORDING:
-            GLib.idle_add(self._stop_recording_f9)
+
+        ctrl_alt = self._ctrl_held and self._alt_held
+        letter = self._key_letter(key)
+
+        if ctrl_alt and letter == 'r':
+            if self._state == self._STATE_IDLE:
+                GLib.idle_add(self._start_recording)
+            elif self._state == self._STATE_RECORDING:
+                GLib.idle_add(self._stop_recording_hotkey)
         elif key == keyboard.Key.esc and self._state == self._STATE_RECORDING:
             GLib.idle_add(self._stop_recording, False)
-        elif key == keyboard.Key.f10:
-            GLib.idle_add(self._on_f10)
-        elif key == keyboard.Key.f11 and self._state == self._STATE_IDLE:
-            GLib.idle_add(self._conv_start)
-        elif key == keyboard.Key.f11 and self._state == self._STATE_CONVERSATION:
-            GLib.idle_add(self._conv_stop)
-        elif key == keyboard.Key.f12 and self._state == self._STATE_CONVERSATION:
+        elif ctrl_alt and letter == 'c':
+            if self._state == self._STATE_IDLE:
+                GLib.idle_add(self._conv_start)
+            elif self._state == self._STATE_CONVERSATION:
+                GLib.idle_add(self._conv_stop)
+        elif ctrl_alt and letter == 'p':
+            GLib.idle_add(self._on_reprocess)
+        elif ctrl_alt and letter == 'f' and self._state == self._STATE_CONVERSATION:
             GLib.idle_add(self._conv_feedback_toggle)
 
-    def _on_f10(self) -> bool:
+    def _on_release(self, key):
+        if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
+            self._ctrl_held = False
+        elif key in (keyboard.Key.alt_l, keyboard.Key.alt_r, keyboard.Key.alt_gr):
+            self._alt_held = False
+
+    def _on_reprocess(self) -> bool:
         if self._on_reprocess_cb:
             self._on_reprocess_cb()
         return False
 
     def _start_recording(self) -> bool:
-        """Start audio capture. Called on GTK main thread."""
         if self._state != self._STATE_IDLE:
             return False
         self._state = self._STATE_RECORDING
         if self._on_recording_start_cb:
             self._on_recording_start_cb()
-        self._stop_was_f9 = False  # reset for new recording
+        self._stop_was_hotkey = False
 
         config = load_config()
         sounds_enabled = config.get("sounds_enabled", True)
@@ -141,14 +164,12 @@ class HotkeyManager:
         )
         return False
 
-    def _stop_recording_f9(self) -> bool:
-        """Stop recording when F9 is the stop key. Sets _stop_was_f9=True on the
-        GTK thread (not pynput thread) to avoid race with silence auto-stop."""
-        self._stop_was_f9 = True
+    def _stop_recording_hotkey(self) -> bool:
+        """Stop recording via the record hotkey (Ctrl+Alt+R)."""
+        self._stop_was_hotkey = True
         return self._stop_recording(False)
 
     def _stop_recording(self, cancel: bool) -> bool:
-        """Stop or cancel an in-progress recording. Called on GTK main thread."""
         if self._state != self._STATE_RECORDING:
             return False
         if self._recorder:
@@ -162,19 +183,9 @@ class HotkeyManager:
             play_sound("stop.wav", output_device=output_device, enabled=sounds_enabled)
             self._state = self._STATE_IDLE
 
-        # Normal stop: don't play chime here — _on_recorder_complete handles it
-        # for both manual ESC stop and auto-stop paths (silence, max duration)
         return False
 
     def _on_recorder_complete(self, wav_path: str) -> bool:
-        """Called on GTK main thread by AudioRecorder when WAV is ready.
-
-        This fires for ALL normal completion paths: silence auto-stop and
-        max-duration auto-stop. Per CONTEXT.md Area 2, normal stop always
-        plays the descending stop chime. Load config here the same way
-        _stop_recording does so sounds_enabled and sounds_output_device are
-        respected on auto-stop paths too.
-        """
         config = load_config()
         sounds_enabled = config.get("sounds_enabled", True)
         output_device = config.get("sounds_output_device", "")
@@ -182,7 +193,7 @@ class HotkeyManager:
 
         self._state = self._STATE_IDLE
         if self._on_complete_cb:
-            self._on_complete_cb(wav_path, self._stop_was_f9)
+            self._on_complete_cb(wav_path, self._stop_was_hotkey)
         return False
 
     def _conv_start(self) -> bool:
@@ -214,7 +225,6 @@ class HotkeyManager:
         return False
 
     def _on_recorder_error(self, message: str) -> bool:
-        """Called on GTK main thread by AudioRecorder on mic error."""
         self._state = self._STATE_IDLE
         self._recorder = None
 

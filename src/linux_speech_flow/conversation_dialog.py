@@ -5,6 +5,42 @@ from gi.repository import Gtk, GLib, Pango
 from linux_speech_flow.config import load_config
 
 
+def _do_transcript_copy(transcript: str) -> str:
+    """Copy transcript to clipboard. Returns status message."""
+    from linux_speech_flow.injector import copy_to_clipboard
+    copy_to_clipboard(transcript)
+    return "Copied to clipboard."
+
+
+def _do_transcript_paste(transcript: str, window_info: dict) -> str:
+    """Paste transcript to active window. Returns status message."""
+    from linux_speech_flow.injector import paste_text
+    paste_text(transcript, window_info)
+    return "Pasted to active window."
+
+
+def _do_transcript_save(transcript: str, metadata: dict) -> str:
+    """Save raw transcript to file. Returns status message with path."""
+    try:
+        from pathlib import Path
+        from linux_speech_flow.conversation_pipeline import conv_filename, coalesce_file
+        config = load_config()
+        save_dir = Path(config.get("conv_save_dir", "~/Documents/conversations")).expanduser()
+        save_dir.mkdir(parents=True, exist_ok=True)
+        path = str(save_dir / conv_filename("transcript"))
+        coalesce_file(path, metadata, "", [], transcript)
+        return f"Saved: {path}"
+    except Exception as exc:
+        return f"Save failed: {exc}"
+
+
+def _window_label(window_info: dict) -> str:
+    """Return a short human-readable label for the target window."""
+    title = window_info.get("title", "")
+    wm_class = window_info.get("wm_class", "")
+    return title or wm_class or "unknown"
+
+
 class ConversationDialog(Gtk.ApplicationWindow):
     def __init__(self, application, transcript: str, metadata: dict,
                  on_submit, on_cancel=None, window_info: dict | None = None):
@@ -44,6 +80,25 @@ class ConversationDialog(Gtk.ApplicationWindow):
         header.set_xalign(0)
         content.append(header)
 
+        # Transcript preview — always visible so user can see what they're working with
+        transcript_label = Gtk.Label(label="Transcript")
+        transcript_label.add_css_class("title-4")
+        transcript_label.set_xalign(0)
+        transcript_label.set_margin_top(8)
+        content.append(transcript_label)
+
+        transcript_scroll = Gtk.ScrolledWindow()
+        transcript_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        transcript_scroll.set_min_content_height(100)
+        transcript_scroll.set_max_content_height(180)
+        transcript_view = Gtk.TextView()
+        transcript_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        transcript_view.set_editable(False)
+        transcript_view.set_cursor_visible(False)
+        transcript_view.get_buffer().set_text(transcript or "(no transcript — chunks may still be transcribing)")
+        transcript_scroll.set_child(transcript_view)
+        content.append(transcript_scroll)
+
         if self._questions:
             questions_label = Gtk.Label(label="Qualifying Questions")
             questions_label.add_css_class("title-4")
@@ -51,18 +106,19 @@ class ConversationDialog(Gtk.ApplicationWindow):
             questions_label.set_margin_top(8)
             content.append(questions_label)
 
-        self._answer_entries = []
+        self._answer_rows = []  # list of (CheckButton, Entry)
         for question in self._questions:
-            q_label = Gtk.Label(label=question)
-            q_label.set_xalign(0)
-            q_label.set_wrap(True)
-            q_label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
-            content.append(q_label)
+            q_check = Gtk.CheckButton(label=question)
+            q_check.set_active(True)
+            q_check.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
+            content.append(q_check)
 
             answer_entry = Gtk.Entry()
             answer_entry.set_placeholder_text("Your answer...")
+            answer_entry.set_margin_start(24)
+            q_check.connect("toggled", lambda cb, e=answer_entry: e.set_sensitive(cb.get_active()))
             content.append(answer_entry)
-            self._answer_entries.append(answer_entry)
+            self._answer_rows.append((q_check, answer_entry))
 
         sep1 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         sep1.set_margin_top(4)
@@ -96,7 +152,7 @@ class ConversationDialog(Gtk.ApplicationWindow):
         content.append(transcript_label)
 
         self._copy_check = Gtk.CheckButton(label="Copy transcript to clipboard")
-        self._copy_check.set_active(False)
+        self._copy_check.set_active(True)
         content.append(self._copy_check)
 
         can_paste = bool(self._window_info.get("window_id"))
@@ -106,6 +162,12 @@ class ConversationDialog(Gtk.ApplicationWindow):
         if not can_paste:
             self._paste_check.set_tooltip_text("Window ID not captured (X11 only)")
         content.append(self._paste_check)
+
+        target_label = Gtk.Label(label=f"Target: {_window_label(self._window_info)}" if can_paste else "Target: (none captured)")
+        target_label.add_css_class("caption")
+        target_label.set_xalign(0)
+        target_label.set_margin_start(24)
+        content.append(target_label)
 
         sep_transcript = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         sep_transcript.set_margin_top(4)
@@ -170,10 +232,30 @@ class ConversationDialog(Gtk.ApplicationWindow):
         spacer.set_hexpand(True)
         btn_row.append(spacer)
 
-        submit_btn = Gtk.Button(label="Submit")
+        skip_btn = Gtk.Button(label="Skip Analysis")
+        skip_btn.set_tooltip_text("Save/copy transcript without running AI analysis")
+        skip_btn.connect("clicked", self._on_skip)
+        btn_row.append(skip_btn)
+
+        submit_btn = Gtk.Button(label="Analyse")
         submit_btn.add_css_class("suggested-action")
         submit_btn.connect("clicked", self._on_submit)
         btn_row.append(submit_btn)
+
+    def _on_skip(self, _btn):
+        """Close analysis dialog and open the transcript-only output window."""
+        transcript = self._transcript
+        metadata = self._metadata
+        window_info = self._window_info
+        app = self.get_application()
+        self.close()
+        win = TranscriptOutputWindow(
+            application=app,
+            transcript=transcript,
+            metadata=metadata,
+            window_info=window_info,
+        )
+        win.present()
 
     def _on_submit(self, _btn):
         prompt = self._prompt_buf.get_text(
@@ -181,7 +263,8 @@ class ConversationDialog(Gtk.ApplicationWindow):
             self._prompt_buf.get_end_iter(), False)
         qualifying_answers = "\n".join(
             f"Q: {q}\nA: {e.get_text()}"
-            for q, e in zip(self._questions, self._answer_entries)
+            for q, (cb, e) in zip(self._questions, self._answer_rows)
+            if cb.get_active()
         )
         selected_models = []
         if self._groq_check.get_active():
@@ -208,3 +291,121 @@ class ConversationDialog(Gtk.ApplicationWindow):
         if self._on_cancel:
             self._on_cancel()
         return False
+
+
+class TranscriptOutputWindow(Gtk.ApplicationWindow):
+    """Shown after 'Skip Analysis' — explicit buttons to copy/paste/save the raw transcript."""
+
+    def __init__(self, application, transcript: str, metadata: dict,
+                 window_info: dict | None = None):
+        super().__init__(application=application, title="Transcript Output")
+        self.set_default_size(520, 480)
+        self.set_resizable(True)
+        self.set_modal(True)
+
+        self._transcript = transcript
+        self._metadata = metadata
+        self._window_info = window_info or {}
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_child(outer)
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        content.set_margin_start(20)
+        content.set_margin_end(20)
+        content.set_margin_top(16)
+        content.set_margin_bottom(8)
+        outer.append(content)
+
+        header = Gtk.Label(label="Raw Transcript")
+        header.add_css_class("title-3")
+        header.set_xalign(0)
+        content.append(header)
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_vexpand(True)
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        text_view = Gtk.TextView()
+        text_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        text_view.set_editable(False)
+        text_view.set_cursor_visible(False)
+        text_view.get_buffer().set_text(
+            transcript or "(empty — session may not have produced transcribed chunks)"
+        )
+        scroll.set_child(text_view)
+        content.append(scroll)
+
+        self._status_label = Gtk.Label(label="")
+        self._status_label.set_xalign(0)
+        self._status_label.add_css_class("caption")
+        content.append(self._status_label)
+
+        btn_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        btn_box.set_margin_start(20)
+        btn_box.set_margin_end(20)
+        btn_box.set_margin_top(4)
+        btn_box.set_margin_bottom(16)
+        outer.append(btn_box)
+
+        copy_btn = Gtk.Button(label="Copy to Clipboard")
+        copy_btn.add_css_class("suggested-action")
+        copy_btn.connect("clicked", lambda _: self._do_copy())
+        btn_box.append(copy_btn)
+
+        can_paste = bool(self._window_info.get("window_id"))
+        paste_label = f"Paste to {_window_label(self._window_info)}" if can_paste else "Paste to Active Window"
+        paste_btn = Gtk.Button(label=paste_label)
+        paste_btn.set_sensitive(can_paste)
+        if not can_paste:
+            paste_btn.set_tooltip_text("No active window captured (X11 only)")
+        paste_btn.connect("clicked", lambda _: self._do_paste())
+        btn_box.append(paste_btn)
+
+        save_btn = Gtk.Button(label="Save to File...")
+        save_btn.connect("clicked", lambda _: self._do_save())
+        btn_box.append(save_btn)
+
+        done_btn = Gtk.Button(label="Done")
+        done_btn.connect("clicked", lambda _: self.close())
+        btn_box.append(done_btn)
+
+    def _do_copy(self) -> None:
+        self._status_label.set_text(_do_transcript_copy(self._transcript))
+
+    def _do_paste(self) -> None:
+        self._status_label.set_text(_do_transcript_paste(self._transcript, self._window_info))
+
+    def _do_save(self) -> None:
+        from pathlib import Path
+        from linux_speech_flow.conversation_pipeline import conv_filename
+        config = load_config()
+        save_dir = Path(config.get("conv_save_dir", "~/Documents/conversations")).expanduser()
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        chooser = Gtk.FileChooserNative.new(
+            "Save Transcript", self, Gtk.FileChooserAction.SAVE, "Save", "Cancel"
+        )
+        chooser.set_current_name(conv_filename("transcript"))
+        try:
+            from gi.repository import Gio
+            chooser.set_current_folder(Gio.File.new_for_path(str(save_dir)))
+        except Exception:
+            pass
+        chooser.connect("response", self._on_save_response)
+        chooser.show()
+        self._save_chooser = chooser  # keep reference alive
+
+    def _on_save_response(self, chooser, response) -> None:
+        self._save_chooser = None
+        if response != Gtk.ResponseType.ACCEPT:
+            return
+        gfile = chooser.get_file()
+        if not gfile:
+            return
+        path = gfile.get_path()
+        try:
+            from linux_speech_flow.conversation_pipeline import coalesce_file
+            coalesce_file(path, self._metadata, "", [], self._transcript)
+            self._status_label.set_text(f"Saved: {path}")
+        except Exception as exc:
+            self._status_label.set_text(f"Save failed: {exc}")

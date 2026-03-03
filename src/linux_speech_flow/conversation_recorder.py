@@ -19,6 +19,9 @@ CHUNK_DURATION = 0.1            # seconds per read() call
 CHUNK_BYTES = int(SAMPLE_RATE * CHANNELS * SAMPLE_WIDTH * CHUNK_DURATION)
 MIN_GUARD_FRAMES = 10           # ignore silence detection for first N frames (PulseAudio buffer fill)
 RMS_DISPLAY_SCALE = 12          # multiplier so typical speech reaches ~0.5–1.0 on a 0–1 LevelBar
+CALIB_FACTOR = 4.0          # threshold = ambient_rms * CALIB_FACTOR
+CALIB_MIN = 0.002           # floor: never go below this
+CALIB_MAX = 0.030           # ceiling: noisy environments
 
 
 class ConversationRecorder:
@@ -53,8 +56,9 @@ class ConversationRecorder:
         self._on_error = None
         self._on_silence_tick = None
         self._on_audio_level = None
+        self._on_threshold_calibrated = None
 
-    def start(self, on_chunk_ready, on_error, on_silence_tick=None, on_audio_level=None) -> None:
+    def start(self, on_chunk_ready, on_error, on_silence_tick=None, on_audio_level=None, on_threshold_calibrated=None) -> None:
         """Start recording in a daemon thread.
 
         Args:
@@ -76,6 +80,7 @@ class ConversationRecorder:
         self._on_error = on_error
         self._on_silence_tick = on_silence_tick
         self._on_audio_level = on_audio_level
+        self._on_threshold_calibrated = on_threshold_calibrated
         self._stop_event.clear()
         threading.Thread(target=self._record_loop, daemon=True).start()
 
@@ -157,9 +162,12 @@ class ConversationRecorder:
         frames_written = 0
         had_audio = False
         last_emitted_silence = -1
-        # Log silence state every LOG_SILENCE_EVERY frames (~10s)
         LOG_SILENCE_EVERY = 100
         last_logged_frame = 0
+
+        # Auto-calibration: measure ambient noise during guard period of first chunk only
+        calib_rms_sum = 0.0
+        calib_done = (chunk_index != 0)
 
         with wave.open(wav_path, "wb") as wf:
             wf.setnchannels(CHANNELS)
@@ -171,9 +179,39 @@ class ConversationRecorder:
                 wf.writeframes(raw)
                 frames_written += 1
 
+                # Unpack samples once per frame for RMS
+                samples = struct.unpack(f"{len(raw) // SAMPLE_WIDTH}h", raw)
+                rms = math.sqrt(sum(s * s for s in samples) / len(samples)) / 32768.0
+
+                # Auto-calibration: accumulate ambient RMS during guard period
+                if not calib_done:
+                    if frames_written < MIN_GUARD_FRAMES:
+                        calib_rms_sum += rms
+                    elif frames_written == MIN_GUARD_FRAMES:
+                        n = MIN_GUARD_FRAMES - 1
+                        if n > 0:
+                            ambient = calib_rms_sum / n
+                            if ambient >= self._silence_rms_threshold:
+                                # Guard frames contain audio above threshold — user was
+                                # already speaking; calibration would set a false ceiling.
+                                # Keep the current (more sensitive) threshold instead.
+                                logger.info(
+                                    "auto_calibrate: skipped — ambient_rms=%.5f >= threshold=%.5f"
+                                    " (user likely speaking during guard)",
+                                    ambient, self._silence_rms_threshold,
+                                )
+                            else:
+                                calibrated = max(CALIB_MIN, min(CALIB_MAX, ambient * CALIB_FACTOR))
+                                logger.info(
+                                    "auto_calibrate: ambient_rms=%.5f -> threshold=%.5f (%.1fx)",
+                                    ambient, calibrated, CALIB_FACTOR,
+                                )
+                                self._silence_rms_threshold = calibrated
+                                if self._on_threshold_calibrated:
+                                    GLib.idle_add(self._on_threshold_calibrated, calibrated)
+                        calib_done = True
+
                 if frames_written >= MIN_GUARD_FRAMES:
-                    samples = struct.unpack(f"{len(raw) // SAMPLE_WIDTH}h", raw)
-                    rms = math.sqrt(sum(s * s for s in samples) / len(samples)) / 32768.0
                     if rms < self._silence_rms_threshold:
                         silence_frames += 1
                     else:
@@ -187,7 +225,6 @@ class ConversationRecorder:
                         last_emitted_silence = silence_frames
                         GLib.idle_add(self._on_silence_tick, silence_frames)
 
-                    # Periodic silence state log (every ~10s)
                     if frames_written - last_logged_frame >= LOG_SILENCE_EVERY:
                         last_logged_frame = frames_written
                         logger.debug(

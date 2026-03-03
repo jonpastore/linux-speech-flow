@@ -54,11 +54,14 @@ class ConversationManager:
         self._warn_timer: int | None = None
         self._stop_timer: int | None = None
         self._hard_limit_timer: int | None = None
+        self._speech_heartbeat_timer: int | None = None
         self._silence_dialog: Gtk.Window | None = None
+        self._in_flight: int = 0       # active transcription threads
+        self._session_ending: bool = False  # True while draining after stop
 
         # Silence display accumulation (across chunk boundaries)
         self._silence_offset_sec: int = 0
-        self._last_silence_frames: int = 0
+        self._last_silence_frames: int = -1
 
     def start_session(self) -> None:
         """Start a new conversation recording session. Called on GTK main thread."""
@@ -70,7 +73,7 @@ class ConversationManager:
         self._chunk_count = 0
         self._session_start = time.monotonic()
         self._silence_offset_sec = 0
-        self._last_silence_frames = 0
+        self._last_silence_frames = -1
         if self._on_tray_state:
             self._on_tray_state('conv_recording')
 
@@ -107,6 +110,7 @@ class ConversationManager:
             on_error=self._on_recorder_error,
             on_silence_tick=self._on_silence_tick,
             on_audio_level=self._on_audio_level,
+            on_threshold_calibrated=self._on_threshold_calibrated,
         )
 
         # Hard limit timer
@@ -115,6 +119,11 @@ class ConversationManager:
         )
         # Start session silence detection timer immediately
         self._reset_silence_timers(reason="session_start")
+        # Heartbeat: every 5s, if user was recently speaking, renew warn timer so
+        # continuous speech (no chunk boundaries) doesn't trigger a false warn.
+        self._speech_heartbeat_timer = GLib.timeout_add_seconds(
+            5, self._on_speech_heartbeat
+        )
 
     def stop_session(self, reason: str = "user") -> None:
         """Stop recording and assemble final transcript. Called on GTK main thread."""
@@ -129,13 +138,14 @@ class ConversationManager:
         self._state = _STATE_IDLE
         self._cancel_all_timers()
 
+        self._session_ending = True
         if self._recorder:
             self._recorder.stop()
-            # Note: recorder fires on_chunk_ready for the last chunk via GLib.idle_add
-            # We give it a moment to fire before assembling transcript.
-            # Use GLib.timeout_add to defer assembly until pending idle callbacks run.
-            GLib.timeout_add(500, self._finish_session)
+            # 200ms lets the recorder's final GLib.idle_add(on_chunk_ready) reach
+            # the GTK main loop before we check _in_flight.
+            GLib.timeout_add(200, self._try_finish_after_stop)
         else:
+            self._session_ending = False
             self._finish_session()
 
     def toggle_feedback(self) -> None:
@@ -169,9 +179,10 @@ class ConversationManager:
 
     def _on_chunk_ready(self, wav_path: str) -> bool:
         """Called on GTK main thread when recorder delivers a chunk."""
-        if self._state != _STATE_CONVERSATION:
+        if self._state != _STATE_CONVERSATION and not self._session_ending:
             return False
         self._chunk_count += 1
+        self._in_flight += 1
         elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
         logger.info(
             "chunk_ready: chunk=%d elapsed=%ds wav=%s — resetting silence timers",
@@ -200,6 +211,7 @@ class ConversationManager:
                 os.unlink(wav_path)
             except OSError:
                 pass
+            GLib.idle_add(self._on_thread_done)
 
     def _on_chunk_transcribed(self, text: str, chunk_num: int) -> bool:
         """GTK main thread: store transcribed text."""
@@ -243,8 +255,10 @@ class ConversationManager:
         _silence_offset_sec so the display counts up continuously across chunk boundaries.
         """
         if silence_frames == 0:
-            # Voice detected — reset accumulated silence
+            # Voice detected — reset accumulated silence and restart session timers
+            # so the warn/stop timers measure inactivity from last speech, not last chunk.
             self._silence_offset_sec = 0
+            self._reset_silence_timers(reason="voice_detected")
         elif self._last_silence_frames > silence_frames:
             # frames went backwards (new chunk started after silence boundary)
             self._silence_offset_sec += int(self._last_silence_frames * 0.1)
@@ -265,10 +279,10 @@ class ConversationManager:
             GLib.source_remove(self._stop_timer)
             self._stop_timer = None
             cancelled.append("stop")
-            if self._silence_dialog:
-                self._silence_dialog.close()
-                self._silence_dialog = None
-                cancelled.append("dialog")
+        if self._silence_dialog:
+            self._silence_dialog.close()
+            self._silence_dialog = None
+            cancelled.append("dialog")
         config = load_config()
         warn_sec = config.get("conv_silence_warn_sec", 30)
         stop_sec = config.get("conv_silence_stop_sec", 60)
@@ -380,8 +394,56 @@ class ConversationManager:
         self.stop_session(reason="hard_limit")
         return False
 
+    def _on_speech_heartbeat(self) -> bool:
+        """GTK main thread: every 5s during a session, if user is actively speaking
+        (last known silence_frames == 0), renew the warn timer and visual baseline.
+
+        This prevents false silence-warn during uninterrupted long speech where no
+        chunk boundary fires (chunks only emit after chunk_silence_sec of silence)
+        and where the on_silence_tick(0) transition already fired at speech start
+        but is debounced and won't fire again until next silence→speech transition.
+        """
+        if self._state != _STATE_CONVERSATION:
+            return False
+        if self._last_silence_frames == 0:
+            # User is actively speaking — renew session silence timers
+            config = load_config()
+            warn_sec = config.get("conv_silence_warn_sec", 30)
+            stop_sec = config.get("conv_silence_stop_sec", 60)
+            if self._warn_timer:
+                GLib.source_remove(self._warn_timer)
+            self._warn_timer = GLib.timeout_add_seconds(warn_sec, self._on_silence_warn)
+            if self._status_window:
+                self._status_window.set_silence_baseline(time.monotonic(), warn_sec, stop_sec)
+            logger.debug("speech_heartbeat: user speaking — renewed warn timer warn_in=%ds", warn_sec)
+        return True
+
+    def _on_thread_done(self) -> bool:
+        """GTK main thread: called when a transcription thread finishes."""
+        self._in_flight = max(0, self._in_flight - 1)
+        logger.debug("thread_done: in_flight=%d session_ending=%s", self._in_flight, self._session_ending)
+        if self._in_flight == 0 and self._session_ending:
+            self._session_ending = False
+            self._finish_session()
+        return False
+
+    def _try_finish_after_stop(self) -> bool:
+        """GTK main thread: called 200ms after stop to check if all threads are done."""
+        if self._in_flight == 0:
+            self._session_ending = False
+            self._finish_session()
+        # else: _on_thread_done will call _finish_session when last thread completes
+        return False
+
+    def _on_threshold_calibrated(self, value: float) -> bool:
+        """GTK main thread: auto-calibration set a new silence threshold."""
+        logger.info("threshold_calibrated: %.5f", value)
+        if self._status_window:
+            self._status_window.set_threshold_from_calibration(value)
+        return False
+
     def _cancel_all_timers(self) -> None:
-        for attr in ('_warn_timer', '_stop_timer', '_hard_limit_timer'):
+        for attr in ('_warn_timer', '_stop_timer', '_hard_limit_timer', '_speech_heartbeat_timer'):
             tid = getattr(self, attr)
             if tid:
                 GLib.source_remove(tid)
@@ -389,6 +451,7 @@ class ConversationManager:
 
     def _finish_session(self) -> bool:
         """Assemble final transcript and fire on_session_complete. GTK main thread."""
+        self._session_ending = False
         logger.info(
             "finish_session: assembling transcript from %d chunk(s)", len(self._chunk_texts)
         )
