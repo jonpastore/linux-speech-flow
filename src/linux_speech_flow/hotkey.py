@@ -76,12 +76,16 @@ def combo_display(combo_str: str) -> str:
 class HotkeyManager:
     """Hotkey manager for recording and conversation mode.
 
+    Bindings are loaded from config (hotkey_record, hotkey_stop, hotkey_conversation,
+    hotkey_reprocess, hotkey_feedback) and can be reloaded at runtime via reload_bindings().
+
     Default bindings:
       Ctrl+Alt+R  — start / stop recording
-      ESC         — stop recording
+      Ctrl+Alt+R  — stop recording (same default as record toggle)
       Ctrl+Alt+C  — start / stop conversation mode
       Ctrl+Alt+P  — reprocess failed recordings
       Ctrl+Alt+F  — toggle feedback mode (conversation only)
+      ESC         — stop recording (hardcoded, not configurable)
 
     Threading contract:
     - pynput Listener callbacks fire from the Listener daemon thread.
@@ -113,8 +117,16 @@ class HotkeyManager:
         self._started = False
 
         self._stop_was_hotkey = False  # True when record-stop hotkey ended recording
-        self._ctrl_held = False
-        self._alt_held = False
+        self._modifiers_held: set[str] = set()
+        self._bindings: dict[str, tuple[frozenset, str]] = {}
+        self._MODIFIER_MAP = {
+            keyboard.Key.ctrl:    'ctrl', keyboard.Key.ctrl_l:  'ctrl', keyboard.Key.ctrl_r:  'ctrl',
+            keyboard.Key.alt:     'alt',  keyboard.Key.alt_l:   'alt',  keyboard.Key.alt_r:   'alt',
+            keyboard.Key.alt_gr:  'alt',
+            keyboard.Key.shift:   'shift', keyboard.Key.shift_l: 'shift', keyboard.Key.shift_r: 'shift',
+            keyboard.Key.cmd:     'super', keyboard.Key.cmd_r:   'super',
+        }
+        self._reload_bindings_from_config()
 
         self._listener = keyboard.Listener(
             on_press=self._on_press,
@@ -135,6 +147,31 @@ class HotkeyManager:
         self._started = True
         return False
 
+    def reload_bindings(self) -> None:
+        """Hot-reload bindings from config. Safe to call from GTK main thread."""
+        self._reload_bindings_from_config()
+
+    def _reload_bindings_from_config(self) -> None:
+        config = load_config()
+        self._bindings = {
+            action: parse_combo(config.get(HOTKEY_CONFIG_KEYS[action], HOTKEY_DEFAULTS[action]))
+            for action in HOTKEY_DEFAULTS
+        }
+
+    def _matches_binding(self, key, action: str) -> bool:
+        binding = self._bindings.get(action)
+        if binding is None:
+            return False
+        mods, key_id = binding
+        if self._modifiers_held != mods:
+            return False
+        if len(key_id) == 1:
+            return self._key_letter(key) == key_id
+        try:
+            return key == keyboard.Key[key_id]
+        except KeyError:
+            return False
+
     @staticmethod
     def _key_letter(key) -> str | None:
         """Return the lowercase base letter for a key regardless of modifiers.
@@ -154,12 +191,8 @@ class HotkeyManager:
         return None
 
     def _on_press(self, key):
-        # Track modifier state (runs even before _started)
-        if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
-            self._ctrl_held = True
-            return
-        if key in (keyboard.Key.alt_l, keyboard.Key.alt_r, keyboard.Key.alt_gr):
-            self._alt_held = True
+        if key in self._MODIFIER_MAP:
+            self._modifiers_held.add(self._MODIFIER_MAP[key])
             return
 
         if not self._started:
@@ -169,29 +202,26 @@ class HotkeyManager:
             GLib.idle_add(self._stop_recording, False)
             return
 
-        ctrl_alt = self._ctrl_held and self._alt_held
-        letter = self._key_letter(key)
-
-        if ctrl_alt and letter == 'r':
+        if self._matches_binding(key, 'record'):
             if self._state == self._STATE_IDLE:
                 GLib.idle_add(self._start_recording)
             elif self._state == self._STATE_RECORDING:
                 GLib.idle_add(self._stop_recording_hotkey)
-        elif ctrl_alt and letter == 'c':
+        elif self._matches_binding(key, 'stop') and self._state == self._STATE_RECORDING:
+            GLib.idle_add(self._stop_recording, False)
+        elif self._matches_binding(key, 'conversation'):
             if self._state == self._STATE_IDLE:
                 GLib.idle_add(self._conv_start)
             elif self._state == self._STATE_CONVERSATION:
                 GLib.idle_add(self._conv_stop)
-        elif ctrl_alt and letter == 'p':
+        elif self._matches_binding(key, 'reprocess'):
             GLib.idle_add(self._on_reprocess)
-        elif ctrl_alt and letter == 'f' and self._state == self._STATE_CONVERSATION:
+        elif self._matches_binding(key, 'feedback') and self._state == self._STATE_CONVERSATION:
             GLib.idle_add(self._conv_feedback_toggle)
 
     def _on_release(self, key):
-        if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
-            self._ctrl_held = False
-        elif key in (keyboard.Key.alt_l, keyboard.Key.alt_r, keyboard.Key.alt_gr):
-            self._alt_held = False
+        if key in self._MODIFIER_MAP:
+            self._modifiers_held.discard(self._MODIFIER_MAP[key])
 
     def _on_reprocess(self) -> bool:
         if self._on_reprocess_cb:
