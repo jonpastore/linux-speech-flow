@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T06:27:13.601Z"
+last_updated: "2026-03-03T23:43:05.702Z"
 progress:
   total_phases: 11
   completed_phases: 8
-  total_plans: 36
-  completed_plans: 36
+  total_plans: 40
+  completed_plans: 37
 ---
 
 # Project State
@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 
 ## Current Position
 
-Phase: 6.1 of 9 — Complete
-Plan: 2/2 complete (06.1-01, 06.1-02 done)
-Status: Phase 6.1 complete — silence counter counts continuously via cross-chunk accumulation; transcript displayed in GNOME card frame. CONV-06 and CONV-07 satisfied.
-Last activity: 2026-03-03 -- Executed plan 06.1-02; silence accumulation bug fixed + transcript card UI
+Phase: 7 of 9 — In Progress
+Plan: 1/4 complete (07-01 done)
+Status: Phase 7 plan 01 complete — hotkey backend refactored: parse_combo/combo_display helpers, _modifiers_held set dispatch, reload_bindings() wired from app.py
+Last activity: 2026-03-03 -- Executed plan 07-01; config-driven HotkeyManager backend with hot-reload
 
 Progress: [█████████████████████████████] 92%
 
@@ -76,6 +76,7 @@ Progress: [███████████████████████
 | Phase 06-conversation-mode P06 | 2 | 2 tasks | 2 files |
 | Phase 06-conversation-mode P07 | 2 | 2 tasks | 3 files |
 | Phase 06-conversation-mode P08 | 5 min | 2 tasks | 0 files (verification only) |
+| Phase 07-hotkey-customization P01 | 6 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -177,6 +178,10 @@ Recent decisions affecting current work:
 - [06.1-01]: update_silence/update_transcript placed before _update_elapsed to group public API together in ConversationStatusWindow
 - [06.1-02]: Cross-chunk silence accumulation via _silence_offset_sec: when silence_frames goes backwards (new chunk after boundary), prior chunk's count carried forward; voice detection (silence_frames==0) resets both offset and last value
 - [06.1-02]: GTK 'card' CSS class for transcript container gives native GNOME appearance without custom CSS; maintained by libadwaita design system
+- [Phase 07-01]: _MODIFIER_MAP built as instance attr in __init__ (not class-level const) so mocked keyboard.Key refs are captured at instantiation time
+- [Phase 07-01]: _matches_binding checks len(key_id)==1 before Key enum lookup to avoid MagicMock always returning truthy on [] access
+- [Phase 07-01]: record binding checked before stop in _on_press so Ctrl+Alt+R while RECORDING uses _stop_recording_hotkey (stop_was_hotkey=True)
+- [Phase 07-01]: parse_combo and combo_display are module-level functions for Settings UI import without needing HotkeyManager instance
 
 ### Roadmap Evolution
 
