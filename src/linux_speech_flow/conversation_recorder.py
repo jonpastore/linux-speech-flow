@@ -14,8 +14,8 @@ CHANNELS = 1
 SAMPLE_WIDTH = 2
 CHUNK_DURATION = 0.1            # seconds per read() call
 CHUNK_BYTES = int(SAMPLE_RATE * CHANNELS * SAMPLE_WIDTH * CHUNK_DURATION)
-SILENCE_RMS_THRESHOLD = 0.005
 MIN_GUARD_FRAMES = 10           # ignore silence detection for first N frames (PulseAudio buffer fill)
+RMS_DISPLAY_SCALE = 12          # multiplier so typical speech reaches ~0.5–1.0 on a 0–1 LevelBar
 
 
 class ConversationRecorder:
@@ -35,16 +35,23 @@ class ConversationRecorder:
     - stop() is safe from any thread (sets a threading.Event).
     """
 
-    def __init__(self, device_name: str | None, chunk_silence_sec: int = 3):
+    def __init__(
+        self,
+        device_name: str | None,
+        chunk_silence_sec: int = 3,
+        silence_rms_threshold: float = 0.005,
+    ):
         self._device_name = device_name or None
         self._chunk_silence_sec = chunk_silence_sec
+        self._silence_rms_threshold = silence_rms_threshold
         self._stop_event = threading.Event()
         self._chunk_dir = tempfile.mkdtemp(prefix="lsf-conv-")
         self._on_chunk_ready = None
         self._on_error = None
         self._on_silence_tick = None
+        self._on_audio_level = None
 
-    def start(self, on_chunk_ready, on_error, on_silence_tick=None) -> None:
+    def start(self, on_chunk_ready, on_error, on_silence_tick=None, on_audio_level=None) -> None:
         """Start recording in a daemon thread.
 
         Args:
@@ -58,10 +65,14 @@ class ConversationRecorder:
                 GLib.idle_add; silence_frames is the current consecutive silent
                 frame count within the current chunk (0 = voice detected); emitted
                 only when value changes (debounced).
+            on_audio_level: Callable(level: float) — GTK main thread via
+                GLib.idle_add; level is RMS * RMS_DISPLAY_SCALE clamped to 1.0,
+                emitted every frame after the guard period for live level display.
         """
         self._on_chunk_ready = on_chunk_ready
         self._on_error = on_error
         self._on_silence_tick = on_silence_tick
+        self._on_audio_level = on_audio_level
         self._stop_event.clear()
         threading.Thread(target=self._record_loop, daemon=True).start()
 
@@ -137,11 +148,14 @@ class ConversationRecorder:
                 if frames_written >= MIN_GUARD_FRAMES:
                     samples = struct.unpack(f"{len(raw) // SAMPLE_WIDTH}h", raw)
                     rms = math.sqrt(sum(s * s for s in samples) / len(samples)) / 32768.0
-                    if rms < SILENCE_RMS_THRESHOLD:
+                    if rms < self._silence_rms_threshold:
                         silence_frames += 1
                     else:
                         silence_frames = 0
                         had_audio = True
+
+                    if self._on_audio_level:
+                        GLib.idle_add(self._on_audio_level, min(1.0, rms * RMS_DISPLAY_SCALE))
 
                     if self._on_silence_tick and silence_frames != last_emitted_silence:
                         last_emitted_silence = silence_frames
