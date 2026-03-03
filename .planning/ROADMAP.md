@@ -13,7 +13,7 @@ linux-speech-flow is a multi-phase build from configuration skeleton to installa
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation & Configuration** - Project scaffolding, config persistence, API key setup wizard, and microphone/vocabulary settings
-- [x] **Phase 2: Audio Capture & Hotkey** - Hold-to-record via F9 with pasimple audio recording, sound feedback, and device error handling
+- [x] **Phase 2: Audio Capture & Hotkey** - Toggle recording via Ctrl+Alt+R with pasimple audio recording, sound feedback, and device error handling
 - [x] **Phase 3: Transcription & Text Injection** - Groq Whisper transcription, LLM post-processing with context, clipboard paste into focused app (completed 2026-02-21)
 - [x] **Phase 4: System Tray & Desktop Integration** - AppIndicator tray icon with state feedback, menu actions, and desktop notifications
 - [x] **Phase 5: Pipeline History** - SQLite run log storage, retention policy, and GTK history viewer (completed 2026-02-21)
@@ -46,12 +46,12 @@ Plans:
 - [x] 01-05-PLAN.md — Human verification of complete Phase 1 wizard flow
 
 ### Phase 2: Audio Capture & Hotkey
-**Goal**: User can hold F9 to record audio from their microphone and hear audible feedback confirming recording start/stop
+**Goal**: User can press Ctrl+Alt+R to toggle recording from their microphone and hear audible feedback confirming recording start/stop
 **Depends on**: Phase 1
 **Requirements**: CORE-01, CORE-02, CORE-03, CORE-04, CORE-05
 **Success Criteria** (what must be TRUE):
-  1. User holds F9 and audio recording begins immediately from the configured microphone via pasimple
-  2. User releases F9 and audio recording stops, producing a WAV file ready for transcription
+  1. User presses Ctrl+Alt+R and audio recording begins immediately from the configured microphone via pasimple
+  2. User presses Ctrl+Alt+R again (or ESC) and audio recording stops, producing a WAV file ready for transcription
   3. Audible start and stop sounds play when recording begins and ends
   4. If no audio input device is available, user sees a clear error message
   5. Global hotkey works regardless of which application is focused (X11 key grab)
@@ -61,11 +61,11 @@ Plans:
 - [x] 02-01-PLAN.md — Package deps (pynput, pasimple), config Phase 2 defaults, audio.list_sinks()
 - [x] 02-02-PLAN.md — Bundled WAV sound files + sounds.py (paplay) + notify.py (notify-send)
 - [x] 02-03-PLAN.md — AudioRecorder: pasimple recording thread, RMS silence detection, WAV lifecycle
-- [x] 02-04-PLAN.md — HotkeyManager: pynput push-to-talk state machine + Settings Audio section
+- [x] 02-04-PLAN.md — HotkeyManager: pynput toggle-record state machine (Ctrl+Alt+R start/stop, ESC stop) + Settings Audio section
 - [x] 02-05-PLAN.md — App.do_startup() wiring + human verification of complete Phase 2 flow
 
 ### Phase 3: Transcription & Text Injection
-**Goal**: User speaks while F9 is active and on stop the transcribed, cleaned-up text appears in whatever application they were typing in
+**Goal**: User presses Ctrl+Alt+R to start recording; on stop the transcribed, cleaned-up text appears in whatever application they were typing in
 **Depends on**: Phase 2
 **Requirements**: TRANS-01, TRANS-02, TRANS-03, TRANS-04, TRANS-05, TRANS-06, TRANS-07, TRANS-08, TRANS-09, TRANS-10, TRANS-11
 **Success Criteria** (what must be TRUE):
@@ -75,17 +75,17 @@ Plans:
   4. If LLM post-processing fails, raw Whisper transcript is pasted as fallback
   5. Custom vocabulary words from config are included in the post-processing prompt
   6. Processing sound plays on pipeline start; success chime plays on paste
-  7. F9 during active pipeline queues the recording with user notification
-  8. F10 retries failed WAVs (single: immediate; multiple: GTK dialog with batch mode)
+  7. Ctrl+Alt+R during active pipeline queues the recording with user notification
+  8. Ctrl+Alt+P retries failed WAVs (single: immediate; multiple: GTK dialog with batch mode)
 **Plans**: 6 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Config Phase 3 defaults + processing.wav/success.wav + groq dep + REQUIREMENTS.md
-- [ ] 03-02-PLAN.md — transcription.py (TranscriptionPipeline) + window_context.py + injector.py
-- [ ] 03-03-PLAN.md — Transcription settings section in SettingsWindow (LLM model, timeout, sounds, categories, prompt editor)
-- [ ] 03-04-PLAN.md — App._on_recording_complete wiring + HotkeyManager F10 dispatch + queue notification
-- [ ] 03-05-PLAN.md — ReprocessDialog GTK4 modal + TranscriptionPipeline.submit_batch_to_file()
-- [ ] 03-06-PLAN.md — Pre-verification checks + human verification of complete Phase 3 flow
+- [x] 03-01-PLAN.md — Config Phase 3 defaults + processing.wav/success.wav + groq dep + REQUIREMENTS.md
+- [x] 03-02-PLAN.md — transcription.py (TranscriptionPipeline) + window_context.py + injector.py
+- [x] 03-03-PLAN.md — Transcription settings section in SettingsWindow (LLM model, timeout, sounds, categories, prompt editor)
+- [x] 03-04-PLAN.md — App._on_recording_complete wiring + HotkeyManager F10 dispatch + queue notification
+- [x] 03-05-PLAN.md — ReprocessDialog GTK4 modal + TranscriptionPipeline.submit_batch_to_file()
+- [x] 03-06-PLAN.md — Pre-verification checks + human verification of complete Phase 3 flow
 
 ### Phase 4: System Tray & Desktop Integration
 **Goal**: User sees linux-speech-flow as a persistent system tray application with visual recording state, menu actions, and error notifications
@@ -110,9 +110,9 @@ Plans:
 **Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 04.1-01-PLAN.md — Rename 8 SVG icons (git mv), update tray.py constants + install_icons() cleanup, update app.py strings + autostart cleanup
-- [ ] 04.1-02-PLAN.md — Config migration in config.py, dead code scan in settings.py, REQUIREMENTS.md update
-- [ ] 04.1-03-PLAN.md — Git history squash to single commit + human verification
+- [x] 04.1-01-PLAN.md — Rename 8 SVG icons (git mv), update tray.py constants + install_icons() cleanup, update app.py strings + autostart cleanup
+- [x] 04.1-02-PLAN.md — Config migration in config.py, dead code scan in settings.py, REQUIREMENTS.md update
+- [x] 04.1-03-PLAN.md — Git history squash to single commit + human verification
 
 ### Phase 5: Pipeline History
 **Goal**: User can review their recent transcription history with full context in a dedicated log viewer
@@ -135,7 +135,7 @@ Plans:
 **Depends on**: Phase 5
 **Requirements**: CONV-01, CONV-02, CONV-03, CONV-04, CONV-05
 **Success Criteria** (what must be TRUE):
-  1. User presses F11 to start/stop a long-form conversation recording (silence-chunked, auto-transcribed per chunk)
+  1. User presses Ctrl+Alt+C to start/stop a long-form conversation recording (silence-chunked, auto-transcribed per chunk)
   2. Auto-stop triggers: 180s silence prompts user, 300s auto-stops with audio cue; max 4hr hard limit with warning sound; all timers configurable
   3. Post-stop dialog lets user save to file, inject to active window, or both; AI analysis optional per session with auto-analyze setting
   4. Coalesced output file: ISO8601+AI-title.txt with AI summary → Q&A rounds → full transcript
@@ -143,7 +143,7 @@ Plans:
 **Plans**: 8 plans
 
 Plans:
-- [x] 06-01-PLAN.md — Foundation: Phase 6 config defaults, openai/google-genai deps, HotkeyManager F11/F12, tray badge SVGs
+- [x] 06-01-PLAN.md — Foundation: Phase 6 config defaults, openai/google-genai deps, HotkeyManager Ctrl+Alt+C/F bindings, tray badge SVGs
 - [x] 06-02-PLAN.md — ConversationRecorder: chunked silence-bounded WAV writer
 - [x] 06-03-PLAN.md — ConversationPipeline: multi-model AI analysis, synthesis, file coalescing
 - [x] 06-04-PLAN.md — ConversationManager state machine + ConversationStatusWindow
@@ -162,8 +162,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 06.1-01-PLAN.md — Add on_silence_tick callback to ConversationRecorder; add silence + transcript labels to ConversationStatusWindow
-- [ ] 06.1-02-PLAN.md — Wire silence tick and transcript forwarding in ConversationManager; human verification
+- [x] 06.1-01-PLAN.md — Add on_silence_tick callback to ConversationRecorder; add silence + transcript labels to ConversationStatusWindow
+- [x] 06.1-02-PLAN.md — Wire silence tick and transcript forwarding in ConversationManager; human verification
 
 ### Phase 7: Hotkey Customization
 **Goal**: User can configure all hotkeys (recording start/stop, replay, conversation mode) through Settings with support for key combinations
@@ -230,7 +230,7 @@ Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 |-------|----------------|--------|-----------|
 | 1. Foundation & Configuration | 5/5 | Complete | 2026-02-19 |
 | 2. Audio Capture & Hotkey | 5/5 | Complete | 2026-02-19 |
-| 3. Transcription & Text Injection | 4/6 | Complete | 2026-02-21 |
+| 3. Transcription & Text Injection | 6/6 | Complete | 2026-02-21 |
 | 4. System Tray & Desktop Integration | 3/3 | Complete | 2026-02-21 |
 | 4.1. FreeFlow Rename and Codebase Cleanup | 3/3 | Complete | 2026-02-21 |
 | 5. Pipeline History | 4/4 | Complete | 2026-02-21 |

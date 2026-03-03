@@ -146,12 +146,12 @@ class App(Gtk.Application):
         if self._tray:
             self._tray.set_state('recording')
 
-    def _on_recording_complete(self, wav_path: str, stop_was_f9: bool = False) -> None:
+    def _on_recording_complete(self, wav_path: str, stop_was_hotkey: bool = False) -> None:
         if self._tray:
             self._tray.set_state('processing')
         if self._pipeline is None:
             return
-        depth = self._pipeline.submit(wav_path, stop_was_f9=stop_was_f9)
+        depth = self._pipeline.submit(wav_path, stop_was_hotkey=stop_was_hotkey)
         if depth > 1:
             send_notification('Recording queued', f'{depth} pending')
 
@@ -196,7 +196,7 @@ class App(Gtk.Application):
         logger.info('autostart installed: %s', desktop_path)
 
     def _on_reprocess_hotkey(self) -> None:
-        """Called from HotkeyManager when F10 is pressed."""
+        """Called from HotkeyManager when Ctrl+Alt+P is pressed."""
         from linux_speech_flow.reprocess_dialog import ReprocessDialog
         if not FAILED_DIR.exists():
             return

@@ -129,31 +129,29 @@ class TranscriptionPipeline:
             count = self._get_failed_count()
             GLib.idle_add(self._on_failed_count_changed, count)
 
-    def submit(self, wav_path: str, stop_was_f9: bool = False) -> int:
+    def submit(self, wav_path: str, stop_was_hotkey: bool = False) -> int:
         """Queue wav_path for processing. Returns queue depth AFTER insert.
 
         Captures window context NOW (on GTK main thread) to avoid focus-theft
         by notifications fired during API calls. Returns depth so caller can
         notify user if depth > 1 ("Recording queued (N pending)").
 
-        stop_was_f9: True when F9 was also the stop key, so both the start and
-        stop F9 keypresses leaked into the target window as literal '<F9>' text.
-        False when ESC stopped the recording (only the start F9 leaked).
+        stop_was_hotkey: True when the record-stop hotkey ended recording.
+        Ctrl+Alt combos do not produce literal text in target windows on X11,
+        so leaked_hotkey_count is always 0 regardless.
         """
         config = load_config()
         app_categories = config.get("app_categories", {})
         window_info = get_active_window_info(app_categories=app_categories)
-        # Track how many F9 keypresses leaked into the target window as '<F9>'
-        # text (5 chars each): always 1 for recording start, +1 if F9 also stopped.
-        window_info["leaked_f9_count"] = 2 if stop_was_f9 else 1
+        # Ctrl+Alt+R hotkey does not produce literal text in target windows on X11.
+        window_info["leaked_hotkey_count"] = 0
         logger.info(
-            "submit wav=%s window_id=%s wm_class=%r category=%s session=%s leaked_f9=%d",
+            "submit wav=%s window_id=%s wm_class=%r category=%s session=%s",
             wav_path,
             window_info.get("window_id"),
             window_info.get("wm_class"),
             window_info.get("category"),
             window_info.get("session"),
-            window_info["leaked_f9_count"],
         )
         self._queue.put((wav_path, window_info, config))
         return self._queue.qsize()
@@ -166,8 +164,8 @@ class TranscriptionPipeline:
         in the default text editor via xdg-open.
         """
         import tempfile
-        output_path = tempfile.mktemp(suffix=".txt", prefix="linux-speech-flow-batch-")
-        open(output_path, "w").close()
+        fd, output_path = tempfile.mkstemp(suffix=".txt", prefix="linux-speech-flow-batch-")
+        os.close(fd)
         for wav_path in wav_paths:
             config = load_config()
             app_categories = config.get("app_categories", {})
@@ -352,7 +350,7 @@ class TranscriptionPipeline:
 
     def _dispatch_api_error(self, message: str, wav_path: str):
         logger.info("dispatching API error notification: %s", message)
-        result = send_notification("Transcription failed — Press F10 to reprocess", message)
+        result = send_notification("Transcription failed — Press Ctrl+Alt+P to reprocess", message)
         logger.info("notification sent, id=%s", result)
         if self._on_error:
             self._on_error(message)

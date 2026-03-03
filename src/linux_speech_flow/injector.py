@@ -65,10 +65,10 @@ def _x11_paste(text: str, window_info: dict) -> None:
         time.sleep(0.05)
 
     if is_vim:
-        # gvim insert mode: F9 keypresses leaked through pynput as literal '<F9>'
-        # text (5 chars each). Delete them before pasting.
-        leaked = window_info.get("leaked_f9_count", 1)
-        backspace_count = leaked * 4  # <F9> is 4 chars: <, F, 9, >
+        # gvim insert mode: backspace guard for any hotkey chars that leaked as literal text.
+        # Ctrl+Alt combos produce no literal text (count=0), so this is a no-op for normal use.
+        leaked = window_info.get("leaked_hotkey_count", 0)
+        backspace_count = leaked * 4
         logger.info("vim: deleting %d chars (%d leaked F9s) then shift+Insert", backspace_count, leaked)
         if backspace_count:
             subprocess.run(

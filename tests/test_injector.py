@@ -158,7 +158,7 @@ class TestPasteTextX11:
             run_cmds = [c[0][0] for c in mock_run.call_args_list]
             assert any("shift+Insert" in cmd for cmd in run_cmds)
 
-    def test_vim_sends_backspace_for_leaked_f9(self):
+    def test_vim_backspace_guard_fires_when_count_nonzero(self):
         with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, \
              patch("linux_speech_flow.injector.subprocess.run") as mock_run, \
              patch("linux_speech_flow.injector.time.sleep"), \
@@ -168,20 +168,39 @@ class TestPasteTextX11:
             mock_run.return_value = MagicMock(returncode=0, stderr="")
 
             info = self._x11_window_info(wm_class="gvim")
-            info["leaked_f9_count"] = 2  # start + stop both F9
+            info["leaked_hotkey_count"] = 2  # hypothetical future hotkey leaking 2 chars
 
             paste_text("hello", info)
 
-            # Find the BackSpace call
             bs_calls = [
                 c for c in mock_run.call_args_list
                 if "BackSpace" in str(c)
             ]
             assert len(bs_calls) == 1
             bs_cmd = bs_calls[0][0][0]
-            # --repeat count should be 2 * 4 = 8
             repeat_idx = bs_cmd.index("--repeat")
-            assert bs_cmd[repeat_idx + 1] == "8"
+            assert bs_cmd[repeat_idx + 1] == "8"  # 2 * 4
+
+    def test_vim_no_backspace_when_leaked_count_zero(self):
+        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, \
+             patch("linux_speech_flow.injector.subprocess.run") as mock_run, \
+             patch("linux_speech_flow.injector.time.sleep"), \
+             patch.dict(os.environ, {"DISPLAY": ":0"}):
+            mock_proc = MagicMock()
+            mock_popen.return_value = mock_proc
+            mock_run.return_value = MagicMock(returncode=0, stderr="")
+
+            info = self._x11_window_info(wm_class="gvim")
+            # Ctrl+Alt+R produces no literal text — default case
+            info["leaked_hotkey_count"] = 0
+
+            paste_text("hello", info)
+
+            bs_calls = [
+                c for c in mock_run.call_args_list
+                if "BackSpace" in str(c)
+            ]
+            assert len(bs_calls) == 0
 
     def test_no_display_skips_xdotool(self):
         with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, \

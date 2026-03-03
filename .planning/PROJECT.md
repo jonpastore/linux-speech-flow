@@ -2,7 +2,7 @@
 
 ## What This Is
 
-FreeFlow Linux is an open source Python rewrite of FreeFlow — a voice dictation app — targeting Pop!_OS, Ubuntu, and Debian. The user presses and holds a hotkey (F9 by default) to record audio, which is transcribed via Groq Whisper, cleaned up via Groq LLM post-processing with context awareness, and pasted directly into the focused application.
+FreeFlow Linux is an open source Python rewrite of FreeFlow — a voice dictation app — targeting Pop!_OS, Ubuntu, and Debian. The user presses Ctrl+Alt+R to start recording audio, then Ctrl+Alt+R again (or ESC) to stop; the audio is transcribed via Groq Whisper, cleaned up via Groq LLM post-processing with context awareness, and pasted directly into the focused application.
 
 ## Core Value
 
@@ -17,7 +17,7 @@ Hold a key, speak, release — transcribed text appears in whatever you're typin
 ### Active
 
 - [ ] System tray presence (DE-appropriate approach TBD by research)
-- [ ] Hold F9 to record audio, release to transcribe and paste
+- [ ] Press Ctrl+Alt+R to start recording, press again or ESC to stop; text transcribed and pasted
 - [ ] Audio captured via PulseAudio/PipeWire
 - [ ] Transcription via Groq Whisper API (whisper-large-v3)
 - [ ] Post-processing via Groq LLM with active app name + screenshot context
@@ -69,7 +69,7 @@ The Mac version (Swift/SwiftUI/AppKit) is the reference implementation in this r
 |---|---|---|
 | Python over Rust/Go | Fastest path to working .deb; good ecosystem for audio/GTK/xdotool | — Pending |
 | X11 first, Wayland deferred | xdotool text injection doesn't work on Wayland; Wayland lacks standardized APIs | — Pending |
-| F9 as default hotkey | Uncommon function key, rarely conflicts with system or app shortcuts | — Pending |
+| Ctrl+Alt+R as record hotkey | Ctrl+Alt combos don't conflict with apps and produce no literal text in target windows | — Decided |
 | System tray approach | Research phase will determine GTK/AppIndicator vs alternative for GNOME compat | — Pending |
 | Separate Linux repo | Clean separation from Mac-specific codebase; better discoverability for Linux users | — Pending |
 
