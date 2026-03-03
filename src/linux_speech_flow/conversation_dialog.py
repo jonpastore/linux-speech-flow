@@ -1,6 +1,6 @@
 import gi
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, GLib
+from gi.repository import Gtk, GLib, Pango
 
 from linux_speech_flow.config import load_config
 
@@ -56,7 +56,7 @@ class ConversationDialog(Gtk.ApplicationWindow):
             q_label = Gtk.Label(label=question)
             q_label.set_xalign(0)
             q_label.set_wrap(True)
-            q_label.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+            q_label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
             content.append(q_label)
 
             answer_entry = Gtk.Entry()

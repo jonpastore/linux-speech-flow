@@ -13,11 +13,14 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
     Created/destroyed by ConversationManager; not user-closeable during recording.
     """
 
-    def __init__(self, application):
+    def __init__(self, application, on_threshold_changed=None):
         super().__init__(application=application, title="Conversation Recording")
-        self.set_default_size(360, 260)
+        self.set_default_size(360, 300)
         self.set_resizable(False)
         self.set_deletable(False)  # prevent window manager close during recording
+        self.set_focus_on_click(False)  # don't steal keyboard focus from active window
+
+        self._on_threshold_changed = on_threshold_changed
 
         config = load_config()
         self._silence_threshold = config.get("conv_silence_rms_threshold", 0.005)
@@ -49,6 +52,21 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         self._mic_canvas.set_draw_func(self._draw_mic, None)
         box.append(self._mic_canvas)
 
+        # Threshold slider for live adjustment
+        thresh_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        thresh_label = Gtk.Label(label="Threshold:")
+        thresh_label.set_halign(Gtk.Align.START)
+        thresh_box.append(thresh_label)
+        self._thresh_slider = Gtk.Scale.new_with_range(
+            Gtk.Orientation.HORIZONTAL, 0.001, 0.05, 0.001
+        )
+        self._thresh_slider.set_value(self._silence_threshold)
+        self._thresh_slider.set_hexpand(True)
+        self._thresh_slider.set_draw_value(False)
+        self._thresh_slider.connect("value-changed", self._on_thresh_slider)
+        thresh_box.append(self._thresh_slider)
+        box.append(thresh_box)
+
         transcript_frame = Gtk.Frame()
         transcript_frame.add_css_class("card")
         transcript_inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -69,18 +87,23 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
 
         self._started_at = None
         self._timer_id = None
+        self._mic_redraw_timer_id = None
 
     def start(self) -> None:
-        """Begin elapsed timer. Call when ConversationManager starts recording."""
+        """Begin elapsed timer and mic redraw loop."""
         self._started_at = time.monotonic()
         self._timer_id = GLib.timeout_add_seconds(1, self._update_elapsed)
+        self._mic_redraw_timer_id = GLib.timeout_add(50, self._redraw_mic)
         self._update_elapsed()
 
     def stop(self) -> None:
-        """Stop elapsed timer. Call when ConversationManager stops recording."""
+        """Stop timers. Call when ConversationManager stops recording."""
         if self._timer_id:
             GLib.source_remove(self._timer_id)
             self._timer_id = None
+        if self._mic_redraw_timer_id:
+            GLib.source_remove(self._mic_redraw_timer_id)
+            self._mic_redraw_timer_id = None
         self.set_deletable(True)
 
     def update_status(self, chunk_count: int, last_status: str) -> None:
@@ -98,9 +121,19 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         self._transcript_label.set_text(text)
 
     def update_mic_level(self, level: float) -> None:
-        """Update mic level display. level is RMS*scale clamped 0.0–1.0. GTK main thread only."""
+        """Update mic level value. Repaint driven by periodic timer."""
         self._mic_level = level
+
+    def _redraw_mic(self) -> bool:
+        """Periodic 50ms timer: force mic canvas repaint."""
         self._mic_canvas.queue_draw()
+        return True  # keep timer firing
+
+    def _on_thresh_slider(self, slider) -> None:
+        value = slider.get_value()
+        self._silence_threshold = value
+        if self._on_threshold_changed:
+            self._on_threshold_changed(value)
 
     def _draw_mic(self, area, cr, width, height, _data) -> None:
         """Draw mic level fill and threshold marker on the canvas."""
