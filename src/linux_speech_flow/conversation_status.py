@@ -41,20 +41,13 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         self._silence_label.set_halign(Gtk.Align.START)
         box.append(self._silence_label)
 
-        # Mic level bar with threshold marker overlay
-        mic_overlay = Gtk.Overlay()
-        self._mic_level_bar = Gtk.LevelBar()
-        self._mic_level_bar.set_min_value(0.0)
-        self._mic_level_bar.set_max_value(1.0)
-        self._mic_level_bar.set_value(0.0)
-        mic_overlay.set_child(self._mic_level_bar)
-
-        self._threshold_area = Gtk.DrawingArea()
-        self._threshold_area.set_can_target(False)
-        self._threshold_area.set_draw_func(self._draw_threshold, None)
-        mic_overlay.add_overlay(self._threshold_area)
-
-        box.append(mic_overlay)
+        # Mic level bar — single DrawingArea draws level fill + threshold marker
+        self._mic_level = 0.0
+        self._mic_canvas = Gtk.DrawingArea()
+        self._mic_canvas.set_hexpand(True)
+        self._mic_canvas.set_size_request(-1, 16)
+        self._mic_canvas.set_draw_func(self._draw_mic, None)
+        box.append(self._mic_canvas)
 
         transcript_frame = Gtk.Frame()
         transcript_frame.add_css_class("card")
@@ -105,23 +98,43 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         self._transcript_label.set_text(text)
 
     def update_mic_level(self, level: float) -> None:
-        """Update mic level bar. level is RMS*scale clamped to 0.0–1.0. GTK main thread only."""
-        self._mic_level_bar.set_value(level)
+        """Update mic level display. level is RMS*scale clamped 0.0–1.0. GTK main thread only."""
+        self._mic_level = level
+        self._mic_canvas.queue_draw()
 
-    def _draw_threshold(self, area, cr, width, height, _data) -> None:
-        """Draw a vertical threshold marker line on the mic level bar overlay."""
+    def _draw_mic(self, area, cr, width, height, _data) -> None:
+        """Draw mic level fill and threshold marker on the canvas."""
         from linux_speech_flow.conversation_recorder import RMS_DISPLAY_SCALE
-        normalized = min(1.0, self._silence_threshold * RMS_DISPLAY_SCALE)
-        x = normalized * width
-        cr.set_source_rgba(0, 0, 0, 0.6)
+        # Background track
+        cr.set_source_rgba(0.2, 0.2, 0.2, 0.4)
+        cr.rectangle(0, 0, width, height)
+        cr.fill()
+        # Level fill: blue below threshold, orange above
+        thresh_x = min(1.0, self._silence_threshold * RMS_DISPLAY_SCALE) * width
+        fill_w = self._mic_level * width
+        if fill_w > 0:
+            if fill_w <= thresh_x:
+                cr.set_source_rgba(0.2, 0.5, 1.0, 0.8)
+            else:
+                cr.set_source_rgba(0.2, 0.5, 1.0, 0.8)
+                cr.rectangle(0, 0, thresh_x, height)
+                cr.fill()
+                cr.set_source_rgba(1.0, 0.55, 0.1, 0.9)
+                cr.rectangle(thresh_x, 0, fill_w - thresh_x, height)
+                cr.fill()
+            if fill_w <= thresh_x:
+                cr.rectangle(0, 0, fill_w, height)
+                cr.fill()
+        # Threshold marker line
+        cr.set_source_rgba(0, 0, 0, 0.7)
         cr.set_line_width(3)
-        cr.move_to(x, 0)
-        cr.line_to(x, height)
+        cr.move_to(thresh_x, 0)
+        cr.line_to(thresh_x, height)
         cr.stroke()
         cr.set_source_rgba(1, 1, 1, 0.9)
         cr.set_line_width(2)
-        cr.move_to(x, 0)
-        cr.line_to(x, height)
+        cr.move_to(thresh_x, 0)
+        cr.line_to(thresh_x, height)
         cr.stroke()
 
     def _update_elapsed(self) -> bool:

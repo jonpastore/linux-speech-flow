@@ -10,19 +10,39 @@ OLD_CONFIG_DIR = Path.home() / ".config" / "freeflow"
 
 
 def _migrate_legacy_config() -> None:
-    """One-time migration: move ~/.config/freeflow/ to ~/.config/linux-speech-flow/."""
-    if not OLD_CONFIG_DIR.exists():
-        return
-    try:
-        if not CONFIG_PATH.exists():
-            old_config = OLD_CONFIG_DIR / "config.json"
-            if old_config.exists():
+    """One-time migrations: directory rename and default value updates."""
+    if OLD_CONFIG_DIR.exists():
+        try:
+            if not CONFIG_PATH.exists():
+                old_config = OLD_CONFIG_DIR / "config.json"
+                if old_config.exists():
+                    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(old_config, CONFIG_PATH)
+            shutil.rmtree(OLD_CONFIG_DIR, ignore_errors=True)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("Config migration failed: %s", exc)
+
+    # Migrate Phase 6 silence timer defaults (180/300) to Phase 6.2 defaults (30/60).
+    # Only updates values that are still at the original Phase 6 defaults.
+    if CONFIG_PATH.exists():
+        try:
+            with open(CONFIG_PATH) as f:
+                data = json.load(f)
+            changed = False
+            if data.get("conv_silence_warn_sec") == 180:
+                data["conv_silence_warn_sec"] = 30
+                changed = True
+            if data.get("conv_silence_stop_sec") == 300:
+                data["conv_silence_stop_sec"] = 60
+                changed = True
+            if changed:
                 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(old_config, CONFIG_PATH)
-        shutil.rmtree(OLD_CONFIG_DIR, ignore_errors=True)
-    except Exception as exc:
-        import logging
-        logging.getLogger(__name__).warning("Config migration failed: %s", exc)
+                with open(CONFIG_PATH, "w") as f:
+                    json.dump(data, f, indent=2)
+                os.chmod(CONFIG_PATH, 0o600)
+        except Exception:
+            pass
 
 DEFAULT_CONFIG = {
     "groq_api_key": "",

@@ -480,19 +480,12 @@ class SettingsWindow(Gtk.ApplicationWindow):
         mic_sens_label.set_xalign(0)
         content.append(mic_sens_label)
 
-        conv_vu_overlay = Gtk.Overlay()
-        self._conv_vu_bar = Gtk.LevelBar()
-        self._conv_vu_bar.set_min_value(0.0)
-        self._conv_vu_bar.set_max_value(1.0)
-        self._conv_vu_bar.set_value(0.0)
-        conv_vu_overlay.set_child(self._conv_vu_bar)
-
-        self._conv_threshold_area = Gtk.DrawingArea()
-        self._conv_threshold_area.set_can_target(False)
-        self._conv_threshold_area.set_draw_func(self._draw_conv_threshold, None)
-        conv_vu_overlay.add_overlay(self._conv_threshold_area)
-
-        content.append(conv_vu_overlay)
+        self._conv_vu_level = 0.0
+        self._conv_vu_canvas = Gtk.DrawingArea()
+        self._conv_vu_canvas.set_hexpand(True)
+        self._conv_vu_canvas.set_size_request(-1, 16)
+        self._conv_vu_canvas.set_draw_func(self._draw_conv_mic, None)
+        content.append(self._conv_vu_canvas)
 
         thresh_label = Gtk.Label(label="Silence threshold")
         thresh_label.set_xalign(0)
@@ -748,26 +741,43 @@ class SettingsWindow(Gtk.ApplicationWindow):
 
     def _update_vu(self, level: float):
         self._vu_bar.set_value(level)
-        self._conv_vu_bar.set_value(level)
+        self._conv_vu_level = level
+        self._conv_vu_canvas.queue_draw()
         return False
 
-    def _draw_conv_threshold(self, area, cr, width, height, _data) -> None:
+    def _draw_conv_mic(self, area, cr, width, height, _data) -> None:
         from linux_speech_flow.conversation_recorder import RMS_DISPLAY_SCALE
-        normalized = min(1.0, self._conv_threshold_scale.get_value() * RMS_DISPLAY_SCALE)
-        x = normalized * width
-        cr.set_source_rgba(0, 0, 0, 0.6)
+        thresh = self._conv_threshold_scale.get_value()
+        thresh_x = min(1.0, thresh * RMS_DISPLAY_SCALE) * width
+        fill_w = self._conv_vu_level * width
+        cr.set_source_rgba(0.2, 0.2, 0.2, 0.4)
+        cr.rectangle(0, 0, width, height)
+        cr.fill()
+        if fill_w > 0:
+            if fill_w <= thresh_x:
+                cr.set_source_rgba(0.2, 0.5, 1.0, 0.8)
+                cr.rectangle(0, 0, fill_w, height)
+                cr.fill()
+            else:
+                cr.set_source_rgba(0.2, 0.5, 1.0, 0.8)
+                cr.rectangle(0, 0, thresh_x, height)
+                cr.fill()
+                cr.set_source_rgba(1.0, 0.55, 0.1, 0.9)
+                cr.rectangle(thresh_x, 0, fill_w - thresh_x, height)
+                cr.fill()
+        cr.set_source_rgba(0, 0, 0, 0.7)
         cr.set_line_width(3)
-        cr.move_to(x, 0)
-        cr.line_to(x, height)
+        cr.move_to(thresh_x, 0)
+        cr.line_to(thresh_x, height)
         cr.stroke()
         cr.set_source_rgba(1, 1, 1, 0.9)
         cr.set_line_width(2)
-        cr.move_to(x, 0)
-        cr.line_to(x, height)
+        cr.move_to(thresh_x, 0)
+        cr.line_to(thresh_x, height)
         cr.stroke()
 
     def _on_conv_threshold_changed(self, _scale) -> None:
-        self._conv_threshold_area.queue_draw()
+        self._conv_vu_canvas.queue_draw()
         self._mark_dirty()
 
     def _set_status(self, label: Gtk.Label, ok: bool, message: str):
