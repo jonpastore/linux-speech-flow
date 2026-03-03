@@ -476,6 +476,73 @@ class SettingsWindow(Gtk.ApplicationWindow):
         conv_title.set_xalign(0)
         content.append(conv_title)
 
+        mic_sens_label = Gtk.Label(label="Mic Sensitivity")
+        mic_sens_label.set_xalign(0)
+        content.append(mic_sens_label)
+
+        conv_vu_overlay = Gtk.Overlay()
+        self._conv_vu_bar = Gtk.LevelBar()
+        self._conv_vu_bar.set_min_value(0.0)
+        self._conv_vu_bar.set_max_value(1.0)
+        self._conv_vu_bar.set_value(0.0)
+        conv_vu_overlay.set_child(self._conv_vu_bar)
+
+        self._conv_threshold_area = Gtk.DrawingArea()
+        self._conv_threshold_area.set_can_target(False)
+        self._conv_threshold_area.set_draw_func(self._draw_conv_threshold, None)
+        conv_vu_overlay.add_overlay(self._conv_threshold_area)
+
+        content.append(conv_vu_overlay)
+
+        thresh_label = Gtk.Label(label="Silence threshold")
+        thresh_label.set_xalign(0)
+        thresh_label.set_margin_top(4)
+        content.append(thresh_label)
+
+        self._conv_threshold_scale = Gtk.Scale.new_with_range(
+            Gtk.Orientation.HORIZONTAL, 0.001, 0.05, 0.001
+        )
+        self._conv_threshold_scale.set_value(
+            self._config.get("conv_silence_rms_threshold", 0.005)
+        )
+        self._conv_threshold_scale.set_draw_value(False)
+        self._conv_threshold_scale.connect("value-changed", self._on_conv_threshold_changed)
+        content.append(self._conv_threshold_scale)
+
+        thresh_hint = Gtk.Label(
+            label="Drag right until the marker sits just past your background noise."
+        )
+        thresh_hint.set_xalign(0)
+        thresh_hint.set_wrap(True)
+        thresh_hint.add_css_class("dim-label")
+        content.append(thresh_hint)
+
+        warn_label = Gtk.Label(label="Silence prompt timeout (seconds)")
+        warn_label.set_xalign(0)
+        warn_label.set_margin_top(8)
+        content.append(warn_label)
+        self._conv_warn_spin = Gtk.SpinButton.new_with_range(5, 300, 5)
+        _block_scroll_spin(self._conv_warn_spin)
+        self._conv_warn_spin.set_value(
+            self._config.get("conv_silence_warn_sec", 30)
+        )
+        content.append(self._conv_warn_spin)
+
+        stop_label = Gtk.Label(label="Silence auto-stop timeout (seconds)")
+        stop_label.set_xalign(0)
+        content.append(stop_label)
+        stop_hint = Gtk.Label(label="Auto-stops if you ignore the prompt. Must be > prompt timeout.")
+        stop_hint.set_xalign(0)
+        stop_hint.set_wrap(True)
+        stop_hint.add_css_class("dim-label")
+        content.append(stop_hint)
+        self._conv_stop_spin = Gtk.SpinButton.new_with_range(10, 600, 5)
+        _block_scroll_spin(self._conv_stop_spin)
+        self._conv_stop_spin.set_value(
+            self._config.get("conv_silence_stop_sec", 60)
+        )
+        content.append(self._conv_stop_spin)
+
         save_label = Gtk.Label(label="Conversation Files Location")
         save_label.set_xalign(0)
         content.append(save_label)
@@ -681,7 +748,27 @@ class SettingsWindow(Gtk.ApplicationWindow):
 
     def _update_vu(self, level: float):
         self._vu_bar.set_value(level)
+        self._conv_vu_bar.set_value(level)
         return False
+
+    def _draw_conv_threshold(self, area, cr, width, height, _data) -> None:
+        from linux_speech_flow.conversation_recorder import RMS_DISPLAY_SCALE
+        normalized = min(1.0, self._conv_threshold_scale.get_value() * RMS_DISPLAY_SCALE)
+        x = normalized * width
+        cr.set_source_rgba(0, 0, 0, 0.6)
+        cr.set_line_width(3)
+        cr.move_to(x, 0)
+        cr.line_to(x, height)
+        cr.stroke()
+        cr.set_source_rgba(1, 1, 1, 0.9)
+        cr.set_line_width(2)
+        cr.move_to(x, 0)
+        cr.line_to(x, height)
+        cr.stroke()
+
+    def _on_conv_threshold_changed(self, _scale) -> None:
+        self._conv_threshold_area.queue_draw()
+        self._mark_dirty()
 
     def _set_status(self, label: Gtk.Label, ok: bool, message: str):
         label.remove_css_class("error")
@@ -795,6 +882,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         config["history_max_entries"] = int(self._history_max_entries_spin.get_value())
         config["grok_api_key"] = self._grok_key_entry.get_text().strip()
         config["gemini_api_key"] = self._gemini_key_entry.get_text().strip()
+        config["conv_silence_rms_threshold"] = self._conv_threshold_scale.get_value()
+        config["conv_silence_warn_sec"] = int(self._conv_warn_spin.get_value())
+        config["conv_silence_stop_sec"] = int(self._conv_stop_spin.get_value())
         config["conv_save_dir"] = self._conv_save_entry.get_text().strip()
         config["conv_feedback_mode"] = self._feedback_combo.get_active_id() or "status_window"
         config["conv_max_qa_iterations"] = int(self._qa_spin.get_value())
@@ -889,6 +979,8 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._history_max_entries_spin.connect("value-changed", md)
         self._grok_key_entry.connect("changed", md)
         self._gemini_key_entry.connect("changed", md)
+        self._conv_warn_spin.connect("value-changed", md)
+        self._conv_stop_spin.connect("value-changed", md)
         self._conv_save_entry.connect("changed", md)
         self._feedback_combo.connect("changed", md)
         self._qa_spin.connect("value-changed", md)
