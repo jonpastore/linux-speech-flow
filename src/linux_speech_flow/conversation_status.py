@@ -2,6 +2,7 @@ import time
 import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
+from linux_speech_flow.config import load_config
 
 
 class ConversationStatusWindow(Gtk.ApplicationWindow):
@@ -14,9 +15,12 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
 
     def __init__(self, application):
         super().__init__(application=application, title="Conversation Recording")
-        self.set_default_size(360, 220)
+        self.set_default_size(360, 260)
         self.set_resizable(False)
         self.set_deletable(False)  # prevent window manager close during recording
+
+        config = load_config()
+        self._silence_threshold = config.get("conv_silence_rms_threshold", 0.005)
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         box.set_margin_start(20)
@@ -36,6 +40,21 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         self._silence_label = Gtk.Label(label="Silence: 0s")
         self._silence_label.set_halign(Gtk.Align.START)
         box.append(self._silence_label)
+
+        # Mic level bar with threshold marker overlay
+        mic_overlay = Gtk.Overlay()
+        self._mic_level_bar = Gtk.LevelBar()
+        self._mic_level_bar.set_min_value(0.0)
+        self._mic_level_bar.set_max_value(1.0)
+        self._mic_level_bar.set_value(0.0)
+        mic_overlay.set_child(self._mic_level_bar)
+
+        self._threshold_area = Gtk.DrawingArea()
+        self._threshold_area.set_can_target(False)
+        self._threshold_area.set_draw_func(self._draw_threshold, None)
+        mic_overlay.add_overlay(self._threshold_area)
+
+        box.append(mic_overlay)
 
         transcript_frame = Gtk.Frame()
         transcript_frame.add_css_class("card")
@@ -84,6 +103,26 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
     def update_transcript(self, text: str) -> None:
         """Display last chunk transcript text. Call from GTK main thread only."""
         self._transcript_label.set_text(text)
+
+    def update_mic_level(self, level: float) -> None:
+        """Update mic level bar. level is RMS*scale clamped to 0.0–1.0. GTK main thread only."""
+        self._mic_level_bar.set_value(level)
+
+    def _draw_threshold(self, area, cr, width, height, _data) -> None:
+        """Draw a vertical threshold marker line on the mic level bar overlay."""
+        from linux_speech_flow.conversation_recorder import RMS_DISPLAY_SCALE
+        normalized = min(1.0, self._silence_threshold * RMS_DISPLAY_SCALE)
+        x = normalized * width
+        cr.set_source_rgba(0, 0, 0, 0.6)
+        cr.set_line_width(3)
+        cr.move_to(x, 0)
+        cr.line_to(x, height)
+        cr.stroke()
+        cr.set_source_rgba(1, 1, 1, 0.9)
+        cr.set_line_width(2)
+        cr.move_to(x, 0)
+        cr.line_to(x, height)
+        cr.stroke()
 
     def _update_elapsed(self) -> bool:
         if self._started_at is None:
