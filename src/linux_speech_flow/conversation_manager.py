@@ -55,6 +55,10 @@ class ConversationManager:
         self._stop_timer: int | None = None
         self._hard_limit_timer: int | None = None
 
+        # Silence display accumulation (across chunk boundaries)
+        self._silence_offset_sec: int = 0
+        self._last_silence_frames: int = 0
+
     def start_session(self) -> None:
         """Start a new conversation recording session. Called on GTK main thread."""
         if self._state != _STATE_IDLE:
@@ -63,6 +67,8 @@ class ConversationManager:
         self._chunk_texts = []
         self._chunk_count = 0
         self._session_start = time.monotonic()
+        self._silence_offset_sec = 0
+        self._last_silence_frames = 0
         if self._on_tray_state:
             self._on_tray_state('conv_recording')
 
@@ -188,11 +194,23 @@ class ConversationManager:
         return False
 
     def _on_silence_tick(self, silence_frames: int) -> bool:
-        """GTK main thread (via GLib.idle_add): forward silence counter to status window."""
+        """GTK main thread (via GLib.idle_add): forward silence counter to status window.
+
+        silence_frames is the per-chunk frame count. When a new chunk starts after a
+        silence boundary, frames reset to 0. We carry forward the prior silence via
+        _silence_offset_sec so the display counts up continuously across chunk boundaries.
+        """
+        if silence_frames == 0:
+            # Voice detected — reset accumulated silence
+            self._silence_offset_sec = 0
+        elif self._last_silence_frames > silence_frames:
+            # frames went backwards (new chunk started after silence boundary)
+            self._silence_offset_sec += int(self._last_silence_frames * 0.1)
+        self._last_silence_frames = silence_frames
         if self._status_window:
-            silence_sec = int(silence_frames * 0.1)  # CHUNK_DURATION = 0.1
+            silence_sec = self._silence_offset_sec + int(silence_frames * 0.1)
             self._status_window.update_silence(silence_sec)
-        return False  # GLib.idle_add must return False to avoid re-invocation
+        return False
 
     def _reset_silence_timers(self) -> None:
         """Cancel existing session silence timers and start fresh."""
