@@ -186,8 +186,9 @@ class HistoryWindow(Gtk.ApplicationWindow):
         entries = self._history_store.fetch_all()
         if not entries:
             cfg = load_config()
-            hotkey = cfg.get('hotkey_record', 'F9')
-            empty_label = Gtk.Label(label=f"No transcriptions yet. Press {hotkey} to start recording.")
+            from linux_speech_flow.hotkey import combo_display
+            hotkey_combo = cfg.get('hotkey_record', 'ctrl+alt+r')
+            empty_label = Gtk.Label(label=f"No transcriptions yet. Press {combo_display(hotkey_combo)} to start recording.")
             empty_label.set_margin_top(24)
             empty_label.set_margin_bottom(24)
             empty_label.set_xalign(0.5)

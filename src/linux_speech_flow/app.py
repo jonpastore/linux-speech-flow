@@ -112,6 +112,8 @@ class App(Gtk.Application):
 
     def _on_settings_closed(self, _window):
         self._settings = None
+        if self._hotkey_manager:
+            self._hotkey_manager.reload_bindings()
         return False
 
     def _on_open_history(self, _btn=None):
