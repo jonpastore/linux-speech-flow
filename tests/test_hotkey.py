@@ -74,6 +74,11 @@ def _ctrl_alt_press(mgr, char, mock_kb):
     "microphone": "",
     "max_recording_duration": 60,
     "silence_stop_duration": 10,
+    "hotkey_record":       "ctrl+alt+r",
+    "hotkey_stop":         "ctrl+alt+r",
+    "hotkey_conversation": "ctrl+alt+c",
+    "hotkey_reprocess":    "ctrl+alt+p",
+    "hotkey_feedback":     "ctrl+alt+f",
 })
 @patch("linux_speech_flow.hotkey.play_sound")
 @patch("linux_speech_flow.hotkey.send_notification", return_value=None)
@@ -155,17 +160,17 @@ class TestHotkeyStateMachine:
 
     def test_on_release_clears_modifier_flags(self, mock_notify, mock_sound,
                                                mock_cfg, mock_kb, mock_glib):
-        """Releasing Ctrl and Alt clears the held-modifier flags."""
+        """Releasing Ctrl and Alt removes them from _modifiers_held."""
         self._setup_idle_add(mock_glib)
         mgr = _make_manager()
         mgr._on_press(mock_kb.Key.ctrl_l)
         mgr._on_press(mock_kb.Key.alt_l)
-        assert mgr._ctrl_held is True
-        assert mgr._alt_held is True
+        assert 'ctrl' in mgr._modifiers_held
+        assert 'alt' in mgr._modifiers_held
         mgr._on_release(mock_kb.Key.ctrl_l)
         mgr._on_release(mock_kb.Key.alt_l)
-        assert mgr._ctrl_held is False
-        assert mgr._alt_held is False
+        assert 'ctrl' not in mgr._modifiers_held
+        assert 'alt' not in mgr._modifiers_held
 
     # --- recorder complete callback ---
 
@@ -319,3 +324,137 @@ class TestHotkeyStateMachine:
         mock_recorder.stop.assert_called_once_with(cancel=True)
         mock_sound.assert_called()
         assert mgr._state == mgr._STATE_IDLE
+
+    def test_modifiers_held_tracks_all_four_modifier_types(self, mock_notify, mock_sound,
+                                                             mock_cfg, mock_kb, mock_glib):
+        """_modifiers_held tracks ctrl, alt, shift, super independently."""
+        mgr = _make_manager()
+        mgr._on_press(mock_kb.Key.ctrl_l)
+        mgr._on_press(mock_kb.Key.alt_l)
+        mgr._on_press(mock_kb.Key.shift)
+        mgr._on_press(mock_kb.Key.cmd)
+        assert mgr._modifiers_held == {'ctrl', 'alt', 'shift', 'super'}
+        mgr._on_release(mock_kb.Key.shift)
+        assert 'shift' not in mgr._modifiers_held
+        assert mgr._modifiers_held == {'ctrl', 'alt', 'super'}
+
+    def test_right_side_modifiers_tracked(self, mock_notify, mock_sound,
+                                           mock_cfg, mock_kb, mock_glib):
+        """Right-side modifier keys (ctrl_r, alt_r, shift_r, cmd_r) are tracked."""
+        mgr = _make_manager()
+        mgr._on_press(mock_kb.Key.ctrl_r)
+        mgr._on_press(mock_kb.Key.alt_r)
+        mgr._on_press(mock_kb.Key.shift_r)
+        mgr._on_press(mock_kb.Key.cmd_r)
+        assert mgr._modifiers_held == {'ctrl', 'alt', 'shift', 'super'}
+
+    def test_alt_gr_maps_to_alt(self, mock_notify, mock_sound,
+                                 mock_cfg, mock_kb, mock_glib):
+        """alt_gr maps to 'alt' in _modifiers_held."""
+        mgr = _make_manager()
+        mgr._on_press(mock_kb.Key.alt_gr)
+        assert 'alt' in mgr._modifiers_held
+
+    def test_reload_bindings_updates_dispatch(self, mock_notify, mock_sound,
+                                               mock_cfg, mock_kb, mock_glib):
+        """reload_bindings() with a new config causes _matches_binding to reflect new combo."""
+        self._setup_idle_add(mock_glib)
+        mgr = _make_manager()
+        with patch("linux_speech_flow.hotkey.load_config", return_value={
+            "sounds_enabled": False, "sounds_output_device": "", "microphone": "",
+            "max_recording_duration": 60, "silence_stop_duration": 10,
+            "hotkey_record":       "ctrl+alt+t",
+            "hotkey_stop":         "ctrl+alt+t",
+            "hotkey_conversation": "ctrl+alt+c",
+            "hotkey_reprocess":    "ctrl+alt+p",
+            "hotkey_feedback":     "ctrl+alt+f",
+        }):
+            mgr.reload_bindings()
+        mock_recorder = MagicMock()
+        with patch("linux_speech_flow.hotkey.AudioRecorder", return_value=mock_recorder):
+            _ctrl_alt_press(mgr, 'r', mock_kb)
+            assert mgr._state == mgr._STATE_IDLE
+
+    def test_apply_binding_override_updates_binding_immediately(self, mock_notify, mock_sound,
+                                                                  mock_cfg, mock_kb, mock_glib):
+        """apply_binding_override updates _bindings[action] without reading config."""
+        self._setup_idle_add(mock_glib)
+        mgr = _make_manager()
+        mgr.apply_binding_override('record', 'ctrl+shift+r')
+        mods, key = mgr._bindings['record']
+        assert mods == frozenset({'ctrl', 'shift'})
+        assert key == 'r'
+
+    def test_matches_binding_special_key(self, mock_notify, mock_sound,
+                                          mock_cfg, mock_kb, mock_glib):
+        """_matches_binding works for special key names like 'esc', 'f5'."""
+        self._setup_idle_add(mock_glib)
+        mgr = _make_manager()
+        mgr.apply_binding_override('stop', 'ctrl+alt+esc')
+        mgr._modifiers_held = {'ctrl', 'alt'}
+        esc_key = mock_kb.Key.esc
+        mock_kb.Key.__getitem__ = lambda self_inner, k: esc_key if k == 'esc' else MagicMock()
+        assert mgr._matches_binding(esc_key, 'stop')
+
+    def test_matches_binding_wrong_modifiers_no_match(self, mock_notify, mock_sound,
+                                                        mock_cfg, mock_kb, mock_glib):
+        """_matches_binding returns False when modifier set differs."""
+        mgr = _make_manager()
+        mgr._modifiers_held = {'ctrl'}
+        assert not mgr._matches_binding(_letter_key('r'), 'record')
+
+
+class TestComboHelpers:
+
+    def test_parse_combo_ctrl_alt_r(self):
+        from linux_speech_flow.hotkey import parse_combo
+        mods, key = parse_combo('ctrl+alt+r')
+        assert mods == frozenset({'ctrl', 'alt'})
+        assert key == 'r'
+
+    def test_parse_combo_special_key(self):
+        from linux_speech_flow.hotkey import parse_combo
+        mods, key = parse_combo('ctrl+alt+f5')
+        assert mods == frozenset({'ctrl', 'alt'})
+        assert key == 'f5'
+
+    def test_parse_combo_all_modifiers(self):
+        from linux_speech_flow.hotkey import parse_combo
+        mods, key = parse_combo('ctrl+alt+shift+super+x')
+        assert mods == frozenset({'ctrl', 'alt', 'shift', 'super'})
+        assert key == 'x'
+
+    def test_parse_combo_case_insensitive(self):
+        from linux_speech_flow.hotkey import parse_combo
+        mods, key = parse_combo('CTRL+ALT+R')
+        assert mods == frozenset({'ctrl', 'alt'})
+        assert key == 'r'
+
+    def test_combo_display_ctrl_alt_r(self):
+        from linux_speech_flow.hotkey import combo_display
+        assert combo_display('ctrl+alt+r') == 'Ctrl+Alt+R'
+
+    def test_combo_display_canonical_modifier_order(self):
+        from linux_speech_flow.hotkey import combo_display
+        assert combo_display('alt+ctrl+r') == 'Ctrl+Alt+R'
+
+    def test_combo_display_special_key(self):
+        from linux_speech_flow.hotkey import combo_display
+        assert combo_display('ctrl+alt+f12') == 'Ctrl+Alt+F12'
+
+    def test_combo_display_shift(self):
+        from linux_speech_flow.hotkey import combo_display
+        assert combo_display('ctrl+shift+t') == 'Ctrl+Shift+T'
+
+    def test_dangerous_combos_contains_known_blocked(self):
+        from linux_speech_flow.hotkey import DANGEROUS_COMBOS
+        assert 'ctrl+alt+delete' in DANGEROUS_COMBOS
+        assert 'ctrl+alt+f1' in DANGEROUS_COMBOS
+        assert 'ctrl+alt+f12' in DANGEROUS_COMBOS
+        assert 'ctrl+alt+left' in DANGEROUS_COMBOS
+        assert 'ctrl+alt+right' in DANGEROUS_COMBOS
+
+    def test_dangerous_combos_does_not_contain_valid_combos(self):
+        from linux_speech_flow.hotkey import DANGEROUS_COMBOS
+        assert 'ctrl+alt+r' not in DANGEROUS_COMBOS
+        assert 'ctrl+alt+t' not in DANGEROUS_COMBOS
