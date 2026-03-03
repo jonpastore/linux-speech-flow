@@ -11,6 +11,68 @@ from linux_speech_flow.notify import send_notification
 logger = logging.getLogger(__name__)
 
 
+_MODIFIER_NAMES = frozenset({'ctrl', 'alt', 'shift', 'super'})
+_MODIFIER_ORDER = ['ctrl', 'alt', 'shift', 'super']
+
+HOTKEY_DEFAULTS = {
+    'record':       'ctrl+alt+r',
+    'stop':         'ctrl+alt+r',
+    'conversation': 'ctrl+alt+c',
+    'reprocess':    'ctrl+alt+p',
+    'feedback':     'ctrl+alt+f',
+}
+
+HOTKEY_CONFIG_KEYS = {
+    'record':       'hotkey_record',
+    'stop':         'hotkey_stop',
+    'conversation': 'hotkey_conversation',
+    'reprocess':    'hotkey_reprocess',
+    'feedback':     'hotkey_feedback',
+}
+
+HOTKEY_ACTION_LABELS = {
+    'record':       'Record Toggle',
+    'stop':         'Stop Recording',
+    'conversation': 'Conversation Mode',
+    'reprocess':    'Reprocess Failed',
+    'feedback':     'Feedback Toggle',
+}
+
+DANGEROUS_COMBOS = frozenset({
+    'ctrl+alt+delete',
+    'ctrl+alt+left', 'ctrl+alt+right',
+    'ctrl+alt+f1',  'ctrl+alt+f2',  'ctrl+alt+f3',  'ctrl+alt+f4',
+    'ctrl+alt+f5',  'ctrl+alt+f6',  'ctrl+alt+f7',  'ctrl+alt+f8',
+    'ctrl+alt+f9',  'ctrl+alt+f10', 'ctrl+alt+f11', 'ctrl+alt+f12',
+})
+
+
+def parse_combo(combo_str: str) -> tuple[frozenset, str]:
+    """Parse 'ctrl+alt+r' -> (frozenset({'ctrl', 'alt'}), 'r').
+
+    Returns (frozenset(), '') for malformed input.
+    """
+    parts = combo_str.lower().split('+')
+    modifiers = frozenset(p for p in parts if p in _MODIFIER_NAMES)
+    key_parts = [p for p in parts if p not in _MODIFIER_NAMES]
+    key_id = key_parts[0] if key_parts else ''
+    return modifiers, key_id
+
+
+def combo_display(combo_str: str) -> str:
+    """'ctrl+alt+r' -> 'Ctrl+Alt+R' (canonical display string)."""
+    _DISPLAY = {'ctrl': 'Ctrl', 'alt': 'Alt', 'shift': 'Shift', 'super': 'Super'}
+    parts = combo_str.lower().split('+')
+    result = []
+    for m in _MODIFIER_ORDER:
+        if m in parts:
+            result.append(_DISPLAY[m])
+    for p in parts:
+        if p not in _MODIFIER_NAMES:
+            result.append(p.upper() if len(p) == 1 else p.capitalize())
+    return '+'.join(result)
+
+
 class HotkeyManager:
     """Hotkey manager for recording and conversation mode.
 
@@ -103,6 +165,10 @@ class HotkeyManager:
         if not self._started:
             return
 
+        if key == keyboard.Key.esc and self._state == self._STATE_RECORDING:
+            GLib.idle_add(self._stop_recording, False)
+            return
+
         ctrl_alt = self._ctrl_held and self._alt_held
         letter = self._key_letter(key)
 
@@ -111,8 +177,6 @@ class HotkeyManager:
                 GLib.idle_add(self._start_recording)
             elif self._state == self._STATE_RECORDING:
                 GLib.idle_add(self._stop_recording_hotkey)
-        elif key == keyboard.Key.esc and self._state == self._STATE_RECORDING:
-            GLib.idle_add(self._stop_recording, False)
         elif ctrl_alt and letter == 'c':
             if self._state == self._STATE_IDLE:
                 GLib.idle_add(self._conv_start)

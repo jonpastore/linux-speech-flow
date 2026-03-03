@@ -113,6 +113,12 @@ DEFAULT_CONFIG = {
     "conv_meta_model": "groq",          # which model performs synthesis: "groq", "grok", "gemini"
     "conv_viewer_width": 900,
     "conv_viewer_height": 600,
+    # Phase 7 additions
+    "hotkey_record":       "ctrl+alt+r",
+    "hotkey_stop":         "ctrl+alt+r",
+    "hotkey_conversation": "ctrl+alt+c",
+    "hotkey_reprocess":    "ctrl+alt+p",
+    "hotkey_feedback":     "ctrl+alt+f",
 }
 
 
