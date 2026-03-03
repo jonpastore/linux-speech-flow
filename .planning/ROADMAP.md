@@ -172,10 +172,13 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Settings includes a hotkey picker for each action (record, stop, conversation mode, replay failed)
   2. User can set key combinations (e.g. Fn+C, Fn+R) and changes take effect without restart
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 07-01: TBD
+- [ ] 07-01-PLAN.md — Config defaults + HotkeyManager backend refactor (parse_combo, combo_display, reload_bindings, apply_binding_override) + history_window fix + app.py wiring
+- [ ] 07-02-PLAN.md — Settings UI Hotkeys section (press-to-capture, conflict detection, per-hotkey reset, Reset All, Save)
+- [ ] 07-03-PLAN.md — Tests: config defaults/backfill, combo helpers, conflict detection, HotkeyManager reload, capture state machine, history_window regression
+- [ ] 07-04-PLAN.md — Code review of all 5 modified files
 
 ### Phase 8: Slack Integration
 **Goal**: User can send transcription output to Slack and linux-speech-flow can join Slack huddles as a bot; huddle end automatically stops and transcribes the session
@@ -236,7 +239,7 @@ Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 | 5. Pipeline History | 4/4 | Complete | 2026-02-21 |
 | 6. Conversation Mode | 8/8 | Complete | 2026-02-21 |
 | 6.1. Conversation Status Enhancements | 2/2 | Complete   | 2026-03-03 |
-| 7. Hotkey Customization | 0/? | Not started | - |
+| 7. Hotkey Customization | 0/4 | Not started | - |
 | 8. Slack Integration | 0/? | Not started | - |
 | 8.1. Help Dialog | 0/? | Not started | - |
 | 9. Packaging & Distribution | 0/? | Not started | - |
