@@ -271,11 +271,15 @@ class ConversationManager:
                 cancelled.append("dialog")
         config = load_config()
         warn_sec = config.get("conv_silence_warn_sec", 30)
+        stop_sec = config.get("conv_silence_stop_sec", 60)
+        now = time.monotonic()
         self._warn_timer = GLib.timeout_add_seconds(warn_sec, self._on_silence_warn)
-        elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
+        if self._status_window:
+            self._status_window.set_silence_baseline(now, warn_sec, stop_sec)
+        elapsed = int(now - self._session_start) if self._session_start else 0
         logger.info(
-            "silence_timers_reset: reason=%s elapsed=%ds warn_in=%ds cancelled=%s",
-            reason, elapsed, warn_sec, cancelled or "none",
+            "silence_timers_reset: reason=%s elapsed=%ds warn_in=%ds stop_in=%ds cancelled=%s",
+            reason, elapsed, warn_sec, stop_sec, cancelled or "none",
         )
 
     def _on_silence_warn(self) -> bool:

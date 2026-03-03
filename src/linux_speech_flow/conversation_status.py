@@ -1,3 +1,4 @@
+import math
 import time
 import gi
 gi.require_version("Gtk", "4.0")
@@ -8,22 +9,28 @@ from linux_speech_flow.config import load_config
 class ConversationStatusWindow(Gtk.ApplicationWindow):
     """Live status display for an active conversation recording.
 
-    Shows: elapsed timer, chunk count, last chunk status.
-    Updated every second via GLib.timeout_add_seconds.
+    Shows: elapsed timer, chunk count, silence drain bar, mic level bar.
+    Updated every second via GLib.timeout_add_seconds; silence bar animates
+    at 50ms via the mic redraw timer.
     Created/destroyed by ConversationManager; not user-closeable during recording.
     """
 
     def __init__(self, application, on_threshold_changed=None):
         super().__init__(application=application, title="Conversation Recording")
-        self.set_default_size(360, 300)
+        self.set_default_size(360, 320)
         self.set_resizable(False)
-        self.set_deletable(False)  # prevent window manager close during recording
-        self.set_focus_on_click(False)  # don't steal keyboard focus from active window
+        self.set_deletable(False)
+        self.set_focus_on_click(False)
 
         self._on_threshold_changed = on_threshold_changed
 
         config = load_config()
         self._silence_threshold = config.get("conv_silence_rms_threshold", 0.005)
+
+        # Silence drain bar state
+        self._silence_started_at: float | None = None
+        self._warn_sec: int = config.get("conv_silence_warn_sec", 30)
+        self._stop_sec: int = config.get("conv_silence_stop_sec", 60)
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         box.set_margin_start(20)
@@ -40,11 +47,26 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         self._status_label.set_wrap(True)
         box.append(self._status_label)
 
-        self._silence_label = Gtk.Label(label="Silence: 0s")
-        self._silence_label.set_halign(Gtk.Align.START)
-        box.append(self._silence_label)
+        # Silence drain bar — red bar that empties as silence grows
+        silence_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        silence_title = Gtk.Label(label="Silence")
+        silence_title.set_halign(Gtk.Align.START)
+        silence_title.add_css_class("caption")
+        self._silence_time_label = Gtk.Label(label="")
+        self._silence_time_label.set_halign(Gtk.Align.END)
+        self._silence_time_label.set_hexpand(True)
+        self._silence_time_label.add_css_class("caption")
+        silence_header.append(silence_title)
+        silence_header.append(self._silence_time_label)
+        box.append(silence_header)
 
-        # Mic level bar — single DrawingArea draws level fill + threshold marker
+        self._silence_canvas = Gtk.DrawingArea()
+        self._silence_canvas.set_hexpand(True)
+        self._silence_canvas.set_size_request(-1, 20)
+        self._silence_canvas.set_draw_func(self._draw_silence_bar, None)
+        box.append(self._silence_canvas)
+
+        # Mic level bar
         self._mic_level = 0.0
         self._mic_canvas = Gtk.DrawingArea()
         self._mic_canvas.set_hexpand(True)
@@ -52,7 +74,7 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         self._mic_canvas.set_draw_func(self._draw_mic, None)
         box.append(self._mic_canvas)
 
-        # Threshold slider for live adjustment
+        # Threshold slider
         thresh_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         thresh_label = Gtk.Label(label="Threshold:")
         thresh_label.set_halign(Gtk.Align.START)
@@ -87,47 +109,50 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
 
         self._started_at = None
         self._timer_id = None
-        self._mic_redraw_timer_id = None
+        self._redraw_timer_id = None
 
     def start(self) -> None:
-        """Begin elapsed timer and mic redraw loop."""
         self._started_at = time.monotonic()
         self._timer_id = GLib.timeout_add_seconds(1, self._update_elapsed)
-        self._mic_redraw_timer_id = GLib.timeout_add(50, self._redraw_mic)
+        self._redraw_timer_id = GLib.timeout_add(50, self._redraw_canvases)
         self._update_elapsed()
 
     def stop(self) -> None:
-        """Stop timers. Call when ConversationManager stops recording."""
         if self._timer_id:
             GLib.source_remove(self._timer_id)
             self._timer_id = None
-        if self._mic_redraw_timer_id:
-            GLib.source_remove(self._mic_redraw_timer_id)
-            self._mic_redraw_timer_id = None
+        if self._redraw_timer_id:
+            GLib.source_remove(self._redraw_timer_id)
+            self._redraw_timer_id = None
         self.set_deletable(True)
 
+    def set_silence_baseline(self, started_at: float, warn_sec: int, stop_sec: int) -> None:
+        """Called by ConversationManager whenever silence timers reset (speech or chunk).
+        started_at is time.monotonic() of the reset. Bar animates from full → empty
+        over stop_sec seconds; dialog pops at warn_sec (bar halfway point).
+        """
+        self._silence_started_at = started_at
+        self._warn_sec = warn_sec
+        self._stop_sec = stop_sec
+
     def update_status(self, chunk_count: int, last_status: str) -> None:
-        """Update status line. Call from GTK main thread."""
         self._status_label.set_text(
             f"{chunk_count} chunk{'s' if chunk_count != 1 else ''} transcribed | {last_status}"
         )
 
     def update_silence(self, silence_seconds: int) -> None:
-        """Update silence timer display. Call from GTK main thread only."""
-        self._silence_label.set_text(f"Silence: {silence_seconds}s")
+        pass  # superseded by animated bar; kept for API compatibility
 
     def update_transcript(self, text: str) -> None:
-        """Display last chunk transcript text. Call from GTK main thread only."""
         self._transcript_label.set_text(text)
 
     def update_mic_level(self, level: float) -> None:
-        """Update mic level value. Repaint driven by periodic timer."""
         self._mic_level = level
 
-    def _redraw_mic(self) -> bool:
-        """Periodic 50ms timer: force mic canvas repaint."""
+    def _redraw_canvases(self) -> bool:
         self._mic_canvas.queue_draw()
-        return True  # keep timer firing
+        self._silence_canvas.queue_draw()
+        return True
 
     def _on_thresh_slider(self, slider) -> None:
         value = slider.get_value()
@@ -135,19 +160,65 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         if self._on_threshold_changed:
             self._on_threshold_changed(value)
 
-    def _draw_mic(self, area, cr, width, height, _data) -> None:
-        """Draw mic level fill and threshold marker on the canvas."""
-        from linux_speech_flow.conversation_recorder import RMS_DISPLAY_SCALE
+    def _draw_silence_bar(self, area, cr, width, height, _data) -> None:
+        """Drain bar: full = no silence, empty = autostop. Green → red as silence grows."""
+        if self._silence_started_at is None or self._stop_sec <= 0:
+            # No baseline yet — draw full green bar
+            cr.set_source_rgba(0.2, 0.75, 0.3, 0.6)
+            cr.rectangle(0, 0, width, height)
+            cr.fill()
+            return
+
+        elapsed = time.monotonic() - self._silence_started_at
+        fraction = max(0.0, 1.0 - elapsed / self._stop_sec)
+        warn_fraction = 1.0 - (self._warn_sec / self._stop_sec)
+
         # Background track
+        cr.set_source_rgba(0.15, 0.15, 0.15, 0.5)
+        cr.rectangle(0, 0, width, height)
+        cr.fill()
+
+        fill_w = fraction * width
+        if fill_w > 0:
+            if fraction > warn_fraction:
+                # Safe zone (before warn): green
+                r, g, b = 0.2, 0.78, 0.3
+            else:
+                # Danger zone (warn → stop): orange → red
+                t = fraction / warn_fraction if warn_fraction > 0 else 0.0
+                r = 1.0
+                g = 0.35 * t   # orange at warn, red at 0
+                b = 0.0
+            cr.set_source_rgba(r, g, b, 0.85)
+            cr.rectangle(0, 0, fill_w, height)
+            cr.fill()
+
+        # Warn threshold marker (yellow tick where dialog will pop)
+        warn_x = warn_fraction * width
+        if 0 < warn_x < width:
+            cr.set_source_rgba(1.0, 0.9, 0.0, 0.9)
+            cr.set_line_width(2)
+            cr.move_to(warn_x, 0)
+            cr.line_to(warn_x, height)
+            cr.stroke()
+
+        # Time label inside bar
+        elapsed_int = int(elapsed)
+        remaining = max(0, self._stop_sec - elapsed_int)
+        self._silence_time_label.set_text(f"{elapsed_int}s / warn {self._warn_sec}s / stop {self._stop_sec}s")
+
+    def _draw_mic(self, area, cr, width, height, _data) -> None:
+        from linux_speech_flow.conversation_recorder import RMS_DISPLAY_SCALE
         cr.set_source_rgba(0.2, 0.2, 0.2, 0.4)
         cr.rectangle(0, 0, width, height)
         cr.fill()
-        # Level fill: blue below threshold, orange above
         thresh_x = min(1.0, self._silence_threshold * RMS_DISPLAY_SCALE) * width
         fill_w = self._mic_level * width
         if fill_w > 0:
             if fill_w <= thresh_x:
                 cr.set_source_rgba(0.2, 0.5, 1.0, 0.8)
+                cr.rectangle(0, 0, fill_w, height)
+                cr.fill()
             else:
                 cr.set_source_rgba(0.2, 0.5, 1.0, 0.8)
                 cr.rectangle(0, 0, thresh_x, height)
@@ -155,10 +226,6 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
                 cr.set_source_rgba(1.0, 0.55, 0.1, 0.9)
                 cr.rectangle(thresh_x, 0, fill_w - thresh_x, height)
                 cr.fill()
-            if fill_w <= thresh_x:
-                cr.rectangle(0, 0, fill_w, height)
-                cr.fill()
-        # Threshold marker line
         cr.set_source_rgba(0, 0, 0, 0.7)
         cr.set_line_width(3)
         cr.move_to(thresh_x, 0)
@@ -177,4 +244,4 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         h, rem = divmod(elapsed, 3600)
         m, s = divmod(rem, 60)
         self._elapsed_label.set_text(f"{h}:{m:02d}:{s:02d}")
-        return True  # keep GLib timer firing
+        return True
