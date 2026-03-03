@@ -42,8 +42,9 @@ class ConversationRecorder:
         self._chunk_dir = tempfile.mkdtemp(prefix="lsf-conv-")
         self._on_chunk_ready = None
         self._on_error = None
+        self._on_silence_tick = None
 
-    def start(self, on_chunk_ready, on_error) -> None:
+    def start(self, on_chunk_ready, on_error, on_silence_tick=None) -> None:
         """Start recording in a daemon thread.
 
         Args:
@@ -53,9 +54,14 @@ class ConversationRecorder:
                 consuming (reading and deleting) the chunk.
             on_error: Callable(message: str) — GTK main thread; called on
                 PaSimpleError or any recording failure. Recording stops.
+            on_silence_tick: Callable(silence_frames: int) — GTK main thread via
+                GLib.idle_add; silence_frames is the current consecutive silent
+                frame count within the current chunk (0 = voice detected); emitted
+                only when value changes (debounced).
         """
         self._on_chunk_ready = on_chunk_ready
         self._on_error = on_error
+        self._on_silence_tick = on_silence_tick
         self._stop_event.clear()
         threading.Thread(target=self._record_loop, daemon=True).start()
 
@@ -116,6 +122,7 @@ class ConversationRecorder:
         silence_frames = 0
         frames_written = 0
         had_audio = False
+        last_emitted_silence = -1
 
         with wave.open(wav_path, "wb") as wf:
             wf.setnchannels(CHANNELS)
@@ -135,6 +142,10 @@ class ConversationRecorder:
                     else:
                         silence_frames = 0
                         had_audio = True
+
+                    if self._on_silence_tick and silence_frames != last_emitted_silence:
+                        last_emitted_silence = silence_frames
+                        GLib.idle_add(self._on_silence_tick, silence_frames)
 
                     if silence_frames >= silence_limit_frames:
                         # Silence boundary reached — end this chunk
