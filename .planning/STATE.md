@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Hold a key, speak, release -- transcribed text appears in whatever you're typing in.
-**Current focus:** Phase 6 — Conversation Mode (Phase 5 complete)
+**Current focus:** Phase 6.1 — Conversation Status Enhancements
 
 ## Current Position
 
-Phase: 6 of 9 — Partially verified (active testing)
-Plan: 8/8 complete (06-01, 06-02, 06-03, 06-04, 06-05, 06-06, 06-07, 06-08 done)
-Status: Phase 6 Conversation Mode code complete — human sign-off reset pending further testing. Chunked recording confirmed working in real use. Known issue: silence timer triggering too aggressively (180s warn fired while user was still actively speaking — likely silence threshold config needs tuning or chunk heartbeat timing is off). Help tray menu item added (F9/F10/F11/F12 hotkeys display). Next: debug silence timer sensitivity, then re-verify.
-Last activity: 2026-02-21 -- Post-execution real-world testing; silence timer sensitivity issue identified; help hotkey window added to tray
+Phase: 6.1 of 9 — In progress
+Plan: 1/2 complete (06.1-01 done)
+Status: Phase 6.1 plan 01 complete — ConversationRecorder extended with on_silence_tick callback; ConversationStatusWindow gains silence timer label and last-transcript label. Plan 06.1-02 (wiring) is next.
+Last activity: 2026-03-03 -- Executed plan 06.1-01; silence tick callback + status window labels added
 
 Progress: [████████████████████████████] 90%
 
@@ -159,6 +159,9 @@ Recent decisions affecting current work:
 - [Phase 06-07]: ConversationManager instantiated before TrayManager in do_startup() — on_tray_state uses lazy lambda to defer self._tray lookup until call time
 - [Phase 06-07]: Conversation History tray item added as second item after Transcription History for logical grouping
 - [Phase 06-07]: Settings dirty tracking extended to all Phase 6 widgets so unsaved-changes dialog triggers correctly for Conversation Mode fields
+- [06.1-01]: on_silence_tick emits raw silence_frames (not seconds) — manager converts to seconds using CHUNK_DURATION, keeping recorder concern-free of display logic
+- [06.1-01]: Debounce sentinel last_emitted_silence = -1 ensures first tick (silence_frames=0) always fires rather than being suppressed
+- [06.1-01]: update_silence/update_transcript placed before _update_elapsed to group public API together in ConversationStatusWindow
 
 ### Roadmap Evolution
 
@@ -180,6 +183,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-21
-Stopped at: Completed 06-08-PLAN.md — Phase 6 Conversation Mode pre-verification and human sign-off; Phase 6 complete
+Last session: 2026-03-03
+Stopped at: Completed 06.1-01-PLAN.md — silence tick callback + status window labels; ready for 06.1-02 wiring
 Resume file: None

@@ -235,7 +235,7 @@ Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 | 4.1. FreeFlow Rename and Codebase Cleanup | 3/3 | Complete | 2026-02-21 |
 | 5. Pipeline History | 4/4 | Complete | 2026-02-21 |
 | 6. Conversation Mode | 8/8 | Complete | 2026-02-21 |
-| 6.1. Conversation Status Enhancements | 0/2 | Not started | - |
+| 6.1. Conversation Status Enhancements | 1/2 | In Progress|  |
 | 7. Hotkey Customization | 0/? | Not started | - |
 | 8. Slack Integration | 0/? | Not started | - |
 | 8.1. Help Dialog | 0/? | Not started | - |
