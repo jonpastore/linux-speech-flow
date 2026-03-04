@@ -245,6 +245,6 @@ Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 | 6. Conversation Mode | 8/8 | Complete | 2026-02-21 |
 | 6.1. Conversation Status Enhancements | 2/2 | Complete   | 2026-03-03 |
 | 7. Hotkey Customization | 4/4 | Complete   | 2026-03-04 |
-| 8. Slack Integration | 1/6 | In Progress|  |
+| 8. Slack Integration | 2/6 | In Progress|  |
 | 8.1. Help Dialog | 0/? | Not started | - |
 | 9. Packaging & Distribution | 0/? | Not started | - |
