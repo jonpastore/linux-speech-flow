@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-04T00:12:59.421Z"
+last_updated: "2026-03-04T03:46:17.592Z"
 progress:
   total_phases: 11
   completed_phases: 9
-  total_plans: 40
-  completed_plans: 40
+  total_plans: 46
+  completed_plans: 41
 ---
 
 # Project State
@@ -18,16 +18,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Hold a key, speak, release -- transcribed text appears in whatever you're typing in.
-**Current focus:** Phase 7 — Hotkey Customization
+**Current focus:** Phase 8 — Slack Integration
 
 ## Current Position
 
-Phase: 7 of 9 — Complete
-Plan: 4/4 complete (07-04 done)
-Status: Phase 7 complete — Code review passed all 5 files; threading contract docstring updated; 178 tests pass
-Last activity: 2026-03-03 -- Executed plan 07-04; Phase 7 code review complete
+Phase: 8 of 11 — In Progress
+Plan: 1/6 complete (08-01 done)
+Status: Phase 8 plan 01 complete — SlackManager, huddle hotkey, Settings Integrations section; 192 tests pass
+Last activity: 2026-03-04 -- Executed plan 08-01; Slack foundation complete
+Stopped at: Completed 08-01-PLAN.md — Slack foundation: SlackManager, huddle hotkey, Settings Integrations section
 
-Progress: [█████████████████████████████] 92%
+Progress: [██████████████████████████████] 93%
 
 ## Performance Metrics
 
@@ -80,6 +81,7 @@ Progress: [███████████████████████
 | Phase 07-hotkey-customization P02 | 4 | 1 tasks | 3 files |
 | Phase 07-hotkey-customization P03 | 5 | 2 tasks | 2 files |
 | Phase 07-hotkey-customization P04 | 8 | 2 tasks | 1 files |
+| Phase 08-slack-integration P01 | 7 | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -192,6 +194,9 @@ Recent decisions affecting current work:
 - [Phase 07-03]: TestSettingsCaptureStateMachine uses _make_sim() closures to test the capture state machine without GTK
 - [Phase 07-03]: test_matches_binding_special_key configures mock_kb.Key.__getitem__ to match attribute access, fixing mock equality gap
 - [Phase 07-hotkey-customization]: _bindings threading contract: read from pynput thread, written from GTK main thread only — GIL + GTK single-thread rule provides ordering, no explicit lock needed
+- [Phase 08-slack-integration]: SlackManager uses _path kwarg injection for test isolation — same pattern as load_config/save_config
+- [Phase 08-slack-integration]: dict() copy of slack_workspaces from load_config() prevents mutating DEFAULT_CONFIG mutable dict instance
+- [Phase 08-slack-integration]: files_upload_v2 used in SlackManager.upload_file (not deprecated files.upload sunset Nov 2025)
 
 ### Roadmap Evolution
 
