@@ -20,6 +20,7 @@ HOTKEY_DEFAULTS = {
     'conversation': 'ctrl+alt+c',
     'reprocess':    'ctrl+alt+p',
     'feedback':     'ctrl+alt+f',
+    'huddle':       'ctrl+alt+h',
 }
 
 HOTKEY_CONFIG_KEYS = {
@@ -28,6 +29,7 @@ HOTKEY_CONFIG_KEYS = {
     'conversation': 'hotkey_conversation',
     'reprocess':    'hotkey_reprocess',
     'feedback':     'hotkey_feedback',
+    'huddle':       'hotkey_huddle',
 }
 
 HOTKEY_ACTION_LABELS = {
@@ -36,6 +38,7 @@ HOTKEY_ACTION_LABELS = {
     'conversation': 'Conversation Mode',
     'reprocess':    'Reprocess Failed',
     'feedback':     'Feedback Toggle',
+    'huddle':       'Huddle Recording',
 }
 
 DANGEROUS_COMBOS = frozenset({
@@ -74,10 +77,11 @@ def combo_display(combo_str: str) -> str:
 
 
 class HotkeyManager:
-    """Hotkey manager for recording and conversation mode.
+    """Hotkey manager for recording, conversation mode, and huddle recording.
 
     Bindings are loaded from config (hotkey_record, hotkey_stop, hotkey_conversation,
-    hotkey_reprocess, hotkey_feedback) and can be reloaded at runtime via reload_bindings().
+    hotkey_reprocess, hotkey_feedback, hotkey_huddle) and can be reloaded at runtime
+    via reload_bindings().
 
     Default bindings:
       Ctrl+Alt+R  — start / stop recording
@@ -85,6 +89,7 @@ class HotkeyManager:
       Ctrl+Alt+C  — start / stop conversation mode
       Ctrl+Alt+P  — reprocess failed recordings
       Ctrl+Alt+F  — toggle feedback mode (conversation only)
+      Ctrl+Alt+H  — start / stop huddle recording
       ESC         — stop recording (hardcoded, not configurable)
 
     Threading contract:
@@ -103,11 +108,13 @@ class HotkeyManager:
     _STATE_IDLE = "idle"
     _STATE_RECORDING = "recording"
     _STATE_CONVERSATION = "conversation"
+    _STATE_HUDDLE = "huddle"
 
     def __init__(self, on_recording_complete, on_recording_start=None,
                  on_recording_error=None, on_reprocess=None,
                  on_conversation_start=None, on_conversation_stop=None,
-                 on_conversation_feedback_toggle=None):
+                 on_conversation_feedback_toggle=None,
+                 on_huddle_start=None, on_huddle_stop=None):
         self._on_complete_cb = on_recording_complete
         self._on_recording_start_cb = on_recording_start
         self._on_error_cb = on_recording_error
@@ -115,6 +122,8 @@ class HotkeyManager:
         self._on_conv_start_cb = on_conversation_start
         self._on_conv_stop_cb = on_conversation_stop
         self._on_conv_feedback_cb = on_conversation_feedback_toggle
+        self._on_huddle_start_cb = on_huddle_start
+        self._on_huddle_stop_cb = on_huddle_stop
         self._state = self._STATE_IDLE
         self._recorder: AudioRecorder | None = None
         self._notif_id: int | None = None
@@ -226,6 +235,11 @@ class HotkeyManager:
             GLib.idle_add(self._on_reprocess)
         elif self._matches_binding(key, 'feedback') and self._state == self._STATE_CONVERSATION:
             GLib.idle_add(self._conv_feedback_toggle)
+        elif self._matches_binding(key, 'huddle'):
+            if self._state == self._STATE_IDLE:
+                GLib.idle_add(self._huddle_start)
+            elif self._state == self._STATE_HUDDLE:
+                GLib.idle_add(self._huddle_stop)
 
     def _on_release(self, key):
         if key in self._MODIFIER_MAP:
@@ -325,6 +339,33 @@ class HotkeyManager:
         if self._on_conv_feedback_cb:
             self._on_conv_feedback_cb()
         return False
+
+    def _huddle_start(self) -> bool:
+        if self._state != self._STATE_IDLE:
+            return False
+        self._state = self._STATE_HUDDLE
+        try:
+            if self._on_huddle_start_cb:
+                self._on_huddle_start_cb()
+        except Exception:
+            logger.exception("_huddle_start callback raised — resetting state to IDLE")
+            self._state = self._STATE_IDLE
+        return False
+
+    def _huddle_stop(self) -> bool:
+        if self._state != self._STATE_HUDDLE:
+            return False
+        self._state = self._STATE_IDLE
+        try:
+            if self._on_huddle_stop_cb:
+                self._on_huddle_stop_cb()
+        except Exception:
+            logger.exception("_huddle_stop callback raised")
+        return False
+
+    def reset_to_idle(self) -> None:
+        """Unconditionally reset state to IDLE. Use when a huddle cannot start (no workspace configured)."""
+        self._state = self._STATE_IDLE
 
     def _on_recorder_error(self, message: str) -> bool:
         self._state = self._STATE_IDLE

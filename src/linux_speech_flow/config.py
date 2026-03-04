@@ -119,6 +119,12 @@ DEFAULT_CONFIG = {
     "hotkey_conversation": "ctrl+alt+c",
     "hotkey_reprocess":    "ctrl+alt+p",
     "hotkey_feedback":     "ctrl+alt+f",
+    # Phase 8 additions
+    "hotkey_huddle":              "ctrl+alt+h",
+    "slack_workspaces":           {},
+    "slack_huddle_auto_detect":   "prompt",
+    "slack_activation_word":      "conyo",
+    "slack_confidence_threshold": 0.6,
 }
 
 
