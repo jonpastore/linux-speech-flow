@@ -175,10 +175,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Config defaults + HotkeyManager backend refactor (parse_combo, combo_display, reload_bindings, apply_binding_override) + history_window fix + app.py wiring
-- [ ] 07-02-PLAN.md — Settings UI Hotkeys section (press-to-capture, conflict detection, per-hotkey reset, Reset All, Save)
-- [ ] 07-03-PLAN.md — Tests: config defaults/backfill, combo helpers, conflict detection, HotkeyManager reload, capture state machine, history_window regression
-- [ ] 07-04-PLAN.md — Code review of all 5 modified files
+- [x] 07-01-PLAN.md — Config defaults + HotkeyManager backend refactor (parse_combo, combo_display, reload_bindings, apply_binding_override) + history_window fix + app.py wiring
+- [x] 07-02-PLAN.md — Settings UI Hotkeys section (press-to-capture, conflict detection, per-hotkey reset, Reset All, Save)
+- [x] 07-03-PLAN.md — Tests: config defaults/backfill, combo helpers, conflict detection, HotkeyManager reload, capture state machine, history_window regression
+- [x] 07-04-PLAN.md — Code review of all 5 modified files
 
 ### Phase 8: Slack Integration
 **Goal**: User can connect Slack workspaces via guided token setup in Settings and linux-speech-flow records Slack huddle sessions (mic + system audio) with activation word commands, posting results to Slack as Block Kit + transcript attachment
@@ -193,12 +193,12 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Foundation: slack-sdk+numpy deps, config defaults, SlackManager, huddle hotkey, Settings Integrations section
-- [ ] 08-02-PLAN.md — HuddleRecorder (null-sink dual-source) + HuddleStatusWindow (dedicated GTK, no silence timer)
-- [ ] 08-03-PLAN.md — SlackSocket (SocketModeClient daemon thread) + HuddleManager (orchestration, activation word, confidence alerting)
-- [ ] 08-04-PLAN.md — App wiring (HotkeyManager, tray item) + post_huddle_results (Block Kit + .md upload)
-- [ ] 08-05-PLAN.md — Test audit and full regression run
-- [ ] 08-06-PLAN.md — Human verification of all 5 SLACK requirements
+- [x] 08-01-PLAN.md — Foundation: slack-sdk+numpy deps, config defaults, SlackManager, huddle hotkey, Settings Integrations section
+- [x] 08-02-PLAN.md — HuddleRecorder (null-sink dual-source) + HuddleStatusWindow (dedicated GTK, no silence timer)
+- [x] 08-03-PLAN.md — SlackSocket (SocketModeClient daemon thread) + HuddleManager (orchestration, activation word, confidence alerting)
+- [x] 08-04-PLAN.md — App wiring (HotkeyManager, tray item) + post_huddle_results (Block Kit + .md upload)
+- [x] 08-05-PLAN.md — Test audit and full regression run
+- [x] 08-06-PLAN.md — Human verification + UX completion (analyze flow, channel picker, 5 integration bug fixes)
 
 ### Phase 8.1: Help Dialog
 **Goal**: User can access a comprehensive in-app help window from the tray that explains every feature, hotkey, and workflow in plain language
@@ -222,11 +222,13 @@ Plans:
   3. After install, linux-speech-flow launches automatically at login via XDG autostart .desktop entry
   4. User can alternatively install via `pip install linux-speech-flow` from PyPI
   5. README clearly documents required system dependencies (xdotool, xclip, libnotify-bin, gnome-shell-extension-appindicator)
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
+- [ ] 09-01-PLAN.md — pyproject.toml setuptools-scm versioning + scripts/postinst.sh + scripts/postrm.sh
+- [ ] 09-02-PLAN.md — CI workflow fixes: version extraction, PyGObject<3.51 pin, fetch-depth, fpm postinst/postrm flags
+- [ ] 09-03-PLAN.md — README.md: system dep documentation and installation guide
+- [ ] 09-04-PLAN.md — Push to CI, verify build artifacts, configure PyPI trusted publisher (human checkpoint)
 
 ## Progress
 
@@ -247,4 +249,4 @@ Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 | 7. Hotkey Customization | 4/4 | Complete   | 2026-03-04 |
 | 8. Slack Integration | 5/6 | In Progress|  |
 | 8.1. Help Dialog | 0/? | Not started | - |
-| 9. Packaging & Distribution | 0/? | Not started | - |
+| 9. Packaging & Distribution | 0/4 | Not started | - |
