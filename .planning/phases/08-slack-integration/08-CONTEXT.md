@@ -14,12 +14,12 @@ Slack huddle recording bot. When Jon is in a Slack huddle, linux-speech-flow cap
 ## Implementation Decisions
 
 ### Slack authentication
-- Pre-registered Slack app (client_id + client_secret bundled in linux-speech-flow distribution)
-- OAuth2 authorization code flow: Jon clicks "Connect to Slack" → system browser opens (xdg-open) → Slack authorization page → Jon clicks Allow → Slack redirects to localhost callback → token captured and stored
-- Local HTTP server spun up transiently on a random port to receive the OAuth callback; server shuts down after token is captured
+- **Guided token setup** (v1): Slack prohibits `http://localhost` OAuth redirect URIs for registered apps, making browser OAuth2 flow infeasible without hosting infrastructure. Instead, Settings provides a step-by-step in-app guide that walks Jon through creating a Slack app at api.slack.com, configuring the required scopes, installing it to the workspace, and pasting the bot token.
+- Settings UI: step-by-step guide panel (numbered instructions with direct links) + token input field + "Verify" button that validates the token with a test API call
 - Token stored in `~/.config/linux-speech-flow/config.json` (existing 600 permissions pattern)
-- **Multiple workspaces** supported: Settings shows a list of connected workspaces, each with its own channel configuration
+- **Multiple workspaces** supported: Settings shows a list of connected workspaces, each with its own bot token and channel configuration; "Add Workspace" button opens the guided setup for an additional workspace
 - Bot display name: user-configurable in Settings per workspace (default: "Linux Speech Flow")
+- App-level token (`xapp-` prefix) required separately for Socket Mode (huddle auto-detection); bot token (`xoxb-` prefix) for message posting
 
 ### Settings integration
 - New **"Integrations"** section in SettingsWindow, below "AI Integrations"
