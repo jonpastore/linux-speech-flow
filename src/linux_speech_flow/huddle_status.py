@@ -18,7 +18,7 @@ class HuddleStatusWindow(Gtk.ApplicationWindow):
       - Slack connection status dot (green/red label)
       - Workspace name + channel/DM name
 
-    NOT included: silence timer (not meaningful in huddle context).
+    NOT included: pause-detection timer (not meaningful in huddle context).
 
     Created/destroyed by HuddleManager. Not user-closeable during recording.
     All update_* methods must be called from GTK main thread.
