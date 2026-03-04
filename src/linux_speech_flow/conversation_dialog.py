@@ -110,7 +110,6 @@ class ConversationDialog(Gtk.ApplicationWindow):
         for question in self._questions:
             q_check = Gtk.CheckButton(label=question)
             q_check.set_active(True)
-            q_check.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
             content.append(q_check)
 
             answer_entry = Gtk.Entry()

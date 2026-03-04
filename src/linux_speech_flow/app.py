@@ -94,6 +94,7 @@ class App(Gtk.Application):
             slack_manager=self._slack_manager,
             on_session_complete=self._on_huddle_session_complete,
             on_tray_state=lambda state: self._tray.set_state(state) if self._tray else None,
+            on_analyze=self._on_huddle_analyze,
         )
         workspaces = self._slack_manager.get_workspaces()
         for team_id, ws in workspaces.items():
@@ -360,6 +361,29 @@ class App(Gtk.Application):
         )
         dialog.present()
 
+    def _on_huddle_analyze(self, transcript: str, metadata: dict) -> None:
+        """Called by HuddleManager.trigger_analyze() when Analyze button clicked mid-session.
+
+        Shows ConversationDialog with current transcript snapshot. On any close
+        (submit or cancel), calls resume_from_analyze() so recording resumes.
+        """
+        from linux_speech_flow.conversation_dialog import ConversationDialog
+
+        def _on_resume():
+            if self._huddle_manager:
+                self._huddle_manager.resume_from_analyze()
+
+        dialog = ConversationDialog(
+            application=self,
+            transcript=transcript,
+            metadata=metadata,
+            on_submit=lambda *args, **kwargs: self._on_huddle_dialog_submit(
+                *args, huddle_metadata=metadata, **kwargs
+            ),
+            on_cancel=_on_resume,
+        )
+        dialog.present()
+
     def _on_huddle_dialog_submit(
         self, transcript, prompt, qualifying_answers,
         selected_models, save_to_file, inject_to_window, metadata,
@@ -424,16 +448,91 @@ class App(Gtk.Application):
         threading.Thread(target=_analyze_thread, daemon=True).start()
 
     def _on_huddle_analysis_complete(self, result: dict, saved_path: str | None, metadata: dict) -> None:
-        """After post-huddle Q&A completes: post results to Slack."""
+        """After post-huddle Q&A completes: show channel picker, then post to Slack."""
         team_id = metadata.get("team_id") if metadata else None
-        channel_id = metadata.get("channel_id") if metadata else None
-        if team_id and channel_id and self._huddle_manager:
-            import threading
-            threading.Thread(
+        default_channel_id = metadata.get("channel_id") if metadata else None
+        if not team_id or not self._huddle_manager:
+            return
+
+        win = Gtk.Window(title="Post to Slack")
+        win.set_modal(True)
+        win.set_default_size(380, 180)
+        win.set_resizable(False)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.set_margin_start(20)
+        box.set_margin_end(20)
+        box.set_margin_top(16)
+        box.set_margin_bottom(16)
+        win.set_child(box)
+
+        label = Gtk.Label(label="Select channel to post results:")
+        label.set_xalign(0)
+        box.append(label)
+
+        combo = Gtk.ComboBoxText()
+        combo.set_sensitive(False)
+        combo.append_text("Loading channels...")
+        combo.set_active(0)
+        box.append(combo)
+
+        btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        btn_row.append(spacer)
+        box.append(btn_row)
+
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _: win.close())
+        btn_row.append(cancel_btn)
+
+        post_btn = Gtk.Button(label="Post to Slack")
+        post_btn.add_css_class("suggested-action")
+        post_btn.set_sensitive(False)
+        btn_row.append(post_btn)
+
+        _channel_list: list[tuple[str, str]] = []
+
+        def _populate_channels():
+            channels = self._slack_manager.get_channels(team_id)
+            GLib.idle_add(_apply_channels, channels)
+
+        def _apply_channels(channels: list[tuple[str, str]]) -> bool:
+            nonlocal _channel_list
+            _channel_list = channels
+            combo.remove_all()
+            default_idx = 0
+            for i, (ch_id, ch_name) in enumerate(channels):
+                combo.append_text(f"#{ch_name}")
+                if ch_id == default_channel_id:
+                    default_idx = i
+            if channels:
+                combo.set_active(default_idx)
+                combo.set_sensitive(True)
+                post_btn.set_sensitive(True)
+            else:
+                combo.append_text("(no channels found)")
+                combo.set_active(0)
+            return False
+
+        import threading as _thread
+        _thread.Thread(target=_populate_channels, daemon=True).start()
+
+        def _on_post(_btn):
+            idx = combo.get_active()
+            if idx < 0 or idx >= len(_channel_list):
+                return
+            selected_channel_id = _channel_list[idx][0]
+            win.close()
+            import threading as _t
+            _t.Thread(
                 target=self._huddle_manager.post_huddle_results,
-                args=(team_id, channel_id, result or {}, saved_path),
+                args=(team_id, selected_channel_id, result or {}, saved_path),
                 daemon=True,
             ).start()
+
+        post_btn.connect("clicked", _on_post)
+        win.present()
 
     def _on_conv_session_complete(self, transcript: str, metadata: dict) -> bool:
         """Called on GTK main thread by ConversationManager when session ends."""
@@ -574,6 +673,8 @@ class App(Gtk.Application):
             self._hotkey_manager.stop()
         if self._conv_manager and hasattr(self._conv_manager, '_recorder') and self._conv_manager._recorder:
             self._conv_manager._recorder.stop()
+        if self._huddle_manager and self._huddle_manager.is_active():
+            self._huddle_manager.stop_session()
         Gtk.Application.do_shutdown(self)
 
 

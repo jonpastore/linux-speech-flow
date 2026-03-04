@@ -1,3 +1,4 @@
+import atexit
 import logging
 import subprocess
 import pulsectl
@@ -6,6 +7,32 @@ from linux_speech_flow.conversation_recorder import ConversationRecorder
 logger = logging.getLogger(__name__)
 _MIX_SINK_NAME = 'lsf-huddle-mix'
 _MIX_MONITOR = f'{_MIX_SINK_NAME}.monitor'
+
+
+def _emergency_cleanup() -> None:
+    """atexit handler: unload any leftover lsf-huddle-mix modules on exit or crash."""
+    try:
+        with pulsectl.Pulse('lsf-atexit-cleanup') as pulse:
+            for sink in pulse.sink_list():
+                if sink.name == _MIX_SINK_NAME:
+                    subprocess.run(
+                        ['pactl', 'unload-module', str(sink.owner_module)],
+                        capture_output=True,
+                    )
+                    break
+            for src in pulse.source_list():
+                if _MIX_SINK_NAME in src.name:
+                    for mod in pulse.module_list():
+                        if 'loopback' in (mod.name or '') and _MIX_SINK_NAME in (mod.argument or ''):
+                            subprocess.run(
+                                ['pactl', 'unload-module', str(mod.index)],
+                                capture_output=True,
+                            )
+    except Exception:
+        pass
+
+
+atexit.register(_emergency_cleanup)
 
 
 def get_default_monitor_source() -> str:
@@ -38,13 +65,13 @@ def _setup_mix_sink(mic_source: str, system_monitor: str) -> list[str]:
     module_ids.append(r.stdout.strip())
     r = subprocess.run(
         ['pactl', 'load-module', 'module-loopback',
-         f'source={mic_source}', f'sink={_MIX_SINK_NAME}', 'latency_msec=1'],
+         f'source={mic_source}', f'sink={_MIX_SINK_NAME}', 'latency_msec=50'],
         capture_output=True, text=True, check=True,
     )
     module_ids.append(r.stdout.strip())
     r = subprocess.run(
         ['pactl', 'load-module', 'module-loopback',
-         f'source={system_monitor}', f'sink={_MIX_SINK_NAME}', 'latency_msec=1'],
+         f'source={system_monitor}', f'sink={_MIX_SINK_NAME}', 'latency_msec=50'],
         capture_output=True, text=True, check=True,
     )
     module_ids.append(r.stdout.strip())

@@ -71,17 +71,25 @@ class SettingsWindow(Gtk.ApplicationWindow):
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.set_child(outer)
 
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_vexpand(True)
-        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        outer.append(scroll)
+        notebook = Gtk.Notebook()
+        notebook.set_vexpand(True)
+        outer.append(notebook)
 
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        content.set_margin_start(24)
-        content.set_margin_end(24)
-        content.set_margin_top(24)
-        content.set_margin_bottom(12)
-        scroll.set_child(content)
+        def _make_tab(label_text):
+            _scroll = Gtk.ScrolledWindow()
+            _scroll.set_vexpand(True)
+            _scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+            _box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+            _box.set_margin_start(24)
+            _box.set_margin_end(24)
+            _box.set_margin_top(16)
+            _box.set_margin_bottom(12)
+            _scroll.set_child(_box)
+            notebook.append_page(_scroll, Gtk.Label(label=label_text))
+            return _box
+
+        ai_tab = _make_tab("AI")
+        content = ai_tab
 
         api_title = Gtk.Label(label="AI Integrations")
         api_title.add_css_class("title-4")
@@ -174,10 +182,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._gemini_status.add_css_class("error")
         content.append(self._gemini_status)
 
-        sep_hotkeys = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
-        sep_hotkeys.set_margin_top(8)
-        sep_hotkeys.set_margin_bottom(8)
-        content.append(sep_hotkeys)
+        content = _make_tab("Hotkeys")
 
         hotkeys_title = Gtk.Label(label="Hotkeys")
         hotkeys_title.add_css_class("title-4")
@@ -213,10 +218,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
         reset_all_btn.connect("clicked", self._on_reset_all_hotkeys)
         content.append(reset_all_btn)
 
-        sep1 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
-        sep1.set_margin_top(8)
-        sep1.set_margin_bottom(8)
-        content.append(sep1)
+        content = _make_tab("Recording")
 
         vocab_title = Gtk.Label(label="Vocabulary (optional)")
         vocab_title.add_css_class("title-4")
@@ -514,10 +516,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
         reset_btn.connect("clicked", self._on_reset_prompt)
         advanced_box.append(reset_btn)
 
-        sep_conv = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
-        sep_conv.set_margin_top(8)
-        sep_conv.set_margin_bottom(8)
-        content.append(sep_conv)
+        content = _make_tab("Conversation")
 
         conv_title = Gtk.Label(label="Conversation Mode")
         conv_title.add_css_class("title-4")
@@ -605,6 +604,8 @@ class SettingsWindow(Gtk.ApplicationWindow):
         )
         content.append(self._feedback_combo)
 
+        content = ai_tab
+
         qa_label = Gtk.Label(label="Max Q&A Rounds (before 'continue?' prompt)")
         qa_label.set_xalign(0)
         content.append(qa_label)
@@ -667,10 +668,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
         qq_scroll.set_child(qq_tv)
         content.append(qq_scroll)
 
-        sep_integrations = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
-        sep_integrations.set_margin_top(8)
-        sep_integrations.set_margin_bottom(8)
-        content.append(sep_integrations)
+        content = _make_tab("Integrations")
 
         integrations_title = Gtk.Label(label="Integrations")
         integrations_title.add_css_class("title-4")
@@ -1384,6 +1382,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
             lbl.set_xalign(0)
             lbl.set_hexpand(True)
             row_box.append(lbl)
+            edit_btn = Gtk.Button(label="Edit")
+            edit_btn.connect("clicked", lambda _b, tid=team_id, w=ws: self._on_edit_workspace(tid, w))
+            row_box.append(edit_btn)
             row.set_child(row_box)
             self._workspace_listbox.append(row)
 
@@ -1408,6 +1409,11 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._refresh_workspace_list()
         self._mark_dirty()
 
+    def _on_edit_workspace(self, team_id: str, workspace_data: dict):
+        dialog = AddWorkspaceDialog(self, existing_team_id=team_id, existing_data=workspace_data)
+        dialog.connect("workspace-added", self._on_workspace_added)
+        dialog.present()
+
     def _on_close(self, _window):
         if self._closing:
             self._stop_vu_meter()
@@ -1426,10 +1432,12 @@ class AddWorkspaceDialog(Gtk.Window):
         "workspace-added": (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
 
-    def __init__(self, parent):
-        super().__init__(title="Connect Slack Workspace", modal=True)
+    def __init__(self, parent, existing_team_id=None, existing_data=None):
+        title = "Edit Slack Workspace" if existing_data else "Connect Slack Workspace"
+        super().__init__(title=title, modal=True)
+        self._existing_team_id = existing_team_id
         self.set_transient_for(parent)
-        self.set_default_size(500, 580)
+        self.set_default_size(520, 740)
         self.set_resizable(True)
 
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -1448,19 +1456,22 @@ class AddWorkspaceDialog(Gtk.Window):
         scroll.set_child(box)
 
         steps = [
-            "Go to api.slack.com/apps \u2192 Create New App \u2192 From Scratch",
-            "Under Settings \u2192 Socket Mode, enable Socket Mode. This allows linux-speech-flow to connect without a public URL.",
-            "Under OAuth & Permissions, add scopes: chat:write, files:write, channels:read, groups:read, im:read, users:read. Then Install App to Workspace.",
-            "Copy the Bot Token (xoxb-...) from the OAuth & Permissions page.",
-            "Under Settings \u2192 Basic Information \u2192 App-Level Tokens, click Generate Token and Scopes. Add the connections:write scope. Copy the xapp-... token.",
+            "Open a web browser and go to api.slack.com/apps. Click \u201cCreate New App\u201d \u2192 \u201cFrom scratch\u201d. Enter any name (e.g. Linux Speech Flow), choose your Slack workspace, then click \u201cCreate App\u201d.",
+            "In the left sidebar, click \u201cOAuth & Permissions\u201d. Scroll down to \u201cScopes\u201d \u2192 \u201cBot Token Scopes\u201d. Click \u201cAdd an OAuth Scope\u201d three times and add: chat:write, chat:write.public, and files:write.",
+            "Scroll to the top of the \u201cOAuth & Permissions\u201d page. Click \u201cInstall to [Your Workspace]\u201d, then \u201cAllow\u201d. Copy the \u201cBot User OAuth Token\u201d (starts with xoxb-) and paste it in the field below. Then in Slack, go to your target channel and type /invite @YourAppName to add the bot.",
+            "In the left sidebar, click \u201cSocket Mode\u201d and toggle on \u201cEnable Socket Mode\u201d.",
+            "In the left sidebar, click \u201cBasic Information\u201d. Scroll down to \u201cApp-Level Tokens\u201d. Click \u201cGenerate Token and Scopes\u201d. Enter any name, click \u201cAdd Scope\u201d and choose connections:write, then click \u201cGenerate\u201d. Copy the token (starts with xapp-) and paste it in the field below.",
+            "In the left sidebar, click \u201cEvent Subscriptions\u201d and toggle on \u201cEnable Events\u201d. Under \u201cSubscribe to bot events\u201d, click \u201cAdd Bot User Event\u201d and add user_huddle_changed. Click \u201cSave Changes\u201d.",
+            "Find your Slack User ID: in the Slack app, click your profile picture \u2192 \u201cView profile\u201d \u2192 click the \u2026 menu \u2192 \u201cCopy member ID\u201d. Paste it in the \u201cYour Slack User ID\u201d field below.",
         ]
         for i, step_text in enumerate(steps, start=1):
             step_lbl = Gtk.Label(label=f"{i}. {step_text}")
             step_lbl.set_xalign(0)
             step_lbl.set_wrap(True)
+            step_lbl.set_margin_bottom(4)
             box.append(step_lbl)
 
-        bot_lbl = Gtk.Label(label="Bot Token")
+        bot_lbl = Gtk.Label(label="Bot User OAuth Token")
         bot_lbl.set_xalign(0)
         bot_lbl.set_margin_top(8)
         box.append(bot_lbl)
@@ -1497,6 +1508,21 @@ class AddWorkspaceDialog(Gtk.Window):
         self._channel_entry.set_property("placeholder-text", "C1234ABCD \u2014 channel ID, not name")
         box.append(self._channel_entry)
 
+        user_id_lbl = Gtk.Label(label="Your Slack User ID")
+        user_id_lbl.set_xalign(0)
+        user_id_lbl.set_margin_top(4)
+        box.append(user_id_lbl)
+        self._slack_user_id_entry = Gtk.Entry()
+        self._slack_user_id_entry.set_property("placeholder-text", "U0123ABCD \u2014 from your Slack profile")
+        box.append(self._slack_user_id_entry)
+
+        if existing_data:
+            self._bot_token_entry.set_text(existing_data.get("bot_token", ""))
+            self._app_token_entry.set_text(existing_data.get("app_token", ""))
+            self._bot_name_entry.set_text(existing_data.get("bot_name", ""))
+            self._channel_entry.set_text(existing_data.get("channel_id", ""))
+            self._slack_user_id_entry.set_text(existing_data.get("authed_user_id", ""))
+
         self._verify_status = Gtk.Label(label="")
         self._verify_status.set_xalign(0)
         self._verify_status.set_wrap(True)
@@ -1529,7 +1555,7 @@ class AddWorkspaceDialog(Gtk.Window):
         bot_token = self._bot_token_entry.get_text().strip()
         app_token = self._app_token_entry.get_text().strip()
         if not bot_token:
-            self._set_status(False, "Bot Token is required.")
+            self._set_status(False, "Bot User OAuth Token is required.")
             return
         self._verify_btn.set_sensitive(False)
         self._verify_status.set_text("")
@@ -1537,6 +1563,7 @@ class AddWorkspaceDialog(Gtk.Window):
 
         bot_name = self._bot_name_entry.get_text().strip() or "Linux Speech Flow"
         channel_id = self._channel_entry.get_text().strip()
+        slack_user_id = self._slack_user_id_entry.get_text().strip()
 
         def run():
             from linux_speech_flow.slack_manager import SlackManager
@@ -1549,13 +1576,12 @@ class AddWorkspaceDialog(Gtk.Window):
                     resp = client.auth_test()
                     team_id = resp.get("team_id", "")
                     team_name = resp.get("team", "")
-                    authed_user_id = resp.get("user_id", "")
                     workspace_data = {
                         "bot_token": bot_token,
                         "app_token": app_token,
                         "bot_name": bot_name,
                         "channel_id": channel_id,
-                        "authed_user_id": authed_user_id,
+                        "authed_user_id": slack_user_id,
                         "team_name": team_name,
                     }
                     manager.add_workspace(team_id, workspace_data)

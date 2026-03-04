@@ -103,6 +103,23 @@ class HuddleStatusWindow(Gtk.ApplicationWindow):
         cmd_row.append(self._command_spinner)
         box.append(cmd_row)
 
+        box.append(Gtk.Separator())
+
+        self._analyze_button = Gtk.Button(label="Analyze (pauses recording)")
+        self._analyze_button.set_sensitive(False)
+        self._analyze_button.connect("clicked", self._on_analyze_clicked)
+        box.append(self._analyze_button)
+
+        self._on_analyze_cb = None
+
+    def set_on_analyze(self, callback) -> None:
+        """Set the callback invoked when Analyze button is clicked."""
+        self._on_analyze_cb = callback
+
+    def _on_analyze_clicked(self, _button) -> None:
+        if self._on_analyze_cb:
+            self._on_analyze_cb()
+
     def start_elapsed_timer(self) -> None:
         self._session_start = time.monotonic()
         self._elapsed_timer_id = GLib.timeout_add_seconds(1, self._tick_elapsed)
@@ -127,6 +144,7 @@ class HuddleStatusWindow(Gtk.ApplicationWindow):
 
     def update_chunk_count(self, count: int) -> None:
         self._chunk_label.set_text(f"Chunks: {count}")
+        self._analyze_button.set_sensitive(count > 0)
 
     def update_transcript(self, text: str) -> None:
         self._transcript_label.set_text(text or "\u2014")

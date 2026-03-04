@@ -140,6 +140,11 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
             f"{chunk_count} chunk{'s' if chunk_count != 1 else ''} transcribed | {last_status}"
         )
 
+    def set_threshold_from_calibration(self, value: float) -> None:
+        """Update threshold slider to reflect auto-calibrated value."""
+        self._silence_threshold = value
+        self._thresh_slider.set_value(value)
+
     def update_silence(self, silence_seconds: int) -> None:
         pass  # superseded by animated bar; kept for API compatibility
 

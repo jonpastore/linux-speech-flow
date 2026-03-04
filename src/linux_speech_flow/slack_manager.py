@@ -67,6 +67,33 @@ class SlackManager:
             logger.error("Slack post_message failed: %s", exc.response.get("error"))
             return False
 
+    def get_channels(self, team_id: str, *, _path=CONFIG_PATH) -> list[tuple[str, str]]:
+        """Return list of (channel_id, channel_name) for the workspace, paginated."""
+        workspaces = self.get_workspaces(_path=_path)
+        token = workspaces.get(team_id, {}).get("bot_token", "")
+        if not token:
+            return []
+        client = WebClient(token=token)
+        channels: list[tuple[str, str]] = []
+        cursor = None
+        try:
+            while True:
+                resp = client.conversations_list(
+                    limit=200,
+                    cursor=cursor,
+                    types="public_channel,private_channel",
+                )
+                for ch in resp.get("channels", []):
+                    channels.append((ch["id"], ch["name"]))
+                cursor = (resp.get("response_metadata") or {}).get("next_cursor")
+                if not cursor:
+                    break
+        except SlackApiError as exc:
+            logger.error("get_channels failed: %s", exc.response.get("error"))
+        except Exception as exc:
+            logger.error("get_channels failed: %s", exc)
+        return channels
+
     def upload_file(self, team_id: str, channel_id: str, file_path: str, title: str, *, _path=CONFIG_PATH) -> bool:
         """Upload a file to a Slack channel. Returns True on success.
 

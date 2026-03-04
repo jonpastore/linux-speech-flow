@@ -86,6 +86,36 @@ def test_detect_activation_calibrate():
     assert rest == ""
 
 
+def test_detect_activation_punctuation_after_word():
+    from linux_speech_flow.huddle_manager import detect_activation
+    cmd, rest = detect_activation("Lucifer, stop recording.", "lucifer")
+    assert cmd == "stop recording"
+
+
+def test_detect_activation_mid_chunk():
+    from linux_speech_flow.huddle_manager import detect_activation
+    cmd, rest = detect_activation("we were talking about the project then lucifer stop recording", "lucifer")
+    assert cmd == "stop recording"
+
+
+def test_detect_activation_alias_stop():
+    from linux_speech_flow.huddle_manager import detect_activation
+    cmd, rest = detect_activation("conyo stop", "conyo")
+    assert cmd == "stop recording"
+
+
+def test_detect_activation_alias_start():
+    from linux_speech_flow.huddle_manager import detect_activation
+    cmd, rest = detect_activation("conyo start", "conyo")
+    assert cmd == "start recording"
+
+
+def test_detect_activation_punctuation_mid_chunk():
+    from linux_speech_flow.huddle_manager import detect_activation
+    cmd, rest = detect_activation("blah blah blah. Lucifer, summarize!", "lucifer")
+    assert cmd == "summarize"
+
+
 def test_detect_activation_status():
     from linux_speech_flow.huddle_manager import detect_activation
     cmd, rest = detect_activation("conyo status", "conyo")

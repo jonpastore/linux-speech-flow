@@ -22,29 +22,56 @@ _COMMANDS = [
     "calibrate",
     "status",
     "help",
+    "debug",
 ]
 
-WELCOME_MESSAGE = (
-    "Hi, I'm recording this huddle.\n"
-    "Available commands:\n"
-    "  conyo start/stop recording | conyo pause/resume | conyo summarize\n"
-    "  conyo calibrate | conyo status | conyo list action items\n"
-    "  conyo note [text] | conyo topic [title] | conyo help\n"
-    "(Replace 'conyo' with your configured activation word.)"
-)
+_DEBUG_LEVELS = ("low", "medium", "high")
+
+# Short aliases mapped to canonical command keys
+_ALIASES = {
+    "stop": "stop recording",
+    "start": "start recording",
+}
+
+
+def _make_welcome_message(word: str) -> str:
+    return (
+        f"Hi, I'm recording this huddle.\n"
+        f"Available commands (say '{word}' followed by):\n"
+        f"  start recording / stop recording\n"
+        f"  pause / resume\n"
+        f"  summarize\n"
+        f"  list action items\n"
+        f"  calibrate\n"
+        f"  status\n"
+        f"  note [text]\n"
+        f"  topic [title]\n"
+        f"  help\n"
+        f"Short aliases: '{word} stop' = stop recording, '{word} start' = start recording"
+    )
+
+
+def _normalize(text: str) -> str:
+    """Lowercase and strip punctuation for command matching."""
+    return re.sub(r'[^\w\s]', ' ', text.lower())
 
 
 def detect_activation(text: str, word: str) -> tuple[str | None, str | None]:
     """Scan transcript text for activation word followed by a command.
 
+    Strips punctuation and normalizes case before matching so that
+    transcriptions like 'Lucifer, stop recording.' are correctly detected
+    even when the command appears mid-chunk after other speech.
+
     Returns (command_key, remainder_text) or (None, None) if no match.
-    command_key is one of the _COMMANDS list, 'note', or 'topic'.
+    command_key is one of the _COMMANDS list, 'note', 'topic', or an alias target.
     """
+    normalized = _normalize(text)
     pattern = re.compile(
-        rf'\b{re.escape(word.lower())}\s+(.+)',
+        rf'\b{re.escape(_normalize(word).strip())}\b\s+(.*)',
         re.IGNORECASE,
     )
-    m = pattern.search(text.lower())
+    m = pattern.search(normalized)
     if not m:
         return None, None
     remainder = m.group(1).strip()
@@ -52,6 +79,10 @@ def detect_activation(text: str, word: str) -> tuple[str | None, str | None]:
         if remainder.startswith(cmd):
             after = remainder[len(cmd):].strip()
             return cmd, after
+    for alias, canonical in _ALIASES.items():
+        if remainder == alias or remainder.startswith(alias + " "):
+            after = remainder[len(alias):].strip()
+            return canonical, after
     if remainder.startswith("note "):
         return "note", remainder[5:].strip()
     if remainder.startswith("topic "):
@@ -70,18 +101,20 @@ class HuddleManager:
     - on_session_complete fires on GTK main thread.
     """
 
-    def __init__(self, application, slack_manager, on_session_complete, on_tray_state):
+    def __init__(self, application, slack_manager, on_session_complete, on_tray_state, on_analyze=None):
         """
         Args:
             application: Gtk.Application (for HuddleStatusWindow creation)
             slack_manager: SlackManager instance
             on_session_complete: Callable(transcript, metadata) fired on session end
             on_tray_state: Callable(state: str) -- 'huddle' or 'idle'
+            on_analyze: Optional Callable(transcript, metadata) to open mid-session analysis
         """
         self._app = application
         self._slack_manager = slack_manager
         self._on_session_complete = on_session_complete
         self._on_tray_state = on_tray_state
+        self._on_analyze = on_analyze
         self._recorder: HuddleRecorder | None = None
         self._status_window = None
         self._chunk_texts: list[str] = []
@@ -92,10 +125,64 @@ class HuddleManager:
         self._active_channel_id: str | None = None
         self._session_start: float | None = None
         self._paused = False
+        self._debug_level: str | None = None
 
     def is_active(self) -> bool:
         """Return True if a huddle session is in progress."""
         return self._recorder is not None
+
+    def _debug_post(self, message: str, level: str = "low") -> None:
+        """Post a debug message to Slack if debug is enabled at or above the given level.
+
+        Safe to call from any thread — posts via background thread.
+        """
+        if self._debug_level is None:
+            return
+        if _DEBUG_LEVELS.index(level) > _DEBUG_LEVELS.index(self._debug_level):
+            return
+        team_id = self._active_team_id
+        channel_id = self._active_channel_id
+        if team_id and channel_id:
+            threading.Thread(
+                target=self._slack_manager.post_message,
+                args=(team_id, channel_id, f"\U0001f527 [DEBUG/{level.upper()}] {message}"),
+                daemon=True,
+            ).start()
+
+    def trigger_analyze(self) -> None:
+        """GTK main thread: pause transcript collection and open mid-session analysis dialog."""
+        if not self._on_analyze:
+            return
+        self._paused = True
+        snapshot = "\n".join(self._chunk_texts)
+        metadata = {
+            "team_id": self._active_team_id,
+            "channel_id": self._active_channel_id,
+            "chunk_count": self._chunk_count,
+        }
+        team_id = self._active_team_id
+        channel_id = self._active_channel_id
+        if team_id and channel_id:
+            threading.Thread(
+                target=self._slack_manager.post_message,
+                args=(team_id, channel_id, "\u23f8\ufe0f Recording paused for analysis"),
+                daemon=True,
+            ).start()
+        self._debug_post("trigger_analyze: recording paused, opening analysis dialog", "medium")
+        self._on_analyze(snapshot, metadata)
+
+    def resume_from_analyze(self) -> None:
+        """GTK main thread: resume transcript collection after analysis dialog closed."""
+        self._paused = False
+        team_id = self._active_team_id
+        channel_id = self._active_channel_id
+        if team_id and channel_id:
+            threading.Thread(
+                target=self._slack_manager.post_message,
+                args=(team_id, channel_id, "\u25b6\ufe0f Recording resumed"),
+                daemon=True,
+            ).start()
+        self._debug_post("resume_from_analyze: recording resumed", "medium")
 
     def start_session(self, team_id: str, channel_id: str) -> None:
         """Start a huddle recording session. Called on GTK main thread."""
@@ -129,6 +216,7 @@ class HuddleManager:
 
         from linux_speech_flow.huddle_status import HuddleStatusWindow
         self._status_window = HuddleStatusWindow(application=self._app)
+        self._status_window.set_on_analyze(self.trigger_analyze)
         self._status_window.present()
         self._status_window.start_elapsed_timer()
 
@@ -214,7 +302,7 @@ class HuddleManager:
             text = response.text or ""
             segments = getattr(response, "segments", None) or []
             if segments:
-                avg_logprob = sum(s.avg_logprob for s in segments) / len(segments)
+                avg_logprob = sum(s.get("avg_logprob", 0) if isinstance(s, dict) else s.avg_logprob for s in segments) / len(segments)
                 confidence = max(0.0, min(1.0, 1.0 + avg_logprob))
             else:
                 confidence = 1.0
@@ -232,7 +320,7 @@ class HuddleManager:
                     config,
                 )
             else:
-                if text:
+                if text and not self._paused:
                     self._chunk_texts.append(text)
                 GLib.idle_add(self._on_chunk_transcribed, text, confidence, team_id, channel_id, config)
 
@@ -261,15 +349,22 @@ class HuddleManager:
                 args=(team_id, channel_id),
                 daemon=True,
             ).start()
+        if text and self._debug_level == "high":
+            snippet = text[:80] + ("…" if len(text) > 80 else "")
+            pct = int(confidence * 100)
+            self._debug_post(f"chunk #{self._chunk_count} conf={pct}% paused={self._paused} | {snippet!r}", "high")
         return False
 
     def _dispatch_command(
         self, cmd_key: str, remainder: str, team_id: str, channel_id: str, config: dict
     ) -> bool:
         """GTK main thread: execute a voice command."""
+        word = config.get('slack_activation_word', 'conyo')
+        display = f"{word} {cmd_key}" + (f" {remainder}" if remainder else "")
         if self._status_window:
-            self._status_window.update_last_command(f"{config.get('slack_activation_word', 'conyo')} {cmd_key}")
+            self._status_window.update_last_command(display)
             self._status_window.set_command_processing(True)
+        self._debug_post(f"Command: '{cmd_key}'" + (f" args='{remainder}'" if remainder else ""), "low")
 
         def _run_command():
             try:
@@ -290,41 +385,51 @@ class HuddleManager:
     ) -> None:
         """Worker thread: implement each voice command."""
         if cmd_key == "stop recording":
+            self._debug_post("stop recording → stopping session", "medium")
             GLib.idle_add(self.stop_session)
 
         elif cmd_key == "pause":
             self._paused = True
-            if self._recorder:
-                self._recorder.pause()
+            self._slack_manager.post_message(team_id, channel_id, "\u23f8\ufe0f Recording paused (transcript collection suspended)")
+            self._debug_post("paused — chunks will be transcribed but excluded from transcript", "medium")
+            logger.info("Huddle paused — audio still captured, chunks excluded from transcript")
 
         elif cmd_key == "resume":
             self._paused = False
-            if self._recorder:
-                self._recorder.resume()
+            self._slack_manager.post_message(team_id, channel_id, "\u25b6\ufe0f Recording resumed")
+            self._debug_post("resumed — chunks included in transcript again", "medium")
+            logger.info("Huddle resumed — chunks included in transcript again")
 
         elif cmd_key == "summarize":
             transcript = "\n".join(self._chunk_texts)
             if not transcript.strip():
                 self._slack_manager.post_message(team_id, channel_id, "No transcript yet to summarize.")
+                self._debug_post("summarize: no transcript yet", "low")
                 return
+            self._debug_post(f"summarize: calling LLM on {len(self._chunk_texts)} chunks", "medium")
             summary = self._call_llm_summary(transcript, config)
             if summary:
                 self._slack_manager.post_message(team_id, channel_id, f"*Summary:*\n{summary}")
+                self._debug_post("summarize: posted to channel", "low")
 
         elif cmd_key == "list action items":
             transcript = "\n".join(self._chunk_texts)
             if not transcript.strip():
                 self._slack_manager.post_message(team_id, channel_id, "No transcript yet.")
+                self._debug_post("list action items: no transcript yet", "low")
                 return
+            self._debug_post(f"list action items: calling LLM on {len(self._chunk_texts)} chunks", "medium")
             items = self._call_llm_action_items(transcript, config)
             if items:
                 self._slack_manager.post_message(team_id, channel_id, f"*Action Items:*\n{items}")
+                self._debug_post("list action items: posted to channel", "low")
 
         elif cmd_key == "calibrate":
             self._slack_manager.post_message(
                 team_id, channel_id,
                 "Please speak one at a time and closer to your mic"
             )
+            self._debug_post("calibrate: message posted", "low")
 
         elif cmd_key == "status":
             elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
@@ -334,26 +439,51 @@ class HuddleManager:
                 duration_str = f"{h}h {m:02d}m {s:02d}s"
             else:
                 duration_str = f"{m}m {s:02d}s"
+            paused_str = " | PAUSED" if self._paused else ""
+            debug_str = f" | debug={self._debug_level or 'off'}" if self._debug_level else ""
             self._slack_manager.post_message(
                 team_id, channel_id,
-                f"Recording duration: {duration_str} | Chunks: {self._chunk_count}"
+                f"Recording duration: {duration_str} | Chunks: {self._chunk_count}{paused_str}{debug_str}"
             )
 
         elif cmd_key == "note":
             note_text = f"[NOTE: {remainder}]"
             self._chunk_texts.append(note_text)
             self._slack_manager.post_message(team_id, channel_id, note_text)
+            self._debug_post(f"note added: {remainder}", "medium")
 
         elif cmd_key == "topic":
             topic_text = f"\n## {remainder}\n"
             self._chunk_texts.append(topic_text)
             self._slack_manager.post_message(team_id, channel_id, f"*Topic:* {remainder}")
+            self._debug_post(f"topic set: {remainder}", "medium")
 
         elif cmd_key == "help":
-            self._slack_manager.post_message(team_id, channel_id, WELCOME_MESSAGE)
+            word = config.get("slack_activation_word", "conyo")
+            self._slack_manager.post_message(team_id, channel_id, _make_welcome_message(word))
+
+        elif cmd_key == "debug":
+            sub = remainder.strip().lower()
+            _descriptions = {
+                "low": "commands + errors",
+                "medium": "low + state changes + LLM calls",
+                "high": "medium + per-chunk confidence + transcript snippets",
+            }
+            if sub in ("off",):
+                self._debug_level = None
+                self._slack_manager.post_message(team_id, channel_id, "\U0001f527 Debug mode: OFF")
+            elif sub in ("on", ""):
+                self._debug_level = "low"
+                self._slack_manager.post_message(team_id, channel_id, f"\U0001f527 Debug mode: LOW ({_descriptions['low']})")
+            elif sub in _DEBUG_LEVELS:
+                self._debug_level = sub
+                self._slack_manager.post_message(team_id, channel_id, f"\U0001f527 Debug mode: {sub.upper()} ({_descriptions[sub]})")
+            else:
+                self._slack_manager.post_message(team_id, channel_id, "\U0001f527 Usage: debug on/off/low/medium/high")
 
         elif cmd_key == "start recording":
             logger.warning("'start recording' command received but session already active — ignoring")
+            self._debug_post("start recording: ignored — session already active", "low")
 
         else:
             logger.warning("Unknown command: %s", cmd_key)
@@ -394,7 +524,9 @@ class HuddleManager:
 
     def _post_welcome(self, team_id: str, channel_id: str) -> None:
         """Worker thread: post welcome message to Slack channel."""
-        self._slack_manager.post_message(team_id, channel_id, WELCOME_MESSAGE)
+        config = load_config()
+        word = config.get("slack_activation_word", "conyo")
+        self._slack_manager.post_message(team_id, channel_id, _make_welcome_message(word))
 
     def _post_confidence_alert(self, team_id: str, channel_id: str) -> None:
         """Worker thread: post low-confidence alert."""
