@@ -94,6 +94,10 @@ class HotkeyManager:
       the GTK main thread.
     - AudioRecorder callbacks already arrive on the GTK main thread via
       GLib.idle_add in recorder.py.
+    - _bindings is read from the pynput thread (_on_press/_matches_binding)
+      but written only from the GTK main thread via reload_bindings() or
+      apply_binding_override(). No lock is used; the GIL and GTK single-thread
+      rule provide sufficient ordering for this read-mostly dict.
     """
 
     _STATE_IDLE = "idle"
