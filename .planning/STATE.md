@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 9 context gathered
-last_updated: "2026-03-04T11:15:29.893Z"
+stopped_at: "Completed 09.1-01: Wave 0 TDD stubs for DB permissions, onboarding dialog, wizard page count"
+last_updated: "2026-03-04T17:05:27.920Z"
 last_activity: 2026-03-04 -- Completed 08-06; analyze flow + channel picker wired, 5 integration bugs fixed, 259 tests pass
 progress:
-  total_phases: 12
+  total_phases: 13
   completed_phases: 10
-  total_plans: 46
-  completed_plans: 46
+  total_plans: 56
+  completed_plans: 47
   percent: 95
 ---
 
@@ -29,7 +29,7 @@ Phase: 8 of 11 — Complete
 Plan: 6/6 complete (08-01 through 08-06 all done)
 Status: Phase 8 complete — 259 tests pass, all SLACK-01 through SLACK-05 requirements met
 Last activity: 2026-03-04 -- Completed 08-06; analyze flow + channel picker wired, 5 integration bugs fixed, 259 tests pass
-Stopped at: Phase 9 context gathered
+Stopped at: Completed 09.1-01: Wave 0 TDD stubs for DB permissions, onboarding dialog, wizard page count
 
 Progress: [██████████████████████████████] 95%
 
@@ -89,6 +89,7 @@ Progress: [███████████████████████
 | Phase 08-slack-integration P02 | 10 | 2 tasks | 3 files |
 | Phase 08-slack-integration P04 | 4 | 2 tasks | 3 files |
 | Phase 08 P05 | 10 | 2 tasks | 3 files |
+| Phase 09.1-github-launch-and-security P01 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -212,6 +213,8 @@ Recent decisions affecting current work:
 - [Phase 08-slack-integration]: _on_huddle_toggle_tray uses HuddleManager.is_active() not private HotkeyManager state — keeps tray logic independent of hotkey state machine
 - [Phase 08-05]: App.__new__(App) used for app.py method testing — skips GTK __init__ while keeping real bound methods; simpler than sys.modules patching approach
 - [Phase 08-05]: Bound method equality tested with == not is — Python creates new bound method object on each attribute access
+- [Phase 09.1-github-launch-and-security]: Wave 0 stubs created before implementation to enforce TDD discipline — Plan 02 must make each test GREEN
+- [Phase 09.1-github-launch-and-security]: TestWizardPageCount appended to test_app_huddle.py (not new file) — simple assertion co-located with existing wizard/app tests
 
 ### Roadmap Evolution
 
@@ -220,6 +223,7 @@ Recent decisions affecting current work:
 - Phase 8 added: Slack Integration (output to Slack, join Slack huddles as bot)
 - Phase 9 added: Packaging & Distribution (moved from Phase 6 to prioritize features first)
 - Phase 4.1 inserted after Phase 4 (URGENT): FreeFlow rename and codebase cleanup — branding rename, temp file leak fixes, VU meter dedup, dead config key removal
+- Phase 09.1 inserted after Phase 9 (URGENT): GitHub Launch and Security — .gitignore, LICENSE, SECURITY.md, CONTRIBUTING.md, OSS quality files, enhanced wizard with all API keys, GTK onboarding dialog, history DB permissions, .deb install testing, GitHub push
 
 ### Pending Todos
 
@@ -233,6 +237,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T11:15:29.889Z
+Last session: 2026-03-04T17:05:27.916Z
 Stopped at: Post-phase-8 bugs resolved (hallucination filter, double dialog, VU meter). GitHub Actions CI/CD created. Ready for Phase 9.
-Resume file: .planning/phases/09-packaging-and-distribution/09-CONTEXT.md
+Resume file: None

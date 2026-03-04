@@ -250,3 +250,13 @@ Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 | 8. Slack Integration | 5/6 | In Progress|  |
 | 8.1. Help Dialog | 0/? | Not started | - |
 | 9. Packaging & Distribution | 0/4 | Not started | - |
+
+### Phase 09.1: GitHub Launch and Security (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 9
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 09.1 to break down)
