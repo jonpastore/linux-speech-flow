@@ -1,0 +1,81 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.whl
+
+# Distribution / packaging
+dist-deb/
+*.deb
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs — never commit
+*.log
+mcp_server.log
+
+# Accidental pip install artifact files (e.g., from `pip install =1.24`)
+=*
+
+# ─── SECRETS — NEVER COMMIT ───────────────────────────────────────────────────
+# User config contains API keys (Groq, Grok, Gemini) and Slack tokens.
+# Config lives at ~/.config/linux-speech-flow/config.json — never in the repo.
+config.json
+*.secret
+*.key
+*.token
+.env
+.env.*
+!.env.example
+
+# ─── PROJECT PLANNING (GSD / Claude Code internal — not part of the release) ──
+.planning/
+.claude/
+
+# ─── USER DATA — never commit ──────────────────────────────────────────────────
+# SQLite history lives at ~/.local/share/linux-speech-flow/history.db
+*.db
+*.sqlite
+*.sqlite3
