@@ -64,6 +64,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self.connect("close-request", self._on_close)
 
         key_ctrl = Gtk.EventControllerKey()
+        key_ctrl.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
         key_ctrl.connect("key-pressed", self._on_key_pressed)
         self.add_controller(key_ctrl)
 
@@ -201,6 +202,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
             ("Conversation Mode", "conversation"),
             ("Reprocess Failed",  "reprocess"),
             ("Feedback Toggle",   "feedback"),
+            ("Huddle Recording",  "huddle"),
         ]
         for lbl_text, action in _ACTION_ROWS:
             content.append(self._make_hotkey_row(lbl_text, action))
@@ -1447,9 +1449,10 @@ class AddWorkspaceDialog(Gtk.Window):
 
         steps = [
             "Go to api.slack.com/apps \u2192 Create New App \u2192 From Scratch",
-            "Add OAuth scopes: chat:write, files:write, channels:read, groups:read, im:read, users:read. Install app to workspace.",
-            "Copy the Bot Token (xoxb-...) from OAuth & Permissions page.",
-            "Under Settings \u2192 Basic Information \u2192 App-Level Tokens, generate a token with connections:write scope. Copy the xapp-... token.",
+            "Under Settings \u2192 Socket Mode, enable Socket Mode. This allows linux-speech-flow to connect without a public URL.",
+            "Under OAuth & Permissions, add scopes: chat:write, files:write, channels:read, groups:read, im:read, users:read. Then Install App to Workspace.",
+            "Copy the Bot Token (xoxb-...) from the OAuth & Permissions page.",
+            "Under Settings \u2192 Basic Information \u2192 App-Level Tokens, click Generate Token and Scopes. Add the connections:write scope. Copy the xapp-... token.",
         ]
         for i, step_text in enumerate(steps, start=1):
             step_lbl = Gtk.Label(label=f"{i}. {step_text}")
