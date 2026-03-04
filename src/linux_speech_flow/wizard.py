@@ -2,69 +2,229 @@ import math
 
 TECH_STACKS = {
     "Go / Golang": [
-        "Go", "Golang", "goroutine", "goroutines", "gRPC", "protobuf", "proto",
-        "GOPATH", "go.mod", "go.sum", "golangci-lint", "Gopher", "defer", "chan",
+        "Go",
+        "Golang",
+        "goroutine",
+        "goroutines",
+        "gRPC",
+        "protobuf",
+        "proto",
+        "GOPATH",
+        "go.mod",
+        "go.sum",
+        "golangci-lint",
+        "Gopher",
+        "defer",
+        "chan",
     ],
     "Python": [
-        "Python", "PyPI", "pip", "venv", "virtualenv", "Django", "Flask", "FastAPI",
-        "SQLAlchemy", "Pydantic", "pytest", "asyncio", "Celery", "NumPy", "pandas",
-        "PyGObject", "pyproject.toml", "Jupyter",
+        "Python",
+        "PyPI",
+        "pip",
+        "venv",
+        "virtualenv",
+        "Django",
+        "Flask",
+        "FastAPI",
+        "SQLAlchemy",
+        "Pydantic",
+        "pytest",
+        "asyncio",
+        "Celery",
+        "NumPy",
+        "pandas",
+        "PyGObject",
+        "pyproject.toml",
+        "Jupyter",
     ],
     "Rust": [
-        "Rust", "Cargo", "crate", "crates.io", "Tokio", "Actix", "Serde", "rustup",
-        "rustfmt", "Clippy", "borrow checker", "lifetime", "ownership", "unsafe",
+        "Rust",
+        "Cargo",
+        "crate",
+        "crates.io",
+        "Tokio",
+        "Actix",
+        "Serde",
+        "rustup",
+        "rustfmt",
+        "Clippy",
+        "borrow checker",
+        "lifetime",
+        "ownership",
+        "unsafe",
     ],
     "JavaScript / TypeScript": [
-        "JavaScript", "TypeScript", "Node.js", "npm", "yarn", "pnpm", "Webpack",
-        "Vite", "ESLint", "Prettier", "React", "Vue", "Svelte", "Next.js", "Bun",
-        "Deno", "Jest", "Vitest", "tsconfig",
+        "JavaScript",
+        "TypeScript",
+        "Node.js",
+        "npm",
+        "yarn",
+        "pnpm",
+        "Webpack",
+        "Vite",
+        "ESLint",
+        "Prettier",
+        "React",
+        "Vue",
+        "Svelte",
+        "Next.js",
+        "Bun",
+        "Deno",
+        "Jest",
+        "Vitest",
+        "tsconfig",
     ],
     "DevOps / CI-CD": [
-        "DevOps", "CI/CD", "GitHub Actions", "GitLab CI", "Jenkins", "Terraform",
-        "Ansible", "Helm", "ArgoCD", "FluxCD", "pipeline", "artifact", "canary",
-        "blue-green", "rollback",
+        "DevOps",
+        "CI/CD",
+        "GitHub Actions",
+        "GitLab CI",
+        "Jenkins",
+        "Terraform",
+        "Ansible",
+        "Helm",
+        "ArgoCD",
+        "FluxCD",
+        "pipeline",
+        "artifact",
+        "canary",
+        "blue-green",
+        "rollback",
     ],
     "Kubernetes / Docker": [
-        "Kubernetes", "kubectl", "Helm", "pod", "namespace", "deployment", "ingress",
-        "ConfigMap", "StatefulSet", "DaemonSet", "ReplicaSet", "etcd", "Docker",
-        "Dockerfile", "docker-compose", "containerd",
+        "Kubernetes",
+        "kubectl",
+        "Helm",
+        "pod",
+        "namespace",
+        "deployment",
+        "ingress",
+        "ConfigMap",
+        "StatefulSet",
+        "DaemonSet",
+        "ReplicaSet",
+        "etcd",
+        "Docker",
+        "Dockerfile",
+        "docker-compose",
+        "containerd",
     ],
     "AWS": [
-        "AWS", "EC2", "S3", "IAM", "Lambda", "CloudFormation", "VPC", "EKS", "ECS",
-        "RDS", "DynamoDB", "CloudFront", "Route 53", "SQS", "SNS", "CloudWatch",
+        "AWS",
+        "EC2",
+        "S3",
+        "IAM",
+        "Lambda",
+        "CloudFormation",
+        "VPC",
+        "EKS",
+        "ECS",
+        "RDS",
+        "DynamoDB",
+        "CloudFront",
+        "Route 53",
+        "SQS",
+        "SNS",
+        "CloudWatch",
     ],
     "GCP": [
-        "GCP", "Google Cloud", "GKE", "Cloud Run", "BigQuery", "Pub/Sub",
-        "Cloud Storage", "Cloud Functions", "Cloud SQL", "Firestore", "Vertex AI",
-        "Artifact Registry", "Cloud Build", "gcloud",
+        "GCP",
+        "Google Cloud",
+        "GKE",
+        "Cloud Run",
+        "BigQuery",
+        "Pub/Sub",
+        "Cloud Storage",
+        "Cloud Functions",
+        "Cloud SQL",
+        "Firestore",
+        "Vertex AI",
+        "Artifact Registry",
+        "Cloud Build",
+        "gcloud",
     ],
     "Azure": [
-        "Azure", "AKS", "Azure DevOps", "Azure Functions", "Blob Storage",
-        "Cosmos DB", "Azure SQL", "App Service", "Entra ID", "Bicep",
-        "Service Bus", "Event Hub",
+        "Azure",
+        "AKS",
+        "Azure DevOps",
+        "Azure Functions",
+        "Blob Storage",
+        "Cosmos DB",
+        "Azure SQL",
+        "App Service",
+        "Entra ID",
+        "Bicep",
+        "Service Bus",
+        "Event Hub",
     ],
     "PostgreSQL": [
-        "PostgreSQL", "Postgres", "psql", "pg_dump", "pg_restore", "PostGIS",
-        "VACUUM", "ANALYZE", "JSONB", "CTE", "upsert", "COALESCE", "pgAdmin",
+        "PostgreSQL",
+        "Postgres",
+        "psql",
+        "pg_dump",
+        "pg_restore",
+        "PostGIS",
+        "VACUUM",
+        "ANALYZE",
+        "JSONB",
+        "CTE",
+        "upsert",
+        "COALESCE",
+        "pgAdmin",
     ],
     "MySQL / MariaDB": [
-        "MySQL", "MariaDB", "mysqldump", "InnoDB", "EXPLAIN", "stored procedure",
-        "replication", "binlog", "Galera", "Percona",
+        "MySQL",
+        "MariaDB",
+        "mysqldump",
+        "InnoDB",
+        "EXPLAIN",
+        "stored procedure",
+        "replication",
+        "binlog",
+        "Galera",
+        "Percona",
     ],
     "Linux / Systems": [
-        "systemd", "journalctl", "crontab", "iptables", "nftables", "nginx",
-        "OpenSSL", "rsync", "strace", "lsof", "tcpdump", "POSIX", "daemon",
+        "systemd",
+        "journalctl",
+        "crontab",
+        "iptables",
+        "nftables",
+        "nginx",
+        "OpenSSL",
+        "rsync",
+        "strace",
+        "lsof",
+        "tcpdump",
+        "POSIX",
+        "daemon",
     ],
     "Security / Auth": [
-        "OAuth", "OAuth 2.0", "OIDC", "JWT", "SAML", "SSO", "MFA", "TOTP",
-        "bcrypt", "argon2", "TLS", "mTLS", "RBAC", "CSRF", "XSS", "OWASP",
-        "Vault", "Keycloak",
+        "OAuth",
+        "OAuth 2.0",
+        "OIDC",
+        "JWT",
+        "SAML",
+        "SSO",
+        "MFA",
+        "TOTP",
+        "bcrypt",
+        "argon2",
+        "TLS",
+        "mTLS",
+        "RBAC",
+        "CSRF",
+        "XSS",
+        "OWASP",
+        "Vault",
+        "Keycloak",
     ],
 }
 import struct
 import subprocess
 import threading
 import gi
+
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 
@@ -82,7 +242,7 @@ def _block_scroll(combo: Gtk.ComboBoxText) -> None:
 
 
 class WizardWindow(Gtk.ApplicationWindow):
-    PAGES = ["api_key", "microphone", "vocabulary"]
+    PAGES = ["api_key", "grok_key", "gemini_key", "slack_key", "microphone", "vocabulary"]
 
     def __init__(self, application, config: dict = None):
         super().__init__(application=application, title="linux-speech-flow Setup")
@@ -103,6 +263,9 @@ class WizardWindow(Gtk.ApplicationWindow):
         outer.append(self._stack)
 
         self._stack.add_named(self._build_api_key_page(), "api_key")
+        self._stack.add_named(self._build_grok_key_page(), "grok_key")
+        self._stack.add_named(self._build_gemini_key_page(), "gemini_key")
+        self._stack.add_named(self._build_slack_key_page(), "slack_key")
         self._stack.add_named(self._build_microphone_page(), "microphone")
         self._stack.add_named(self._build_vocabulary_page(), "vocabulary")
 
@@ -136,7 +299,7 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.set_margin_top(24)
         box.set_margin_bottom(12)
 
-        title = Gtk.Label(label="Step 1 of 3: Groq API Key")
+        title = Gtk.Label(label="Step 1 of 6: Groq API Key")
         title.add_css_class("title-2")
         title.set_xalign(0)
         box.append(title)
@@ -178,6 +341,156 @@ class WizardWindow(Gtk.ApplicationWindow):
 
         return box
 
+    def _build_grok_key_page(self) -> Gtk.Widget:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.set_margin_start(24)
+        box.set_margin_end(24)
+        box.set_margin_top(24)
+        box.set_margin_bottom(12)
+
+        title = Gtk.Label(label="Step 2 of 6: Grok API Key (optional)")
+        title.add_css_class("title-2")
+        title.set_xalign(0)
+        box.append(title)
+
+        desc = Gtk.Label(label="Required only for conversation analysis with Grok by xAI.")
+        desc.set_xalign(0)
+        desc.set_wrap(True)
+        box.append(desc)
+
+        self._grok_key_entry = Gtk.PasswordEntry()
+        self._grok_key_entry.set_show_peek_icon(True)
+        self._grok_key_entry.set_property("placeholder-text", "xai-...")
+        box.append(self._grok_key_entry)
+
+        link = Gtk.Label()
+        link.set_markup('<a href="https://console.x.ai/">Get API key at console.x.ai</a>')
+        link.set_xalign(0)
+        box.append(link)
+
+        if self._config.get("grok_api_key"):
+            self._grok_key_entry.set_text(self._config["grok_api_key"])
+
+        self._grok_validate_label = Gtk.Label(label="")
+        self._grok_validate_label.set_xalign(0)
+        box.append(self._grok_validate_label)
+
+        btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        validate_btn = Gtk.Button(label="Validate")
+        validate_btn.connect("clicked", self._on_validate_grok)
+        btn_row.append(validate_btn)
+        skip_btn = Gtk.Button(label="Skip")
+        skip_btn.connect("clicked", lambda _: (self._grok_key_entry.set_text(""), self._on_next(None)))
+        btn_row.append(skip_btn)
+        box.append(btn_row)
+
+        return box
+
+    def _on_validate_grok(self, _btn):
+        key = self._grok_key_entry.get_text().strip()
+        if not key:
+            self._grok_validate_label.set_text("Enter a key first.")
+        elif key.startswith("xai-"):
+            self._grok_validate_label.set_text("Format OK")
+        else:
+            self._grok_validate_label.set_text("Invalid — expected xai-... prefix")
+
+    def _build_gemini_key_page(self) -> Gtk.Widget:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.set_margin_start(24)
+        box.set_margin_end(24)
+        box.set_margin_top(24)
+        box.set_margin_bottom(12)
+
+        title = Gtk.Label(label="Step 3 of 6: Gemini API Key (optional)")
+        title.add_css_class("title-2")
+        title.set_xalign(0)
+        box.append(title)
+
+        desc = Gtk.Label(label="Required only for conversation analysis with Google Gemini.")
+        desc.set_xalign(0)
+        desc.set_wrap(True)
+        box.append(desc)
+
+        self._gemini_key_entry = Gtk.PasswordEntry()
+        self._gemini_key_entry.set_show_peek_icon(True)
+        self._gemini_key_entry.set_property("placeholder-text", "AI...")
+        box.append(self._gemini_key_entry)
+
+        link = Gtk.Label()
+        link.set_markup('<a href="https://aistudio.google.com/apikey">Get API key at aistudio.google.com</a>')
+        link.set_xalign(0)
+        box.append(link)
+
+        if self._config.get("gemini_api_key"):
+            self._gemini_key_entry.set_text(self._config["gemini_api_key"])
+
+        self._gemini_validate_label = Gtk.Label(label="")
+        self._gemini_validate_label.set_xalign(0)
+        box.append(self._gemini_validate_label)
+
+        btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        validate_btn = Gtk.Button(label="Validate")
+        validate_btn.connect("clicked", self._on_validate_gemini)
+        btn_row.append(validate_btn)
+        skip_btn = Gtk.Button(label="Skip")
+        skip_btn.connect("clicked", lambda _: (self._gemini_key_entry.set_text(""), self._on_next(None)))
+        btn_row.append(skip_btn)
+        box.append(btn_row)
+
+        return box
+
+    def _on_validate_gemini(self, _btn):
+        key = self._gemini_key_entry.get_text().strip()
+        if not key:
+            self._gemini_validate_label.set_text("Enter a key first.")
+        elif len(key) > 10:
+            self._gemini_validate_label.set_text("Format OK")
+        else:
+            self._gemini_validate_label.set_text("Key too short — check your key")
+
+    def _build_slack_key_page(self) -> Gtk.Widget:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.set_margin_start(24)
+        box.set_margin_end(24)
+        box.set_margin_top(24)
+        box.set_margin_bottom(12)
+
+        title = Gtk.Label(label="Step 4 of 6: Slack Integration (optional)")
+        title.add_css_class("title-2")
+        title.set_xalign(0)
+        box.append(title)
+
+        desc = Gtk.Label(
+            label=(
+                "Slack integration lets linux-speech-flow post transcriptions to Slack "
+                "and record Slack huddle sessions.\n\n"
+                "Slack requires creating a Slack App with specific permissions — see the README "
+                "for the full setup guide. You can connect Slack at any time via Settings > Integrations."
+            )
+        )
+        desc.set_xalign(0)
+        desc.set_wrap(True)
+        box.append(desc)
+
+        link = Gtk.Label()
+        link.set_markup('<a href="https://api.slack.com/apps">Create a Slack App at api.slack.com</a>')
+        link.set_xalign(0)
+        box.append(link)
+
+        btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        validate_btn = Gtk.Button(label="Validate")
+        validate_btn.connect("clicked", lambda _: None)
+        validate_btn.set_sensitive(False)
+        validate_btn.set_tooltip_text("Slack setup must be completed via Settings > Integrations after wizard")
+        btn_row.append(validate_btn)
+        skip_btn = Gtk.Button(label="Skip")
+        skip_btn.connect("clicked", lambda _: self._on_next(None))
+        btn_row.append(skip_btn)
+        box.append(btn_row)
+
+        return box
+
     def _build_microphone_page(self) -> Gtk.Widget:
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         box.set_margin_start(24)
@@ -185,7 +498,7 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.set_margin_top(24)
         box.set_margin_bottom(12)
 
-        title = Gtk.Label(label="Step 2 of 3: Microphone")
+        title = Gtk.Label(label="Step 5 of 6: Microphone")
         title.add_css_class("title-2")
         title.set_xalign(0)
         box.append(title)
@@ -212,7 +525,9 @@ class WizardWindow(Gtk.ApplicationWindow):
         self._vu_bar.set_margin_bottom(4)
         box.append(self._vu_bar)
 
-        vu_hint = Gtk.Label(label="Speak to confirm your microphone is picking up audio.")
+        vu_hint = Gtk.Label(
+            label="Speak to confirm your microphone is picking up audio."
+        )
         vu_hint.set_xalign(0)
         vu_hint.set_wrap(True)
         vu_hint.add_css_class("dim-label")
@@ -233,15 +548,15 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.set_margin_top(24)
         box.set_margin_bottom(12)
 
-        title = Gtk.Label(label="Step 3 of 3: Vocabulary (optional)")
+        title = Gtk.Label(label="Step 6 of 6: Vocabulary (optional)")
         title.add_css_class("title-2")
         title.set_xalign(0)
         box.append(title)
 
         desc = Gtk.Label(
             label="Whisper often misspells technical names, product names, and jargon. "
-                  "Words listed here are included in every transcription prompt so they "
-                  "are spelled exactly as you enter them. One word or phrase per line."
+            "Words listed here are included in every transcription prompt so they "
+            "are spelled exactly as you enter them. One word or phrase per line."
         )
         desc.set_xalign(0)
         desc.set_wrap(True)
@@ -268,7 +583,9 @@ class WizardWindow(Gtk.ApplicationWindow):
 
         box.append(stack_row)
 
-        hint = Gtk.Label(label="Presets add common terms for that stack. You can edit or add your own below.")
+        hint = Gtk.Label(
+            label="Presets add common terms for that stack. You can edit or add your own below."
+        )
         hint.set_xalign(0)
         hint.set_wrap(True)
         hint.add_css_class("dim-label")
@@ -344,7 +661,8 @@ class WizardWindow(Gtk.ApplicationWindow):
             "--format=s16le",
             f"--rate={RATE}",
             "--latency-msec=50",
-            "-d", source_name,
+            "-d",
+            source_name,
         ]
         self._vu_proc = None
         try:
@@ -467,6 +785,12 @@ class WizardWindow(Gtk.ApplicationWindow):
 
         config = load_config()
         config["groq_api_key"] = self._api_key_entry.get_text().strip()
+        grok_key = self._grok_key_entry.get_text().strip()
+        if grok_key:
+            config["grok_api_key"] = grok_key
+        gemini_key = self._gemini_key_entry.get_text().strip()
+        if gemini_key:
+            config["gemini_api_key"] = gemini_key
         config["microphone"] = mic_name
         config["vocabulary"] = vocab
         config["setup_complete"] = True

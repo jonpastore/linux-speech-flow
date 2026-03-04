@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: "Completed 09.1-04: OSS standard files (README, SECURITY, CONTRIBUTING, CODE_OF_CONDUCT, CHANGELOG)"
-last_updated: "2026-03-04T17:08:56.508Z"
+stopped_at: "Completed 09.1-03: pyproject.toml metadata and config.example.json"
+last_updated: "2026-03-04T17:10:15.331Z"
 last_activity: 2026-03-04 -- Completed 08-06; analyze flow + channel picker wired, 5 integration bugs fixed, 259 tests pass
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 56
-  completed_plans: 49
+  completed_plans: 50
   percent: 95
 ---
 
@@ -29,7 +29,7 @@ Phase: 8 of 11 — Complete
 Plan: 6/6 complete (08-01 through 08-06 all done)
 Status: Phase 8 complete — 259 tests pass, all SLACK-01 through SLACK-05 requirements met
 Last activity: 2026-03-04 -- Completed 08-06; analyze flow + channel picker wired, 5 integration bugs fixed, 259 tests pass
-Stopped at: Completed 09.1-04: OSS standard files (README, SECURITY, CONTRIBUTING, CODE_OF_CONDUCT, CHANGELOG)
+Stopped at: Completed 09.1-03: pyproject.toml metadata and config.example.json
 
 Progress: [██████████████████████████████] 95%
 
@@ -92,6 +92,7 @@ Progress: [███████████████████████
 | Phase 09.1-github-launch-and-security P01 | 3 | 2 tasks | 3 files |
 | Phase 09.1-github-launch-and-security P05 | 1 | 2 tasks | 5 files |
 | Phase 09.1-github-launch-and-security P04 | 2 | 2 tasks | 5 files |
+| Phase 09.1-github-launch-and-security P03 | 4 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -222,6 +223,8 @@ Recent decisions affecting current work:
 - [Phase 09.1-github-launch-and-security]: Dependabot weekly Monday schedule batches pip and github-actions PRs to a predictable day
 - [Phase 09.1-github-launch-and-security]: Privacy disclosure language used verbatim from CONTEXT.md locked text in README.md
 - [Phase 09.1-github-launch-and-security]: SECURITY.md links directly to GitHub private advisory URL for one-click reporting
+- [Phase 09.1-03]: license = 'MIT' SPDX string form used in pyproject.toml (PEP 639, setuptools>=68) — not legacy dict form
+- [Phase 09.1-03]: config.example.json includes all 49 DEFAULT_CONFIG keys (including app_categories, llm_system_prompt, conv_default_prompt, viewer dims) — extended beyond plan template to match full schema per plan instructions
 
 ### Roadmap Evolution
 
@@ -244,6 +247,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T17:08:56.504Z
+Last session: 2026-03-04T17:10:15.327Z
 Stopped at: Post-phase-8 bugs resolved (hallucination filter, double dialog, VU meter). GitHub Actions CI/CD created. Ready for Phase 9.
 Resume file: None

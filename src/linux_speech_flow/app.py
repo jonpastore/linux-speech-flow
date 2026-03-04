@@ -44,6 +44,7 @@ class App(Gtk.Application):
         self._huddle_manager: HuddleManager | None = None
         self._slack_sockets: list[SlackSocket] = []
         self._huddle_dialog = None
+        self._onboarding = None
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -136,15 +137,26 @@ class App(Gtk.Application):
     def do_activate(self):
         config = load_config()
         if not config.get("setup_complete", False):
-            if self._wizard is None:
-                self._wizard = WizardWindow(application=self)
-                self._wizard.connect("close-request", self._on_wizard_closed)
-            self._wizard.present()
+            if self._onboarding is None:
+                from linux_speech_flow.onboarding_dialog import OnboardingDialog
+                self._onboarding = OnboardingDialog(
+                    application=self,
+                    on_continue=self._on_onboarding_continue,
+                    on_quit=lambda: GLib.idle_add(self.quit),
+                )
+            self._onboarding.present()
         else:
             self.hold()
 
     def _on_wizard_closed(self, _window):
         self._wizard = None
+
+    def _on_onboarding_continue(self):
+        self._onboarding = None
+        if self._wizard is None:
+            self._wizard = WizardWindow(application=self)
+            self._wizard.connect("close-request", self._on_wizard_closed)
+        self._wizard.present()
 
     def _on_open_settings(self, _btn=None):
         if self._settings is None:
