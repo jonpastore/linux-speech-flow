@@ -157,3 +157,15 @@ class TestUploadFile:
             mock_client_cls.return_value = mock_client
             result = manager.upload_file("T001", "C001", "/fake/path.wav", "Test", _path=tmp_config)
         assert result is False
+
+    def test_upload_file_uses_v2_not_v1(self, tmp_config, tmp_path):
+        manager = SlackManager()
+        manager.add_workspace("T001", {"bot_token": "xoxb-1"}, _path=tmp_config)
+        fake_file = tmp_path / "audio.wav"
+        fake_file.write_bytes(b"RIFF")
+        with patch("linux_speech_flow.slack_manager.WebClient") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client_cls.return_value = mock_client
+            manager.upload_file("T001", "C001", str(fake_file), "Test", _path=tmp_config)
+        mock_client.files_upload_v2.assert_called_once()
+        mock_client.files_upload.assert_not_called()

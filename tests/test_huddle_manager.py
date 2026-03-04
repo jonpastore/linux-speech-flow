@@ -98,3 +98,17 @@ def test_detect_activation_word_not_present():
     cmd, rest = detect_activation("stop recording now", "conyo")
     assert cmd is None
     assert rest is None
+
+
+def test_detect_activation_summarize_with_prefix():
+    from linux_speech_flow.huddle_manager import detect_activation
+    cmd, rest = detect_activation("please conyo summarize this", "conyo")
+    assert cmd == "summarize"
+    assert rest == "this"
+
+
+def test_detect_activation_partial_match_no_false_positive():
+    from linux_speech_flow.huddle_manager import detect_activation
+    cmd, rest = detect_activation("conyo unknown-command-xyz", "conyo")
+    assert cmd is None
+    assert rest is None
