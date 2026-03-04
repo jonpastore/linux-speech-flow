@@ -421,6 +421,87 @@ class HuddleManager:
         self.stop_session()
         return False
 
+    def post_huddle_results(
+        self,
+        team_id: str,
+        channel_id: str,
+        result: dict,
+        saved_path: str | None,
+    ) -> None:
+        """Post analysis results to Slack. Always runs on a background thread.
+
+        result dict keys (from ConversationPipeline/ConversationDialog output):
+          - 'title': AI-generated title string
+          - 'summary': executive summary text
+          - 'analysis': full AI analysis text
+          - 'date': ISO8601 date string
+
+        Posting failure shows error notification. Local file is always saved
+        regardless of Slack post success (caller handles save, we only post).
+        """
+        from datetime import datetime
+        from linux_speech_flow.notify import send_notification
+
+        title = result.get("title") or "Huddle"
+        summary = result.get("summary") or ""
+        analysis = result.get("analysis") or ""
+        date_str = result.get("date") or datetime.now().strftime("%A, %B %d %Y")
+
+        header = f"Huddle on {date_str} about: {title}"
+        blocks = self._build_huddle_result_blocks(header, summary, analysis)
+
+        ok = self._slack_manager.post_message(
+            team_id=team_id,
+            channel_id=channel_id,
+            text=header,
+            blocks=blocks,
+        )
+        if not ok:
+            GLib.idle_add(lambda: send_notification(
+                "Slack post failed",
+                body="Could not post huddle results to Slack. Local file saved.",
+            ))
+            return
+
+        if saved_path:
+            upload_ok = self._slack_manager.upload_file(
+                team_id=team_id,
+                channel_id=channel_id,
+                file_path=saved_path,
+                title=f"Huddle Transcript — {date_str}",
+            )
+            if not upload_ok:
+                GLib.idle_add(lambda: send_notification(
+                    "Slack upload failed",
+                    body="Results message posted but transcript file upload failed.",
+                ))
+
+    @staticmethod
+    def _build_huddle_result_blocks(header: str, summary: str, analysis: str) -> list[dict]:
+        """Build Slack Block Kit rich message for post-huddle results."""
+        return [
+            {
+                "type": "header",
+                "text": {"type": "plain_text", "text": header},
+            },
+            {"type": "divider"},
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": f"*Executive Summary*\n{summary}"},
+            },
+            {"type": "divider"},
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": f"*AI Analysis*\n{analysis}"},
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {"type": "mrkdwn", "text": "_Full transcript attached as .md file_"},
+                ],
+            },
+        ]
+
     def _finish_session(self) -> None:
         """GTK main thread: assemble final transcript and fire on_session_complete."""
         full_transcript = "\n".join(self._chunk_texts)
