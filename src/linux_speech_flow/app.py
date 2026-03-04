@@ -17,6 +17,9 @@ from linux_speech_flow.tray import TrayManager, install_icons
 from linux_speech_flow.wizard import WizardWindow
 from linux_speech_flow.settings import SettingsWindow
 from linux_speech_flow.hotkey import HotkeyManager
+from linux_speech_flow.slack_manager import SlackManager
+from linux_speech_flow.huddle_manager import HuddleManager
+from linux_speech_flow.slack_socket import SlackSocket
 
 
 class App(Gtk.Application):
@@ -35,6 +38,9 @@ class App(Gtk.Application):
         self._history_store: HistoryStore | None = None
         self._conv_manager: ConversationManager | None = None
         self._conv_viewer = None
+        self._slack_manager: SlackManager | None = None
+        self._huddle_manager: HuddleManager | None = None
+        self._slack_sockets: list[SlackSocket] = []
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -62,6 +68,8 @@ class App(Gtk.Application):
             on_conversation_start=self._on_conv_start,
             on_conversation_stop=self._on_conv_stop,
             on_conversation_feedback_toggle=self._on_conv_feedback_toggle,
+            on_huddle_start=self._on_huddle_start,
+            on_huddle_stop=self._on_huddle_stop,
         )
         self._hotkey_manager.start()
         GLib.idle_add(self._hotkey_manager.mark_started)
@@ -80,6 +88,29 @@ class App(Gtk.Application):
         )
         self._conv_window_info: dict = {}
 
+        self._slack_manager = SlackManager()
+        self._huddle_manager = HuddleManager(
+            application=self,
+            slack_manager=self._slack_manager,
+            on_session_complete=self._on_huddle_session_complete,
+            on_tray_state=lambda state: self._tray.set_state(state) if self._tray else None,
+        )
+        workspaces = self._slack_manager.get_workspaces()
+        for team_id, ws in workspaces.items():
+            app_token = ws.get("app_token", "")
+            bot_token = ws.get("bot_token", "")
+            authed_user_id = ws.get("authed_user_id", "")
+            if app_token and bot_token and authed_user_id:
+                sock = SlackSocket()
+                sock.start(
+                    app_token=app_token,
+                    bot_token=bot_token,
+                    on_huddle_event=self._on_huddle_event_detected,
+                    on_huddle_end=self._on_huddle_end_detected,
+                    authed_user_id=authed_user_id,
+                )
+                self._slack_sockets.append(sock)
+
         self._tray = TrayManager(
             app=self,
             on_settings=self._on_open_settings,
@@ -88,6 +119,7 @@ class App(Gtk.Application):
             on_history=self._on_open_history,
             on_conv_history=self._on_open_conv_viewer,
             on_help=self._on_open_help,
+            on_huddle_toggle=self._on_huddle_toggle_tray,
         )
         self._tray.setup()
 
@@ -231,6 +263,177 @@ class App(Gtk.Application):
     def _on_conv_feedback_toggle(self) -> None:
         if self._conv_manager:
             self._conv_manager.toggle_feedback()
+
+    def _on_huddle_event_detected(self, event: dict) -> None:
+        """Called on GTK main thread via GLib.idle_add when SlackSocket detects a huddle start.
+
+        Dispatches based on slack_huddle_auto_detect config:
+          'always' — start recording immediately
+          'prompt' — show tray notification with Start Recording action
+          'manual' — ignore (user uses Ctrl+Alt+H or tray item only)
+        """
+        config = load_config()
+        auto_detect = config.get("slack_huddle_auto_detect", "prompt")
+        if auto_detect == "manual":
+            return
+        huddle_state = event.get("huddle_state") or {}
+        channel_id = (
+            huddle_state.get("channel_id")
+            or huddle_state.get("call", {}).get("channel_id", "")
+        )
+        team_id = event.get("team_id", "")
+        if not channel_id and team_id:
+            channel_id = config.get("slack_workspaces", {}).get(team_id, {}).get("channel_id", "")
+            if channel_id:
+                logger.warning(
+                    "channel_id not found in huddle event; using configured channel_id '%s' for team %s",
+                    channel_id, team_id,
+                )
+        if auto_detect == "always":
+            self._on_huddle_start_for(team_id, channel_id)
+        else:
+            send_notification(
+                "Huddle detected",
+                body="Slack huddle started. Press Ctrl+Alt+H or use the tray to start recording.",
+            )
+
+    def _on_huddle_end_detected(self) -> None:
+        """Called on GTK main thread via GLib.idle_add when SlackSocket detects huddle ended.
+
+        Stops the active HuddleManager session (SLACK-05 auto-stop requirement).
+        No-op if no session is currently active.
+        """
+        if self._huddle_manager and self._huddle_manager.is_active():
+            logger.info("Huddle ended (auto-detected); stopping session")
+            self._on_huddle_stop()
+
+    def _on_huddle_start_for(self, team_id: str, channel_id: str) -> None:
+        """Start a huddle session for a specific team/channel (used by auto-detect)."""
+        if self._huddle_manager:
+            self._huddle_manager.start_session(team_id=team_id, channel_id=channel_id)
+            if self._tray:
+                self._tray.set_huddle_recording(True)
+
+    def _on_huddle_start(self) -> None:
+        """Called by HotkeyManager when Ctrl+Alt+H is pressed in idle state."""
+        if self._huddle_manager:
+            config = load_config()
+            workspaces = config.get("slack_workspaces", {})
+            if not workspaces:
+                send_notification("No Slack workspace connected", body="Add a workspace in Settings → Integrations")
+                if self._hotkey_manager:
+                    self._hotkey_manager.reset_to_idle()
+                return
+            team_id = next(iter(workspaces))
+            channel_id = workspaces[team_id].get("channel_id", "")
+            self._on_huddle_start_for(team_id, channel_id)
+
+    def _on_huddle_stop(self) -> None:
+        if self._huddle_manager:
+            self._huddle_manager.stop_session()
+            if self._tray:
+                self._tray.set_huddle_recording(False)
+
+    def _on_huddle_toggle_tray(self) -> None:
+        """Toggle huddle recording via tray menu item.
+
+        Calls public _on_huddle_start/_on_huddle_stop callbacks directly
+        rather than accessing private HotkeyManager state. HotkeyManager's
+        _huddle_start/_stop already guard against invalid state transitions.
+        """
+        if self._huddle_manager:
+            if not self._huddle_manager.is_active():
+                self._on_huddle_start()
+            else:
+                self._on_huddle_stop()
+
+    def _on_huddle_session_complete(self, transcript: str, metadata: dict) -> None:
+        """Reuse ConversationPipeline post-stop dialog; after Q&A, post to Slack."""
+        from linux_speech_flow.conversation_dialog import ConversationDialog
+        dialog = ConversationDialog(
+            application=self,
+            transcript=transcript,
+            metadata=metadata,
+            on_submit=lambda *args, **kwargs: self._on_huddle_dialog_submit(
+                *args, huddle_metadata=metadata, **kwargs
+            ),
+        )
+        dialog.present()
+
+    def _on_huddle_dialog_submit(
+        self, transcript, prompt, qualifying_answers,
+        selected_models, save_to_file, inject_to_window, metadata,
+        copy_to_clipboard=False, paste_to_window=False, window_info=None,
+        huddle_metadata=None,
+    ):
+        import threading
+        from pathlib import Path
+        from linux_speech_flow.conversation_pipeline import conv_filename, coalesce_file
+
+        config = load_config()
+        save_dir = Path(config.get("conv_save_dir", "~/Documents/conversations")).expanduser()
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        initial_path = str(save_dir / conv_filename("huddle"))
+        if save_to_file:
+            coalesce_file(initial_path, metadata, "", [], transcript)
+
+        def on_finalised(final_path: str) -> None:
+            if huddle_metadata and self._huddle_manager:
+                team_id = huddle_metadata.get("team_id")
+                channel_id = huddle_metadata.get("channel_id")
+                if team_id and channel_id:
+                    import threading as _t
+                    _t.Thread(
+                        target=self._huddle_manager.post_huddle_results,
+                        args=(team_id, channel_id, {}, final_path),
+                        daemon=True,
+                    ).start()
+
+        if not selected_models:
+            if save_to_file:
+                on_finalised(initial_path)
+            return
+
+        pipeline = self._conv_manager._pipeline if self._conv_manager else None
+        if pipeline is None:
+            from linux_speech_flow.conversation_pipeline import ConversationPipeline
+            pipeline = ConversationPipeline()
+
+        def _analyze_thread():
+            result = pipeline.analyze(transcript, prompt, qualifying_answers, selected_models)
+            GLib.idle_add(_open_qa, result)
+
+        def _open_qa(result):
+            from linux_speech_flow.conversation_qa import ConversationQAWindow
+            qa_window = ConversationQAWindow(
+                application=self,
+                transcript=transcript,
+                metadata=metadata,
+                pipeline=pipeline,
+                initial_result=result,
+                save_path=initial_path,
+                on_finalised=lambda final_path: self._on_huddle_analysis_complete(
+                    result, final_path, huddle_metadata
+                ),
+                selected_models=selected_models,
+            )
+            qa_window.present()
+            return False
+
+        threading.Thread(target=_analyze_thread, daemon=True).start()
+
+    def _on_huddle_analysis_complete(self, result: dict, saved_path: str | None, metadata: dict) -> None:
+        """After post-huddle Q&A completes: post results to Slack."""
+        team_id = metadata.get("team_id") if metadata else None
+        channel_id = metadata.get("channel_id") if metadata else None
+        if team_id and channel_id and self._huddle_manager:
+            import threading
+            threading.Thread(
+                target=self._huddle_manager.post_huddle_results,
+                args=(team_id, channel_id, result or {}, saved_path),
+                daemon=True,
+            ).start()
 
     def _on_conv_session_complete(self, transcript: str, metadata: dict) -> bool:
         """Called on GTK main thread by ConversationManager when session ends."""

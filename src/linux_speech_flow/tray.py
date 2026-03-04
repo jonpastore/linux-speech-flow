@@ -60,7 +60,7 @@ def install_icons():
 
 
 class TrayManager:
-    def __init__(self, app, on_settings, on_debug_log, on_reprocess, on_history=None, on_conv_history=None, on_help=None):
+    def __init__(self, app, on_settings, on_debug_log, on_reprocess, on_history=None, on_conv_history=None, on_help=None, on_huddle_toggle=None):
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
         self._reprocess_item = {
@@ -68,6 +68,13 @@ class TrayManager:
             'label': 'Reprocess Failed (0)',
             'callback': on_reprocess,
             'enabled': False,
+            'visible': True,
+        }
+        self._huddle_item = {
+            'type': 'item',
+            'label': 'Start Huddle Recording',
+            'callback': on_huddle_toggle,
+            'enabled': True,
             'visible': True,
         }
         self._tray = TrayIcon(
@@ -78,6 +85,7 @@ class TrayManager:
         self._tray.menu_items = [
             {'type': 'item', 'label': 'Transcription History', 'callback': on_history, 'enabled': True, 'visible': True},
             {'type': 'item', 'label': 'Conversation History', 'callback': on_conv_history, 'enabled': True, 'visible': True},
+            self._huddle_item,
             {'type': 'separator'},
             {'type': 'item', 'label': 'Settings', 'callback': on_settings, 'enabled': True, 'visible': True},
             {'type': 'item', 'label': 'Hotkeys', 'callback': on_help, 'enabled': True, 'visible': True},
@@ -109,6 +117,10 @@ class TrayManager:
         elif state == 'error':
             self._stop_animation()
             self._tray.change_icon('linux-speech-flow-error')
+
+    def set_huddle_recording(self, active: bool) -> None:
+        self._huddle_item['label'] = 'Stop Huddle Recording' if active else 'Start Huddle Recording'
+        self._tray.update_menu()
 
     def update_failed_count(self, count: int) -> bool:
         self._reprocess_item['label'] = f'Reprocess Failed ({count})'
