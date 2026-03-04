@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T23:43:05.702Z"
+last_updated: "2026-03-04T00:00:02.406Z"
 progress:
   total_phases: 11
   completed_phases: 8
   total_plans: 40
-  completed_plans: 38
+  completed_plans: 39
 ---
 
 # Project State
@@ -78,6 +78,7 @@ Progress: [███████████████████████
 | Phase 06-conversation-mode P08 | 5 min | 2 tasks | 0 files (verification only) |
 | Phase 07-hotkey-customization P01 | 6 | 3 tasks | 4 files |
 | Phase 07-hotkey-customization P02 | 4 | 1 tasks | 3 files |
+| Phase 07-hotkey-customization P03 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -187,6 +188,8 @@ Recent decisions affecting current work:
 - [Phase 07-02]: apply_binding_override updates in-memory _bindings dict directly for pre-save hot-reload; reload_bindings() remains full config-sync path on settings close
 - [Phase 07-02]: Lazy _GTK_MODIFIER_KEYSYMS via try/except NameError inside _handle_capture_key prevents Gdk import before gi.require_version guarantee
 - [Phase 07-02]: Canonical modifier order enforced in _handle_capture_key combo_str construction to match DANGEROUS_COMBOS frozenset exactly
+- [Phase 07-03]: TestSettingsCaptureStateMachine uses _make_sim() closures to test the capture state machine without GTK
+- [Phase 07-03]: test_matches_binding_special_key configures mock_kb.Key.__getitem__ to match attribute access, fixing mock equality gap
 
 ### Roadmap Evolution
 
