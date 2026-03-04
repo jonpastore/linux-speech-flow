@@ -181,7 +181,7 @@ Plans:
 - [ ] 07-04-PLAN.md — Code review of all 5 modified files
 
 ### Phase 8: Slack Integration
-**Goal**: User can send transcription output to Slack and linux-speech-flow can join Slack huddles as a bot; huddle end automatically stops and transcribes the session
+**Goal**: User can connect Slack workspaces via guided token setup in Settings and linux-speech-flow records Slack huddle sessions (mic + system audio) with activation word commands, posting results to Slack as Block Kit + transcript attachment
 **Depends on**: Phase 6
 **Requirements**: SLACK-01, SLACK-02, SLACK-03, SLACK-04, SLACK-05
 **Success Criteria** (what must be TRUE):
@@ -190,10 +190,15 @@ Plans:
   3. In huddle mode, silence is used to create chunk boundaries but silence audio is not recorded — chunks contain voice-only audio
   4. In huddle mode, the silence timer in ConversationStatusWindow is hidden (not meaningful in a call context)
   5. When the Slack huddle ends, linux-speech-flow automatically stops the session and triggers the full transcription and analysis pipeline
-**Plans**: TBD
+**Plans**: 6 plans
 
 Plans:
-- [ ] 08-01: TBD
+- [ ] 08-01-PLAN.md — Foundation: slack-sdk+numpy deps, config defaults, SlackManager, huddle hotkey, Settings Integrations section
+- [ ] 08-02-PLAN.md — HuddleRecorder (null-sink dual-source) + HuddleStatusWindow (dedicated GTK, no silence timer)
+- [ ] 08-03-PLAN.md — SlackSocket (SocketModeClient daemon thread) + HuddleManager (orchestration, activation word, confidence alerting)
+- [ ] 08-04-PLAN.md — App wiring (HotkeyManager, tray item) + post_huddle_results (Block Kit + .md upload)
+- [ ] 08-05-PLAN.md — Test audit and full regression run
+- [ ] 08-06-PLAN.md — Human verification of all 5 SLACK requirements
 
 ### Phase 8.1: Help Dialog
 **Goal**: User can access a comprehensive in-app help window from the tray that explains every feature, hotkey, and workflow in plain language
