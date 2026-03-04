@@ -57,7 +57,7 @@
 
 - [x] **SLACK-01**: User can connect one or more Slack workspaces via OAuth2 browser flow (pre-registered app); credentials stored in config.json
 - [x] **SLACK-02**: When a Slack huddle is detected (auto or manual Ctrl+Alt+H), linux-speech-flow records the session by capturing system audio + microphone simultaneously via PulseAudio
-- [ ] **SLACK-03**: Huddle recording uses voice-only chunks (silence detection for chunk boundaries; silence audio not recorded); silence timer hidden in Huddle Status window
+- [x] **SLACK-03**: Huddle recording uses voice-only chunks (silence detection for chunk boundaries; silence audio not recorded); silence timer hidden in Huddle Status window
 - [x] **SLACK-04**: Voice activation word (default "conyo", configurable) triggers in-call commands: start/stop, pause/resume, summarize, calibrate, status, list action items, note, topic, help; bot posts welcome message + command list to Slack on recording start
 - [ ] **SLACK-05**: When huddle ends, full conversation pipeline runs (AI analysis + Q&A dialog); results posted to Slack as Block Kit message + .md file attachment and saved locally to ~/Documents/conversations/
 
@@ -141,7 +141,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONV-07 | Phase 6.1 | Complete |
 | SLACK-01 | Phase 8 | Complete |
 | SLACK-02 | Phase 8 | Complete |
-| SLACK-03 | Phase 8 | Pending |
+| SLACK-03 | Phase 8 | Complete |
 | SLACK-04 | Phase 8 | Complete |
 | SLACK-05 | Phase 8 | Pending |
 | DIST-01 | Phase 9 | Pending |
