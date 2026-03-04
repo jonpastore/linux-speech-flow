@@ -53,6 +53,14 @@
 - [x] **CONV-06**: Silence timer visible in ConversationStatusWindow, counting up in whole seconds from when silence begins; resets to 0 immediately when voice is detected
 - [x] **CONV-07**: Most recent chunk transcript text displayed in ConversationStatusWindow (styled card), updating each time a chunk completes transcription
 
+### Slack Huddle Integration
+
+- [ ] **SLACK-01**: User can connect one or more Slack workspaces via OAuth2 browser flow (pre-registered app); credentials stored in config.json
+- [ ] **SLACK-02**: When a Slack huddle is detected (auto or manual Ctrl+Alt+H), linux-speech-flow records the session by capturing system audio + microphone simultaneously via PulseAudio
+- [ ] **SLACK-03**: Huddle recording uses voice-only chunks (silence detection for chunk boundaries; silence audio not recorded); silence timer hidden in Huddle Status window
+- [ ] **SLACK-04**: Voice activation word (default "conyo", configurable) triggers in-call commands: start/stop, pause/resume, summarize, calibrate, status, list action items, note, topic, help; bot posts welcome message + command list to Slack on recording start
+- [ ] **SLACK-05**: When huddle ends, full conversation pipeline runs (AI analysis + Q&A dialog); results posted to Slack as Block Kit message + .md file attachment and saved locally to ~/Documents/conversations/
+
 ### Distribution
 
 - [ ] **DIST-01**: App is packaged as a .deb file installable via `apt install ./linux-speech-flow_*.deb` on Ubuntu 22.04+, Debian 12+, Pop!_OS 22.04+
@@ -131,6 +139,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONV-05 | Phase 6 | Complete |
 | CONV-06 | Phase 6.1 | Complete |
 | CONV-07 | Phase 6.1 | Complete |
+| SLACK-01 | Phase 8 | Pending |
+| SLACK-02 | Phase 8 | Pending |
+| SLACK-03 | Phase 8 | Pending |
+| SLACK-04 | Phase 8 | Pending |
+| SLACK-05 | Phase 8 | Pending |
 | DIST-01 | Phase 9 | Pending |
 | DIST-02 | Phase 9 | Pending |
 | DIST-03 | Phase 9 | Pending |
@@ -138,10 +151,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DIST-05 | Phase 9 | Pending |
 
 **Coverage:**
-- v1 requirements: 30 total
-- Mapped to phases: 30
+- v1 requirements: 35 total (30 original + 5 SLACK)
+- Mapped to phases: 35
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-18*
-*Last updated: 2026-03-03 after 06.1 (CONV-06, CONV-07 complete: Phase 6.1 Conversation Status Enhancements verified)*
+*Last updated: 2026-03-03 after Phase 8 discuss-phase (SLACK-01 through SLACK-05 added: Slack Huddle Integration)*
