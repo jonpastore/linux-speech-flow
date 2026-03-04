@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: "Completed 09.1-03: pyproject.toml metadata and config.example.json"
-last_updated: "2026-03-04T17:10:15.331Z"
+stopped_at: "Completed 09.1-02: DB permissions, app ID correction, 6-page wizard, OnboardingDialog"
+last_updated: "2026-03-04T17:16:35.958Z"
 last_activity: 2026-03-04 -- Completed 08-06; analyze flow + channel picker wired, 5 integration bugs fixed, 259 tests pass
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 56
-  completed_plans: 50
+  completed_plans: 51
   percent: 95
 ---
 
@@ -29,7 +29,7 @@ Phase: 8 of 11 — Complete
 Plan: 6/6 complete (08-01 through 08-06 all done)
 Status: Phase 8 complete — 259 tests pass, all SLACK-01 through SLACK-05 requirements met
 Last activity: 2026-03-04 -- Completed 08-06; analyze flow + channel picker wired, 5 integration bugs fixed, 259 tests pass
-Stopped at: Completed 09.1-03: pyproject.toml metadata and config.example.json
+Stopped at: Completed 09.1-02: DB permissions, app ID correction, 6-page wizard, OnboardingDialog
 
 Progress: [██████████████████████████████] 95%
 
@@ -93,6 +93,7 @@ Progress: [███████████████████████
 | Phase 09.1-github-launch-and-security P05 | 1 | 2 tasks | 5 files |
 | Phase 09.1-github-launch-and-security P04 | 2 | 2 tasks | 5 files |
 | Phase 09.1-github-launch-and-security P03 | 4 | 2 tasks | 2 files |
+| Phase 09.1-github-launch-and-security P02 | 9 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -225,6 +226,9 @@ Recent decisions affecting current work:
 - [Phase 09.1-github-launch-and-security]: SECURITY.md links directly to GitHub private advisory URL for one-click reporting
 - [Phase 09.1-03]: license = 'MIT' SPDX string form used in pyproject.toml (PEP 639, setuptools>=68) — not legacy dict form
 - [Phase 09.1-03]: config.example.json includes all 49 DEFAULT_CONFIG keys (including app_categories, llm_system_prompt, conv_default_prompt, viewer dims) — extended beyond plan template to match full schema per plan instructions
+- [Phase 09.1-02]: OnboardingDialog test uses __new__ pattern (not gi_patch MagicMock instantiation) — MagicMock base class intercepts __call__ and __setattr__, blocking callback storage in instance scope
+- [Phase 09.1-02]: os.chmod in ensure_schema placed after with block exits — ensures SQLite connection is fully closed before chmod to avoid file descriptor ordering issues
+- [Phase 09.1-02]: Slack wizard page is informational only (no token entry) — Slack OAuth requires multi-step app creation; users directed to README and Settings > Integrations
 
 ### Roadmap Evolution
 
@@ -247,6 +251,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T17:10:15.327Z
+Last session: 2026-03-04T17:16:35.954Z
 Stopped at: Post-phase-8 bugs resolved (hallucination filter, double dialog, VU meter). GitHub Actions CI/CD created. Ready for Phase 9.
 Resume file: None
