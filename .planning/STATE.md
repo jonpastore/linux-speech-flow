@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: "Completed 09.1-01: Wave 0 TDD stubs for DB permissions, onboarding dialog, wizard page count"
-last_updated: "2026-03-04T17:05:27.920Z"
+stopped_at: "Completed 09.1-04: OSS standard files (README, SECURITY, CONTRIBUTING, CODE_OF_CONDUCT, CHANGELOG)"
+last_updated: "2026-03-04T17:08:56.508Z"
 last_activity: 2026-03-04 -- Completed 08-06; analyze flow + channel picker wired, 5 integration bugs fixed, 259 tests pass
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 56
-  completed_plans: 47
+  completed_plans: 49
   percent: 95
 ---
 
@@ -29,7 +29,7 @@ Phase: 8 of 11 — Complete
 Plan: 6/6 complete (08-01 through 08-06 all done)
 Status: Phase 8 complete — 259 tests pass, all SLACK-01 through SLACK-05 requirements met
 Last activity: 2026-03-04 -- Completed 08-06; analyze flow + channel picker wired, 5 integration bugs fixed, 259 tests pass
-Stopped at: Completed 09.1-01: Wave 0 TDD stubs for DB permissions, onboarding dialog, wizard page count
+Stopped at: Completed 09.1-04: OSS standard files (README, SECURITY, CONTRIBUTING, CODE_OF_CONDUCT, CHANGELOG)
 
 Progress: [██████████████████████████████] 95%
 
@@ -90,6 +90,8 @@ Progress: [███████████████████████
 | Phase 08-slack-integration P04 | 4 | 2 tasks | 3 files |
 | Phase 08 P05 | 10 | 2 tasks | 3 files |
 | Phase 09.1-github-launch-and-security P01 | 3 | 2 tasks | 3 files |
+| Phase 09.1-github-launch-and-security P05 | 1 | 2 tasks | 5 files |
+| Phase 09.1-github-launch-and-security P04 | 2 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -215,6 +217,11 @@ Recent decisions affecting current work:
 - [Phase 08-05]: Bound method equality tested with == not is — Python creates new bound method object on each attribute access
 - [Phase 09.1-github-launch-and-security]: Wave 0 stubs created before implementation to enforce TDD discipline — Plan 02 must make each test GREEN
 - [Phase 09.1-github-launch-and-security]: TestWizardPageCount appended to test_app_huddle.py (not new file) — simple assertion co-located with existing wizard/app tests
+- [Phase 09.1-github-launch-and-security]: Issue templates use .yml extension (not .md) to get GitHub structured form API with required-field validation
+- [Phase 09.1-github-launch-and-security]: CodeQL build-mode: none for Python — no compilation step needed; codeql-action/v3 used (v4 not stable until Dec 2026)
+- [Phase 09.1-github-launch-and-security]: Dependabot weekly Monday schedule batches pip and github-actions PRs to a predictable day
+- [Phase 09.1-github-launch-and-security]: Privacy disclosure language used verbatim from CONTEXT.md locked text in README.md
+- [Phase 09.1-github-launch-and-security]: SECURITY.md links directly to GitHub private advisory URL for one-click reporting
 
 ### Roadmap Evolution
 
@@ -237,6 +244,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T17:05:27.916Z
+Last session: 2026-03-04T17:08:56.504Z
 Stopped at: Post-phase-8 bugs resolved (hallucination filter, double dialog, VU meter). GitHub Actions CI/CD created. Ready for Phase 9.
 Resume file: None
