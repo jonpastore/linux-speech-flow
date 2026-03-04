@@ -4,7 +4,7 @@ import subprocess
 import threading
 import gi
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, Gdk, GLib, Gio, Pango
+from gi.repository import Gtk, Gdk, GLib, GObject, Gio, Pango
 
 from linux_speech_flow.hotkey import (
     parse_combo, combo_display, HOTKEY_DEFAULTS, HOTKEY_CONFIG_KEYS,
@@ -665,6 +665,80 @@ class SettingsWindow(Gtk.ApplicationWindow):
         qq_scroll.set_child(qq_tv)
         content.append(qq_scroll)
 
+        sep_integrations = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        sep_integrations.set_margin_top(8)
+        sep_integrations.set_margin_bottom(8)
+        content.append(sep_integrations)
+
+        integrations_title = Gtk.Label(label="Integrations")
+        integrations_title.add_css_class("title-4")
+        integrations_title.set_xalign(0)
+        content.append(integrations_title)
+
+        slack_sub = Gtk.Label(label="Slack")
+        slack_sub.set_xalign(0)
+        _attrs_slack = Pango.AttrList()
+        _attrs_slack.insert(Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold")))
+        slack_sub.set_attributes(_attrs_slack)
+        slack_sub.set_margin_top(4)
+        content.append(slack_sub)
+
+        ws_label = Gtk.Label(label="Connected Workspaces")
+        ws_label.set_xalign(0)
+        content.append(ws_label)
+
+        self._workspace_listbox = Gtk.ListBox()
+        self._workspace_listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        self._workspace_listbox.add_css_class("boxed-list")
+        content.append(self._workspace_listbox)
+        self._refresh_workspace_list()
+
+        ws_btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        ws_btn_row.set_margin_top(4)
+        self._add_workspace_btn = Gtk.Button(label="Add Workspace")
+        self._add_workspace_btn.connect("clicked", self._on_add_workspace)
+        ws_btn_row.append(self._add_workspace_btn)
+        self._disconnect_workspace_btn = Gtk.Button(label="Disconnect")
+        self._disconnect_workspace_btn.add_css_class("destructive-action")
+        self._disconnect_workspace_btn.connect("clicked", self._on_disconnect_workspace)
+        ws_btn_row.append(self._disconnect_workspace_btn)
+        content.append(ws_btn_row)
+
+        auto_detect_label = Gtk.Label(label="Huddle Auto-Detect")
+        auto_detect_label.set_xalign(0)
+        auto_detect_label.set_margin_top(8)
+        content.append(auto_detect_label)
+        self._huddle_auto_detect_combo = Gtk.ComboBoxText()
+        _block_scroll(self._huddle_auto_detect_combo)
+        self._huddle_auto_detect_combo.append("manual", "Manual hotkey only")
+        self._huddle_auto_detect_combo.append("prompt", "Prompt on detect")
+        self._huddle_auto_detect_combo.append("always", "Auto always")
+        self._huddle_auto_detect_combo.set_active_id(
+            self._config.get("slack_huddle_auto_detect", "prompt")
+        )
+        content.append(self._huddle_auto_detect_combo)
+
+        activation_label = Gtk.Label(label="Activation Word")
+        activation_label.set_xalign(0)
+        activation_label.set_margin_top(4)
+        content.append(activation_label)
+        self._slack_activation_entry = Gtk.Entry()
+        self._slack_activation_entry.set_text(
+            self._config.get("slack_activation_word", "conyo")
+        )
+        content.append(self._slack_activation_entry)
+
+        confidence_label = Gtk.Label(label="Confidence Threshold")
+        confidence_label.set_xalign(0)
+        confidence_label.set_margin_top(4)
+        content.append(confidence_label)
+        self._slack_confidence_spin = Gtk.SpinButton.new_with_range(0.0, 1.0, 0.05)
+        self._slack_confidence_spin.set_value(
+            self._config.get("slack_confidence_threshold", 0.6)
+        )
+        _block_scroll_spin(self._slack_confidence_spin)
+        content.append(self._slack_confidence_spin)
+
         btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         btn_row.set_margin_start(24)
         btn_row.set_margin_end(24)
@@ -973,6 +1047,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         )
         for action, cfg_key in HOTKEY_CONFIG_KEYS.items():
             config[cfg_key] = self._hotkey_values[action]
+        config["slack_huddle_auto_detect"] = self._huddle_auto_detect_combo.get_active_id() or "prompt"
+        config["slack_activation_word"] = self._slack_activation_entry.get_text().strip()
+        config["slack_confidence_threshold"] = self._slack_confidence_spin.get_value()
         save_config(config)
         self._closing = True
         self.close()
@@ -1045,6 +1122,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._auto_analyze_check.connect("toggled", md)
         self._conv_prompt_buf.connect("changed", md)
         self._conv_qq_buf.connect("changed", md)
+        self._huddle_auto_detect_combo.connect("changed", md)
+        self._slack_activation_entry.connect("changed", md)
+        self._slack_confidence_spin.connect("value-changed", md)
 
     def _make_hotkey_row(self, label_text: str, action: str) -> Gtk.Box:
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -1276,6 +1356,56 @@ class SettingsWindow(Gtk.ApplicationWindow):
             return True
         return False
 
+    def _refresh_workspace_list(self):
+        while True:
+            row = self._workspace_listbox.get_row_at_index(0)
+            if row is None:
+                break
+            self._workspace_listbox.remove(row)
+
+        from linux_speech_flow.slack_manager import SlackManager
+        workspaces = SlackManager().get_workspaces()
+        for team_id, ws in workspaces.items():
+            team_name = ws.get("team_name", team_id)
+            channel_id = ws.get("channel_id", "")
+            lbl_text = team_name
+            if channel_id:
+                lbl_text += f" — {channel_id}"
+            row = Gtk.ListBoxRow()
+            row._team_id = team_id
+            row_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row_box.set_margin_start(8)
+            row_box.set_margin_end(8)
+            row_box.set_margin_top(4)
+            row_box.set_margin_bottom(4)
+            lbl = Gtk.Label(label=lbl_text)
+            lbl.set_xalign(0)
+            lbl.set_hexpand(True)
+            row_box.append(lbl)
+            row.set_child(row_box)
+            self._workspace_listbox.append(row)
+
+    def _on_add_workspace(self, _btn):
+        dialog = AddWorkspaceDialog(self)
+        dialog.connect("workspace-added", self._on_workspace_added)
+        dialog.present()
+
+    def _on_workspace_added(self, _dialog):
+        self._refresh_workspace_list()
+        self._mark_dirty()
+
+    def _on_disconnect_workspace(self, _btn):
+        selected = self._workspace_listbox.get_selected_row()
+        if selected is None:
+            return
+        team_id = getattr(selected, "_team_id", None)
+        if not team_id:
+            return
+        from linux_speech_flow.slack_manager import SlackManager
+        SlackManager().remove_workspace(team_id)
+        self._refresh_workspace_list()
+        self._mark_dirty()
+
     def _on_close(self, _window):
         if self._closing:
             self._stop_vu_meter()
@@ -1285,3 +1415,170 @@ class SettingsWindow(Gtk.ApplicationWindow):
             return True
         self._stop_vu_meter()
         return False
+
+
+class AddWorkspaceDialog(Gtk.Window):
+    """Guided dialog for connecting a Slack workspace via bot + app-level tokens."""
+
+    __gsignals__ = {
+        "workspace-added": (GObject.SignalFlags.RUN_FIRST, None, ()),
+    }
+
+    def __init__(self, parent):
+        super().__init__(title="Connect Slack Workspace", modal=True)
+        self.set_transient_for(parent)
+        self.set_default_size(500, 580)
+        self.set_resizable(True)
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_child(outer)
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_vexpand(True)
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        outer.append(scroll)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        box.set_margin_start(24)
+        box.set_margin_end(24)
+        box.set_margin_top(16)
+        box.set_margin_bottom(8)
+        scroll.set_child(box)
+
+        steps = [
+            "Go to api.slack.com/apps \u2192 Create New App \u2192 From Scratch",
+            "Add OAuth scopes: chat:write, files:write, channels:read, groups:read, im:read, users:read. Install app to workspace.",
+            "Copy the Bot Token (xoxb-...) from OAuth & Permissions page.",
+            "Under Settings \u2192 Basic Information \u2192 App-Level Tokens, generate a token with connections:write scope. Copy the xapp-... token.",
+        ]
+        for i, step_text in enumerate(steps, start=1):
+            step_lbl = Gtk.Label(label=f"{i}. {step_text}")
+            step_lbl.set_xalign(0)
+            step_lbl.set_wrap(True)
+            box.append(step_lbl)
+
+        bot_lbl = Gtk.Label(label="Bot Token")
+        bot_lbl.set_xalign(0)
+        bot_lbl.set_margin_top(8)
+        box.append(bot_lbl)
+        self._bot_token_entry = Gtk.Entry()
+        self._bot_token_entry.set_property("placeholder-text", "xoxb-...")
+        box.append(self._bot_token_entry)
+
+        app_lbl = Gtk.Label(label="App-Level Token")
+        app_lbl.set_xalign(0)
+        app_lbl.set_margin_top(4)
+        box.append(app_lbl)
+
+        app_token_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        self._app_token_entry = Gtk.PasswordEntry()
+        self._app_token_entry.set_show_peek_icon(True)
+        self._app_token_entry.set_property("placeholder-text", "xapp-...")
+        self._app_token_entry.set_hexpand(True)
+        app_token_row.append(self._app_token_entry)
+        box.append(app_token_row)
+
+        name_lbl = Gtk.Label(label="Bot Display Name")
+        name_lbl.set_xalign(0)
+        name_lbl.set_margin_top(4)
+        box.append(name_lbl)
+        self._bot_name_entry = Gtk.Entry()
+        self._bot_name_entry.set_property("placeholder-text", "Linux Speech Flow")
+        box.append(self._bot_name_entry)
+
+        channel_lbl = Gtk.Label(label="Default Channel")
+        channel_lbl.set_xalign(0)
+        channel_lbl.set_margin_top(4)
+        box.append(channel_lbl)
+        self._channel_entry = Gtk.Entry()
+        self._channel_entry.set_property("placeholder-text", "C1234ABCD \u2014 channel ID, not name")
+        box.append(self._channel_entry)
+
+        self._verify_status = Gtk.Label(label="")
+        self._verify_status.set_xalign(0)
+        self._verify_status.set_wrap(True)
+        self._verify_status.add_css_class("error")
+        box.append(self._verify_status)
+
+        self._verify_spinner = Gtk.Spinner()
+        box.append(self._verify_spinner)
+
+        btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        btn_row.set_margin_top(8)
+        btn_row.set_margin_bottom(16)
+
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _: self.destroy())
+        btn_row.append(cancel_btn)
+
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        btn_row.append(spacer)
+
+        self._verify_btn = Gtk.Button(label="Verify & Connect")
+        self._verify_btn.add_css_class("suggested-action")
+        self._verify_btn.connect("clicked", self._on_verify)
+        btn_row.append(self._verify_btn)
+
+        outer.append(btn_row)
+
+    def _on_verify(self, _btn):
+        bot_token = self._bot_token_entry.get_text().strip()
+        app_token = self._app_token_entry.get_text().strip()
+        if not bot_token:
+            self._set_status(False, "Bot Token is required.")
+            return
+        self._verify_btn.set_sensitive(False)
+        self._verify_status.set_text("")
+        self._verify_spinner.start()
+
+        bot_name = self._bot_name_entry.get_text().strip() or "Linux Speech Flow"
+        channel_id = self._channel_entry.get_text().strip()
+
+        def run():
+            from linux_speech_flow.slack_manager import SlackManager
+            manager = SlackManager()
+            ok, err = manager.verify_token(bot_token, app_token)
+            if ok:
+                from slack_sdk import WebClient
+                try:
+                    client = WebClient(token=bot_token)
+                    resp = client.auth_test()
+                    team_id = resp.get("team_id", "")
+                    team_name = resp.get("team", "")
+                    authed_user_id = resp.get("user_id", "")
+                    workspace_data = {
+                        "bot_token": bot_token,
+                        "app_token": app_token,
+                        "bot_name": bot_name,
+                        "channel_id": channel_id,
+                        "authed_user_id": authed_user_id,
+                        "team_name": team_name,
+                    }
+                    manager.add_workspace(team_id, workspace_data)
+                    GLib.idle_add(self._on_verify_done, True, "")
+                except Exception as exc:
+                    GLib.idle_add(self._on_verify_done, False, str(exc))
+            else:
+                GLib.idle_add(self._on_verify_done, False, err)
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _on_verify_done(self, ok: bool, err: str):
+        self._verify_spinner.stop()
+        self._verify_btn.set_sensitive(True)
+        if ok:
+            self._set_status(True, "Workspace connected successfully.")
+            self.emit("workspace-added")
+            GLib.timeout_add(800, self.destroy)
+        else:
+            self._set_status(False, err or "Verification failed.")
+        return False
+
+    def _set_status(self, ok: bool, message: str):
+        self._verify_status.remove_css_class("error")
+        self._verify_status.remove_css_class("success")
+        self._verify_status.add_css_class("success" if ok else "error")
+        self._verify_status.set_text(message)
+
+
