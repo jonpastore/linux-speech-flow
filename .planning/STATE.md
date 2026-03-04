@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-04T03:58:43.585Z"
+last_updated: "2026-03-04T04:05:10.386Z"
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 46
-  completed_plans: 43
+  completed_plans: 44
 ---
 
 # Project State
@@ -23,10 +23,10 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 8 of 11 — In Progress
-Plan: 3/6 complete (08-01, 08-02 prereqs, 08-03 done)
-Status: Phase 8 plan 03 complete — SlackSocket daemon thread, HuddleManager session orchestration, HuddleRecorder, HuddleStatusWindow; 241 tests pass
-Last activity: 2026-03-04 -- Executed plan 08-03; SlackSocket + HuddleManager + prereqs complete
-Stopped at: Completed 08-03-PLAN.md — SlackSocket, HuddleManager, HuddleRecorder, HuddleStatusWindow
+Plan: 4/6 complete (08-01, 08-02, 08-03, 08-04 done)
+Status: Phase 8 plan 04 complete — HuddleManager wired into app.py, Block Kit post-huddle results, tray huddle item; 241 tests pass
+Last activity: 2026-03-03 -- Executed plan 08-04; full huddle integration wired, SLACK-04 + SLACK-05 complete
+Stopped at: Completed 08-04-PLAN.md — HuddleManager wired into app.py, post_huddle_results Block Kit + .md upload, tray huddle item
 
 Progress: [██████████████████████████████] 93%
 
@@ -84,6 +84,7 @@ Progress: [███████████████████████
 | Phase 08-slack-integration P01 | 7 | 3 tasks | 6 files |
 | Phase 08-slack-integration P03 | 5 | 2 tasks | 6 files |
 | Phase 08-slack-integration P02 | 10 | 2 tasks | 3 files |
+| Phase 08-slack-integration P04 | 4 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -202,6 +203,9 @@ Recent decisions affecting current work:
 - [Phase 08-slack-integration]: detect_activation sorts commands by length descending for longest-match prefix; SlackSocket._make_listener uses try/finally for guaranteed ACK; HuddleRecorder.pause/resume delegates to ConversationRecorder without pactl teardown
 - [Phase 08-slack-integration]: HuddleRecorder uses ConversationRecorder composition (not inheritance) for null-sink dual-source audio capture
 - [Phase 08-slack-integration]: HuddleStatusWindow is separate from ConversationStatusWindow with no silence timer (CONTEXT.md locked decision)
+- [Phase 08-slack-integration]: _on_huddle_dialog_submit adapts ConversationDialog on_submit contract for huddle Slack posting instead of rewriting with new on_complete signature
+- [Phase 08-slack-integration]: post_huddle_results is post-only; local file save is caller responsibility in _on_huddle_dialog_submit, consistent with 'local file always saved regardless' requirement
+- [Phase 08-slack-integration]: _on_huddle_toggle_tray uses HuddleManager.is_active() not private HotkeyManager state — keeps tray logic independent of hotkey state machine
 
 ### Roadmap Evolution
 
