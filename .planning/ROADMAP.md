@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Pipeline History** - SQLite run log storage, retention policy, and GTK history viewer (completed 2026-02-21)
 - [x] **Phase 6: Conversation Mode** - Long-form recording, silence-chunked transcription, multi-provider AI analysis, iterative Q&A, coalesced file output (completed 2026-02-21)
 - [x] **Phase 6.1: Conversation Status Enhancements** - Live silence timer and last-chunk transcript display in ConversationStatusWindow (completed 2026-03-03)
-- [ ] **Phase 7: Hotkey Customization** - Configurable hotkeys in Settings, key combination support
+- [x] **Phase 7: Hotkey Customization** - Configurable hotkeys in Settings, key combination support (completed 2026-03-04)
 - [ ] **Phase 8: Slack Integration** - Output to Slack, join Slack huddles as a bot; huddle end triggers transcription pipeline
 - [ ] **Phase 8.1: Help Dialog** - Comprehensive in-app help window with feature explanations and hotkey reference
 - [ ] **Phase 9: Packaging & Distribution** - .deb with bundled venv, XDG autostart, PyPI publishing, and dependency documentation
@@ -239,7 +239,7 @@ Note: Phases 4 and 5 both depend on Phase 3 and could execute in parallel.
 | 5. Pipeline History | 4/4 | Complete | 2026-02-21 |
 | 6. Conversation Mode | 8/8 | Complete | 2026-02-21 |
 | 6.1. Conversation Status Enhancements | 2/2 | Complete   | 2026-03-03 |
-| 7. Hotkey Customization | 3/4 | In Progress|  |
+| 7. Hotkey Customization | 4/4 | Complete   | 2026-03-04 |
 | 8. Slack Integration | 0/? | Not started | - |
 | 8.1. Help Dialog | 0/? | Not started | - |
 | 9. Packaging & Distribution | 0/? | Not started | - |

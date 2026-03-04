@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-04T00:00:02.406Z"
+last_updated: "2026-03-04T00:08:36.516Z"
 progress:
   total_phases: 11
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 40
-  completed_plans: 39
+  completed_plans: 40
 ---
 
 # Project State
@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 
 ## Current Position
 
-Phase: 7 of 9 — In Progress
-Plan: 2/4 complete (07-02 done)
-Status: Phase 7 plan 02 complete — Hotkeys section added to SettingsWindow with press-to-capture state machine, conflict/danger detection, per-hotkey and Reset All buttons, apply_binding_override for immediate hot-reload
-Last activity: 2026-03-03 -- Executed plan 07-02; GNOME-style hotkey capture UI in Settings
+Phase: 7 of 9 — Complete
+Plan: 4/4 complete (07-04 done)
+Status: Phase 7 complete — Code review passed all 5 files; threading contract docstring updated; 178 tests pass
+Last activity: 2026-03-03 -- Executed plan 07-04; Phase 7 code review complete
 
 Progress: [█████████████████████████████] 92%
 
@@ -79,6 +79,7 @@ Progress: [███████████████████████
 | Phase 07-hotkey-customization P01 | 6 | 3 tasks | 4 files |
 | Phase 07-hotkey-customization P02 | 4 | 1 tasks | 3 files |
 | Phase 07-hotkey-customization P03 | 5 | 2 tasks | 2 files |
+| Phase 07-hotkey-customization P04 | 8 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -190,6 +191,7 @@ Recent decisions affecting current work:
 - [Phase 07-02]: Canonical modifier order enforced in _handle_capture_key combo_str construction to match DANGEROUS_COMBOS frozenset exactly
 - [Phase 07-03]: TestSettingsCaptureStateMachine uses _make_sim() closures to test the capture state machine without GTK
 - [Phase 07-03]: test_matches_binding_special_key configures mock_kb.Key.__getitem__ to match attribute access, fixing mock equality gap
+- [Phase 07-hotkey-customization]: _bindings threading contract: read from pynput thread, written from GTK main thread only — GIL + GTK single-thread rule provides ordering, no explicit lock needed
 
 ### Roadmap Evolution
 
@@ -212,5 +214,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 07-02-PLAN.md — Hotkeys section in SettingsWindow with press-to-capture state machine
+Stopped at: Completed 07-04-PLAN.md — Phase 7 code review, all files pass checklist, 178 tests pass
 Resume file: .planning/phases/07-hotkey-customization/.continue-here.md
