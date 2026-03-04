@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from pathlib import Path
 
@@ -18,7 +19,8 @@ class HistoryStore:
 
     def ensure_schema(self):
         with self._connect() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS history (
                     id             INTEGER PRIMARY KEY AUTOINCREMENT,
                     entry_type     TEXT NOT NULL DEFAULT 'transcription',
@@ -30,11 +32,16 @@ class HistoryStore:
                     window_title   TEXT,
                     extra_json     TEXT
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_history_created_at
                 ON history (created_at DESC)
-            """)
+            """
+            )
+        if self._db_path.exists():
+            os.chmod(self._db_path, 0o600)
 
     def insert(self, entry: dict, max_entries: int = 20) -> int:
         with self._connect() as conn:
@@ -71,9 +78,7 @@ class HistoryStore:
 
     def fetch_all(self) -> list:
         with self._connect() as conn:
-            cursor = conn.execute(
-                "SELECT * FROM history ORDER BY created_at DESC"
-            )
+            cursor = conn.execute("SELECT * FROM history ORDER BY created_at DESC")
             return cursor.fetchall()
 
     def clear_all(self):
