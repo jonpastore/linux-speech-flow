@@ -1,6 +1,7 @@
 import math
 import time
 import gi
+
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 from linux_speech_flow.config import load_config
@@ -15,7 +16,7 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
     Created/destroyed by ConversationManager; not user-closeable during recording.
     """
 
-    def __init__(self, application, on_threshold_changed=None):
+    def __init__(self, application, on_threshold_changed=None, on_stop_clicked=None):
         super().__init__(application=application, title="Conversation Recording")
         self.set_default_size(360, 320)
         self.set_resizable(False)
@@ -23,6 +24,7 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         self.set_focus_on_click(False)
 
         self._on_threshold_changed = on_threshold_changed
+        self._on_stop_clicked = on_stop_clicked
 
         config = load_config()
         self._silence_threshold = config.get("conv_silence_rms_threshold", 0.005)
@@ -89,27 +91,35 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         thresh_box.append(self._thresh_slider)
         box.append(thresh_box)
 
-        transcript_frame = Gtk.Frame()
-        transcript_frame.add_css_class("card")
-        transcript_inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        transcript_inner.set_margin_start(10)
-        transcript_inner.set_margin_end(10)
-        transcript_inner.set_margin_top(8)
-        transcript_inner.set_margin_bottom(8)
-        transcript_frame.set_child(transcript_inner)
+        transcript_scroll = Gtk.ScrolledWindow()
+        transcript_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        transcript_scroll.set_min_content_height(72)
+        transcript_scroll.set_max_content_height(72)
+        transcript_scroll.add_css_class("card")
+        self._transcript_view = Gtk.TextView()
+        self._transcript_view.set_editable(False)
+        self._transcript_view.set_cursor_visible(False)
+        self._transcript_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        self._transcript_view.set_margin_start(8)
+        self._transcript_view.set_margin_end(8)
+        self._transcript_view.set_margin_top(6)
+        self._transcript_view.set_margin_bottom(6)
+        self._transcript_buf = self._transcript_view.get_buffer()
+        transcript_scroll.set_child(self._transcript_view)
+        box.append(transcript_scroll)
 
-        self._transcript_label = Gtk.Label(label="")
-        self._transcript_label.set_wrap(True)
-        self._transcript_label.set_halign(Gtk.Align.START)
-        self._transcript_label.set_max_width_chars(48)
-        self._transcript_label.add_css_class("body")
-        transcript_inner.append(self._transcript_label)
-
-        box.append(transcript_frame)
+        stop_btn = Gtk.Button(label="Stop Recording")
+        stop_btn.add_css_class("destructive-action")
+        stop_btn.connect("clicked", self._on_stop_btn_clicked)
+        box.append(stop_btn)
 
         self._started_at = None
         self._timer_id = None
         self._redraw_timer_id = None
+
+    def _on_stop_btn_clicked(self, _btn) -> None:
+        if self._on_stop_clicked:
+            self._on_stop_clicked(reason="status_window_stop")
 
     def start(self) -> None:
         self._started_at = time.monotonic()
@@ -126,7 +136,9 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
             self._redraw_timer_id = None
         self.set_deletable(True)
 
-    def set_silence_baseline(self, started_at: float, warn_sec: int, stop_sec: int) -> None:
+    def set_silence_baseline(
+        self, started_at: float, warn_sec: int, stop_sec: int
+    ) -> None:
         """Called by ConversationManager whenever silence timers reset (speech or chunk).
         started_at is time.monotonic() of the reset. Bar animates from full → empty
         over stop_sec seconds; dialog pops at warn_sec (bar halfway point).
@@ -148,8 +160,15 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
     def update_silence(self, silence_seconds: int) -> None:
         pass  # superseded by animated bar; kept for API compatibility
 
+    def clear_transcript(self) -> None:
+        self._transcript_buf.set_text("")
+
     def update_transcript(self, text: str) -> None:
-        self._transcript_label.set_text(text)
+        end = self._transcript_buf.get_end_iter()
+        sep = " " if self._transcript_buf.get_char_count() > 0 else ""
+        self._transcript_buf.insert(end, sep + text)
+        end = self._transcript_buf.get_end_iter()
+        self._transcript_view.scroll_to_iter(end, 0.0, False, 0.0, 1.0)
 
     def update_mic_level(self, level: float) -> None:
         self._mic_level = level
@@ -192,7 +211,7 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
                 # Danger zone (warn → stop): orange → red
                 t = fraction / warn_fraction if warn_fraction > 0 else 0.0
                 r = 1.0
-                g = 0.35 * t   # orange at warn, red at 0
+                g = 0.35 * t  # orange at warn, red at 0
                 b = 0.0
             cr.set_source_rgba(r, g, b, 0.85)
             cr.rectangle(0, 0, fill_w, height)
@@ -210,10 +229,13 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         # Time label inside bar
         elapsed_int = int(elapsed)
         remaining = max(0, self._stop_sec - elapsed_int)
-        self._silence_time_label.set_text(f"{elapsed_int}s / warn {self._warn_sec}s / stop {self._stop_sec}s")
+        self._silence_time_label.set_text(
+            f"{elapsed_int}s / warn {self._warn_sec}s / stop {self._stop_sec}s"
+        )
 
     def _draw_mic(self, area, cr, width, height, _data) -> None:
         from linux_speech_flow.conversation_recorder import RMS_DISPLAY_SCALE
+
         cr.set_source_rgba(0.2, 0.2, 0.2, 0.4)
         cr.rectangle(0, 0, width, height)
         cr.fill()

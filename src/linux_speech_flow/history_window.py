@@ -1,4 +1,5 @@
 import gi
+
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Gdk, Pango, GLib
 from datetime import datetime
@@ -12,14 +13,14 @@ class HistoryRow(Gtk.ListBoxRow):
         super().__init__()
         self._expanded = False
 
-        raw_text = entry['raw_text'] or ''
-        processed_text = entry['processed_text'] or ''
+        raw_text = entry["raw_text"] or ""
+        processed_text = entry["processed_text"] or ""
 
         try:
-            dt = datetime.fromisoformat(entry['created_at'])
-            timestamp_str = dt.strftime('%b %d %H:%M')
+            dt = datetime.fromisoformat(entry["created_at"])
+            timestamp_str = dt.strftime("%b %d %H:%M")
         except (ValueError, TypeError):
-            timestamp_str = str(entry['created_at'] or '')
+            timestamp_str = str(entry["created_at"] or "")
 
         duration_str = f"{float(entry['duration_sec'] or 0):.1f}s"
         preview_text = (processed_text or raw_text)[:80]
@@ -70,7 +71,12 @@ class HistoryRow(Gtk.ListBoxRow):
         self._detail.append(processed_label)
 
         copy_processed_btn = Gtk.Button(label="Copy")
-        copy_processed_btn.connect("clicked", lambda _btn, t=processed_text: Gdk.Display.get_default().get_clipboard().set(t))
+        copy_processed_btn.connect(
+            "clicked",
+            lambda _btn, t=processed_text: Gdk.Display.get_default()
+            .get_clipboard()
+            .set(t),
+        )
         self._detail.append(copy_processed_btn)
 
         sep = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
@@ -84,8 +90,12 @@ class HistoryRow(Gtk.ListBoxRow):
         raw_bg_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         raw_bg_box.add_css_class("history-raw-bg")
         css_provider = Gtk.CssProvider()
-        css_provider.load_from_data(b".history-raw-bg { background-color: alpha(@window_bg_color, 0.5); }")
-        raw_bg_box.get_style_context().add_provider(css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        css_provider.load_from_data(
+            b".history-raw-bg { background-color: alpha(@window_bg_color, 0.5); }"
+        )
+        raw_bg_box.get_style_context().add_provider(
+            css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
         self._detail.append(raw_bg_box)
 
         raw_label = Gtk.Label(label=raw_text)
@@ -95,11 +105,14 @@ class HistoryRow(Gtk.ListBoxRow):
         raw_bg_box.append(raw_label)
 
         copy_raw_btn = Gtk.Button(label="Copy")
-        copy_raw_btn.connect("clicked", lambda _btn, t=raw_text: Gdk.Display.get_default().get_clipboard().set(t))
+        copy_raw_btn.connect(
+            "clicked",
+            lambda _btn, t=raw_text: Gdk.Display.get_default().get_clipboard().set(t),
+        )
         self._detail.append(copy_raw_btn)
 
-        app_name = entry['app_name'] or '—'
-        window_title = entry['window_title'] or '—'
+        app_name = entry["app_name"] or "—"
+        window_title = entry["window_title"] or "—"
         context_label = Gtk.Label(label=f"App: {app_name}  |  Window: {window_title}")
         context_label.add_css_class("dim-label")
         context_label.set_xalign(0.0)
@@ -116,8 +129,8 @@ class HistoryWindow(Gtk.ApplicationWindow):
         self._history_store = history_store
 
         cfg = load_config()
-        w = cfg.get('history_window_width', 700)
-        h = cfg.get('history_window_height', 500)
+        w = cfg.get("history_window_width", 700)
+        h = cfg.get("history_window_height", 500)
         self.set_default_size(w, h)
 
         self.connect("close-request", self._on_close_request)
@@ -187,8 +200,11 @@ class HistoryWindow(Gtk.ApplicationWindow):
         if not entries:
             cfg = load_config()
             from linux_speech_flow.hotkey import combo_display
-            hotkey_combo = cfg.get('hotkey_record', 'ctrl+alt+r')
-            empty_label = Gtk.Label(label=f"No transcriptions yet. Press {combo_display(hotkey_combo)} to start recording.")
+
+            hotkey_combo = cfg.get("hotkey_record", "ctrl+alt+r")
+            empty_label = Gtk.Label(
+                label=f"No transcriptions yet. Press {combo_display(hotkey_combo)} to start recording."
+            )
             empty_label.set_margin_top(24)
             empty_label.set_margin_bottom(24)
             empty_label.set_xalign(0.5)
@@ -234,10 +250,12 @@ class HistoryWindow(Gtk.ApplicationWindow):
 
         clear_btn = Gtk.Button(label="Clear")
         clear_btn.add_css_class("destructive-action")
+
         def _do_clear(_b):
             dialog.close()
             self._history_store.clear_all()
             self._load_rows()
+
         clear_btn.connect("clicked", _do_clear)
         btn_row.append(clear_btn)
 
@@ -258,7 +276,7 @@ class HistoryWindow(Gtk.ApplicationWindow):
     def _on_close_request(self, _window) -> bool:
         w, h = self.get_default_size()
         cfg = load_config()
-        cfg['history_window_width'] = w
-        cfg['history_window_height'] = h
+        cfg["history_window_width"] = w
+        cfg["history_window_height"] = h
         save_config(cfg)
         return False

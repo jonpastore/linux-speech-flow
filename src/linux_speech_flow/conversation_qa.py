@@ -3,6 +3,7 @@ import threading
 from pathlib import Path
 
 import gi
+
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 
@@ -10,10 +11,19 @@ from linux_speech_flow.config import load_config
 
 
 class ConversationQAWindow(Gtk.ApplicationWindow):
-    def __init__(self, application, transcript: str, metadata: dict,
-                 pipeline, initial_result: dict,
-                 save_path: str, on_finalised,
-                 selected_models: list[str] | None = None):
+    def __init__(
+        self,
+        application,
+        transcript: str,
+        metadata: dict,
+        pipeline,
+        initial_result: dict,
+        on_finalised=None,
+        selected_models: list[str] | None = None,
+        window_info: dict | None = None,
+        save_analysis: bool = True,
+        inject_to_window: bool = False,
+    ):
         super().__init__(application=application, title="Conversation Q&A")
         self.set_default_size(640, 700)
         self.set_resizable(True)
@@ -22,9 +32,11 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
         self._metadata = metadata
         self._pipeline = pipeline
         self._current_result = dict(initial_result)
-        self._save_path = save_path
         self._on_finalised = on_finalised
-        self._selected_models = selected_models or ['groq']
+        self._selected_models = selected_models or ["groq"]
+        self._window_info = window_info or {}
+        self._save_analysis = save_analysis
+        self._inject_to_window = inject_to_window
         self._qa_rounds: list[dict] = []
         self._round_count = 0
         self._is_speaking = False
@@ -114,6 +126,9 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
     def _init_first_question(self):
         confidence = self._current_result.get("confidence", 0.0)
         questions = self._current_result.get("questions", [])
+        summary = self._current_result.get("summary", "")
+        if summary:
+            self._append_log(f"Summary:\n{summary}\n")
         if confidence >= 0.95 or not questions:
             self._show_confidence_confirmation(confidence, is_init=True)
         else:
@@ -133,9 +148,7 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
     def _update_status(self):
         confidence = self._current_result.get("confidence", 0.0)
         pct = int(confidence * 100)
-        self._status_label.set_text(
-            f"Round {self._round_count} | Confidence: {pct}%"
-        )
+        self._status_label.set_text(f"Round {self._round_count} | Confidence: {pct}%")
 
     def _set_buttons_sensitive(self, sensitive: bool):
         self._speak_btn.set_sensitive(sensitive)
@@ -145,7 +158,8 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
     def _on_submit_answer(self, _btn):
         question = self._question_buf.get_text(
             self._question_buf.get_start_iter(),
-            self._question_buf.get_end_iter(), False
+            self._question_buf.get_end_iter(),
+            False,
         ).strip()
         answer = self._answer_entry.get_text().strip()
         if not answer:
@@ -157,7 +171,8 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
         self._qa_rounds.append({"question": question, "answer": answer})
         self._answer_entry.set_text("")
         self._set_buttons_sensitive(False)
-        self._status_label.set_text("Thinking...")
+        model_str = " + ".join(m.capitalize() for m in self._selected_models)
+        self._status_label.set_text(f"Calling {model_str} AI...")
 
         t = threading.Thread(
             target=self._qa_thread,
@@ -169,8 +184,11 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
     def _qa_thread(self, question: str, answer: str):
         try:
             result = self._pipeline.continue_qa(
-                self._current_result, question, answer,
-                self._transcript, self._selected_models,
+                self._current_result,
+                question,
+                answer,
+                self._transcript,
+                self._selected_models,
             )
         except Exception as exc:
             result = {
@@ -188,6 +206,10 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
         self._round_count += 1
         self._set_buttons_sensitive(True)
         self._update_status()
+
+        summary = result.get("summary", "")
+        if summary:
+            self._append_log(f"[Updated summary]\n{summary}\n")
 
         confidence = result.get("confidence", 0.0)
         questions = result.get("questions", [])
@@ -217,9 +239,7 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
         dialog.set_child(box)
 
         pct = int(confidence * 100)
-        msg = Gtk.Label(
-            label=f"AI has reached {pct}% confidence. Finalise output?"
-        )
+        msg = Gtk.Label(label=f"AI has reached {pct}% confidence. Finalise output?")
         msg.set_wrap(True)
         msg.set_xalign(0.0)
         box.append(msg)
@@ -352,25 +372,53 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
 
     def _finalise(self) -> None:
         from linux_speech_flow.conversation_pipeline import coalesce_file, conv_filename
-        config = load_config()
+        from linux_speech_flow.conversation_dialog import TranscriptOutputWindow
+
         self._metadata["models_used"] = ", ".join(
             m.capitalize() for m in self._selected_models
         )
         summary = self._current_result.get("summary", "")
         ai_title = self._current_result.get("title", "untitled")
-        coalesce_file(self._save_path, self._metadata, summary,
-                      self._qa_rounds, self._transcript)
-        save_dir = Path(self._save_path).parent
-        final_name = conv_filename(ai_title)
-        final_path = str(save_dir / final_name)
-        try:
-            os.rename(self._save_path, final_path)
-            self._save_path = final_path
-        except OSError:
-            pass
+
+        # Build combined output: transcript with analysis appended
+        combined = self._transcript
+        if summary:
+            combined += "\n\n---\n\n## AI Analysis\n\n" + summary
+        if self._qa_rounds:
+            combined += "\n\n## Q&A\n"
+            for r in self._qa_rounds:
+                combined += f"\nAI: {r['question']}\nYou: {r['answer']}\n"
+
+        save_path = None
+        if self._save_analysis:
+            config = load_config()
+            save_dir = Path(
+                config.get("conv_save_dir", "~/Documents/conversations")
+            ).expanduser()
+            save_dir.mkdir(parents=True, exist_ok=True)
+            save_path = str(save_dir / conv_filename(ai_title))
+            coalesce_file(save_path, self._metadata, summary, self._qa_rounds, self._transcript)
+
+        if self._inject_to_window and self._window_info.get("window_id"):
+            from linux_speech_flow.injector import paste_text
+            paste_text(combined, self._window_info)
+
         if self._on_finalised:
-            self._on_finalised(self._save_path)
+            self._on_finalised(save_path)
+
+        app = self.get_application()
+        metadata = dict(self._metadata)
+        window_info = self._window_info
         self.close()
+
+        out_win = TranscriptOutputWindow(
+            application=app,
+            transcript=combined,
+            metadata=metadata,
+            window_info=window_info,
+            heading="Analysis Output",
+        )
+        out_win.present()
 
     def _on_speak(self, _btn):
         if self._is_speaking:
@@ -381,8 +429,10 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
             self._speak_btn.set_label("Stop Speaking")
             self._set_buttons_sensitive(False)
             self._speak_btn.set_sensitive(True)
+            self._status_label.set_text("Recording... (stops on silence)")
 
             from linux_speech_flow.recorder import AudioRecorder
+
             config = load_config()
             device = config.get("microphone") or None
             self._audio_recorder = AudioRecorder(
@@ -397,29 +447,34 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
 
     def _on_speak_complete(self, wav_path: str):
         self._is_speaking = False
+        self._audio_recorder = None
         self._speak_btn.set_label("Speak")
-        self._set_buttons_sensitive(True)
-
-        from linux_speech_flow.transcription import transcribe
-        config = load_config()
+        self._speak_btn.set_sensitive(False)
+        self._status_label.set_text("Transcribing...")
 
         def _transcribe_thread():
             try:
-                text = transcribe(wav_path, config)
+                text, confidence = self._pipeline.transcribe_chunk_verbose(wav_path)
             except Exception:
-                text = ""
+                text, confidence = "", 0.0
             finally:
                 try:
                     os.unlink(wav_path)
                 except OSError:
                     pass
-            GLib.idle_add(self._on_speak_transcribed, text)
+            GLib.idle_add(self._on_speak_transcribed, text, confidence)
 
         threading.Thread(target=_transcribe_thread, daemon=True).start()
 
-    def _on_speak_transcribed(self, text: str):
+    def _on_speak_transcribed(self, text: str, confidence: float = 0.0):
+        self._set_buttons_sensitive(True)
         if text:
             self._answer_entry.set_text(text)
+            pct = int(confidence * 100)
+            conf_str = f" ({pct}% confidence)" if pct > 0 else ""
+            self._status_label.set_text(f"Transcribed{conf_str} — review and submit")
+        else:
+            self._status_label.set_text("No speech detected — try again")
         return False
 
     def _on_speak_error(self, message: str):

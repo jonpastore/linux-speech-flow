@@ -7,9 +7,9 @@ def test_slack_socket_connect_in_daemon_thread():
     """SlackSocket.start() calls SocketModeClient.connect() in a daemon thread."""
     from linux_speech_flow.slack_socket import SlackSocket
 
-    with patch("linux_speech_flow.slack_socket.SocketModeClient") as MockClient, \
-         patch("linux_speech_flow.slack_socket.WebClient"), \
-         patch("linux_speech_flow.slack_socket.threading") as mock_threading:
+    with patch("linux_speech_flow.slack_socket.SocketModeClient") as MockClient, patch(
+        "linux_speech_flow.slack_socket.WebClient"
+    ), patch("linux_speech_flow.slack_socket.threading") as mock_threading:
 
         mock_client_instance = MagicMock()
         MockClient.return_value = mock_client_instance
@@ -23,8 +23,9 @@ def test_slack_socket_connect_in_daemon_thread():
 
         mock_threading.Thread.assert_called_once()
         call_kwargs = mock_threading.Thread.call_args
-        assert call_kwargs.kwargs.get("daemon") is True or \
-               (len(call_kwargs.args) > 0 and False), "daemon=True required"
+        assert call_kwargs.kwargs.get("daemon") is True or (
+            len(call_kwargs.args) > 0 and False
+        ), "daemon=True required"
         mock_thread.start.assert_called_once()
 
 
@@ -32,9 +33,9 @@ def test_slack_socket_connect_called_as_target():
     """The thread target is client.connect (not client.start which blocks)."""
     from linux_speech_flow.slack_socket import SlackSocket
 
-    with patch("linux_speech_flow.slack_socket.SocketModeClient") as MockClient, \
-         patch("linux_speech_flow.slack_socket.WebClient"), \
-         patch("linux_speech_flow.slack_socket.threading") as mock_threading:
+    with patch("linux_speech_flow.slack_socket.SocketModeClient") as MockClient, patch(
+        "linux_speech_flow.slack_socket.WebClient"
+    ), patch("linux_speech_flow.slack_socket.threading") as mock_threading:
 
         mock_client_instance = MagicMock()
         MockClient.return_value = mock_client_instance

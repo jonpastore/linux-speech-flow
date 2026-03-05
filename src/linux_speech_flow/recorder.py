@@ -26,7 +26,9 @@ class AudioRecorder:
     - stop(cancel=False) is safe to call from any thread.
     """
 
-    def __init__(self, device_name: str | None, max_duration: int, silence_duration: int):
+    def __init__(
+        self, device_name: str | None, max_duration: int, silence_duration: int
+    ):
         """
         Args:
             device_name: PulseAudio source name from config["microphone"].
@@ -105,10 +107,13 @@ class AudioRecorder:
                         chunks_recorded += 1
 
                         if chunks_recorded >= MIN_SILENCE_GUARD_CHUNKS:
-                            samples = struct.unpack(f"{len(chunk) // SAMPLE_WIDTH}h", chunk)
-                            rms = math.sqrt(
-                                sum(s * s for s in samples) / len(samples)
-                            ) / 32768.0
+                            samples = struct.unpack(
+                                f"{len(chunk) // SAMPLE_WIDTH}h", chunk
+                            )
+                            rms = (
+                                math.sqrt(sum(s * s for s in samples) / len(samples))
+                                / 32768.0
+                            )
                             if rms < SILENCE_RMS_THRESHOLD:
                                 silence_chunks += 1
                             else:
@@ -126,6 +131,7 @@ class AudioRecorder:
         except pasimple.PaSimpleError as exc:
             self._cleanup_wav()
             from gi.repository import GLib
+
             GLib.idle_add(self._on_error, str(exc))
             return
 
@@ -134,6 +140,7 @@ class AudioRecorder:
             return
 
         from gi.repository import GLib
+
         GLib.idle_add(self._on_complete, self._wav_path)
 
     def _cleanup_wav(self) -> None:

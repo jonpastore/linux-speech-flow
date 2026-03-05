@@ -31,7 +31,9 @@ class SlackManager:
         except Exception as exc:
             return False, str(exc)
 
-    def add_workspace(self, team_id: str, workspace_data: dict, *, _path=CONFIG_PATH) -> None:
+    def add_workspace(
+        self, team_id: str, workspace_data: dict, *, _path=CONFIG_PATH
+    ) -> None:
         """Store workspace credentials in config."""
         config = load_config(_path=_path)
         workspaces = dict(config.get("slack_workspaces", {}))
@@ -52,7 +54,15 @@ class SlackManager:
         config["slack_workspaces"] = workspaces
         save_config(config, _path=_path)
 
-    def post_message(self, team_id: str, channel_id: str, text: str, blocks: list | None = None, *, _path=CONFIG_PATH) -> bool:
+    def post_message(
+        self,
+        team_id: str,
+        channel_id: str,
+        text: str,
+        blocks: list | None = None,
+        *,
+        _path=CONFIG_PATH
+    ) -> bool:
         """Post a message to a Slack channel. Returns True on success."""
         workspaces = self.get_workspaces(_path=_path)
         token = workspaces[team_id]["bot_token"]
@@ -94,7 +104,15 @@ class SlackManager:
             logger.error("get_channels failed: %s", exc)
         return channels
 
-    def upload_file(self, team_id: str, channel_id: str, file_path: str, title: str, *, _path=CONFIG_PATH) -> bool:
+    def upload_file(
+        self,
+        team_id: str,
+        channel_id: str,
+        file_path: str,
+        title: str,
+        *,
+        _path=CONFIG_PATH
+    ) -> bool:
         """Upload a file to a Slack channel. Returns True on success.
 
         Uses files_upload_v2 (NOT deprecated files.upload which was sunset Nov 2025).

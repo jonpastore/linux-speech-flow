@@ -16,6 +16,7 @@ from linux_speech_flow.transcription import TranscriptionPipeline, MIN_TRANSCRIP
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_pipeline(**kwargs):
     """Create a TranscriptionPipeline with the worker thread suppressed."""
     with patch("linux_speech_flow.transcription.threading.Thread"):
@@ -71,13 +72,15 @@ def _auth_exc():
 # _process() — happy path
 # ---------------------------------------------------------------------------
 
+
 @patch("linux_speech_flow.transcription.GLib")
 @patch("linux_speech_flow.transcription.send_notification")
 @patch("linux_speech_flow.transcription.play_sound")
 @patch("linux_speech_flow.transcription.paste_text")
 class TestProcessHappyPath:
-
-    def test_pastes_llm_result(self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path):
+    def test_pastes_llm_result(
+        self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path
+    ):
         wav = tmp_path / "test.wav"
         wav.write_bytes(b"RIFF")
         pipeline = _make_pipeline()
@@ -89,24 +92,34 @@ class TestProcessHappyPath:
         mock_paste.assert_called_once()
         assert "Hello world." in mock_paste.call_args[0][0]
 
-    def test_deletes_wav_after_paste(self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path):
+    def test_deletes_wav_after_paste(
+        self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path
+    ):
         wav = tmp_path / "test.wav"
         wav.write_bytes(b"RIFF")
         pipeline = _make_pipeline()
 
-        with patch("linux_speech_flow.transcription.groq.Groq", return_value=_mock_groq_client()):
+        with patch(
+            "linux_speech_flow.transcription.groq.Groq",
+            return_value=_mock_groq_client(),
+        ):
             pipeline._process(str(wav), _window_info(), _config())
 
         assert not wav.exists()
 
-    def test_calls_on_paste_complete(self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path):
+    def test_calls_on_paste_complete(
+        self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path
+    ):
         wav = tmp_path / "test.wav"
         wav.write_bytes(b"RIFF")
         done = []
         pipeline = _make_pipeline(on_paste_complete=lambda: done.append(1))
         mock_glib.idle_add.side_effect = lambda fn, *a: fn(*a)
 
-        with patch("linux_speech_flow.transcription.groq.Groq", return_value=_mock_groq_client()):
+        with patch(
+            "linux_speech_flow.transcription.groq.Groq",
+            return_value=_mock_groq_client(),
+        ):
             pipeline._process(str(wav), _window_info(), _config())
 
         assert done == [1]
@@ -116,45 +129,51 @@ class TestProcessHappyPath:
 # _process() — Whisper errors
 # ---------------------------------------------------------------------------
 
+
 @patch("linux_speech_flow.transcription.GLib")
 @patch("linux_speech_flow.transcription.send_notification")
 @patch("linux_speech_flow.transcription.play_sound")
 @patch("linux_speech_flow.transcription.paste_text")
 class TestProcessWhisperErrors:
-
-    def test_auth_error_no_paste(self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path):
+    def test_auth_error_no_paste(
+        self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path
+    ):
         wav = tmp_path / "test.wav"
         wav.write_bytes(b"RIFF")
         pipeline = _make_pipeline()
 
-        with patch("linux_speech_flow.transcription.groq.Groq"), \
-             patch.object(pipeline, '_transcribe', side_effect=_auth_exc()), \
-             patch("linux_speech_flow.transcription.shutil.move"):
+        with patch("linux_speech_flow.transcription.groq.Groq"), patch.object(
+            pipeline, "_transcribe", side_effect=_auth_exc()
+        ), patch("linux_speech_flow.transcription.shutil.move"):
             pipeline._process(str(wav), _window_info(), _config())
 
         mock_paste.assert_not_called()
 
-    def test_auth_error_moves_wav_to_failed(self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path):
+    def test_auth_error_moves_wav_to_failed(
+        self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path
+    ):
         wav = tmp_path / "test.wav"
         wav.write_bytes(b"RIFF")
         pipeline = _make_pipeline()
 
-        with patch("linux_speech_flow.transcription.groq.Groq"), \
-             patch.object(pipeline, '_transcribe', side_effect=_auth_exc()), \
-             patch("linux_speech_flow.transcription.shutil.move") as mock_move:
+        with patch("linux_speech_flow.transcription.groq.Groq"), patch.object(
+            pipeline, "_transcribe", side_effect=_auth_exc()
+        ), patch("linux_speech_flow.transcription.shutil.move") as mock_move:
             pipeline._process(str(wav), _window_info(), _config())
 
         mock_move.assert_called_once()
         assert "failed" in str(mock_move.call_args[0][1])
 
-    def test_generic_whisper_error_no_paste(self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path):
+    def test_generic_whisper_error_no_paste(
+        self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path
+    ):
         wav = tmp_path / "test.wav"
         wav.write_bytes(b"RIFF")
         pipeline = _make_pipeline()
 
-        with patch("linux_speech_flow.transcription.groq.Groq"), \
-             patch.object(pipeline, '_transcribe', side_effect=IOError("disk read failed")), \
-             patch("linux_speech_flow.transcription.shutil.move"):
+        with patch("linux_speech_flow.transcription.groq.Groq"), patch.object(
+            pipeline, "_transcribe", side_effect=IOError("disk read failed")
+        ), patch("linux_speech_flow.transcription.shutil.move"):
             pipeline._process(str(wav), _window_info(), _config())
 
         mock_paste.assert_not_called()
@@ -164,31 +183,41 @@ class TestProcessWhisperErrors:
 # _process() — short transcript
 # ---------------------------------------------------------------------------
 
+
 @patch("linux_speech_flow.transcription.GLib")
 @patch("linux_speech_flow.transcription.send_notification")
 @patch("linux_speech_flow.transcription.play_sound")
 @patch("linux_speech_flow.transcription.paste_text")
 class TestProcessShortTranscript:
-
-    def test_skips_paste(self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path):
+    def test_skips_paste(
+        self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path
+    ):
         wav = tmp_path / "test.wav"
         wav.write_bytes(b"RIFF")
         pipeline = _make_pipeline()
         short = "hi"
         assert len(short.strip()) < MIN_TRANSCRIPT_LEN
 
-        with patch("linux_speech_flow.transcription.groq.Groq", return_value=_mock_groq_client(transcript=short)):
+        with patch(
+            "linux_speech_flow.transcription.groq.Groq",
+            return_value=_mock_groq_client(transcript=short),
+        ):
             pipeline._process(str(wav), _window_info(), _config())
 
         mock_paste.assert_not_called()
 
-    def test_sends_no_speech_notification(self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path):
+    def test_sends_no_speech_notification(
+        self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path
+    ):
         wav = tmp_path / "test.wav"
         wav.write_bytes(b"RIFF")
         pipeline = _make_pipeline()
         mock_glib.idle_add.side_effect = lambda fn, *a: fn(*a)
 
-        with patch("linux_speech_flow.transcription.groq.Groq", return_value=_mock_groq_client(transcript="hi")):
+        with patch(
+            "linux_speech_flow.transcription.groq.Groq",
+            return_value=_mock_groq_client(transcript="hi"),
+        ):
             pipeline._process(str(wav), _window_info(), _config())
 
         titles = [c[0][0] for c in mock_notify.call_args_list]
@@ -199,13 +228,15 @@ class TestProcessShortTranscript:
 # _process() — LLM failure fallback
 # ---------------------------------------------------------------------------
 
+
 @patch("linux_speech_flow.transcription.GLib")
 @patch("linux_speech_flow.transcription.send_notification")
 @patch("linux_speech_flow.transcription.play_sound")
 @patch("linux_speech_flow.transcription.paste_text")
 class TestProcessLlmFailure:
-
-    def test_pastes_raw_transcript_on_llm_failure(self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path):
+    def test_pastes_raw_transcript_on_llm_failure(
+        self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path
+    ):
         wav = tmp_path / "test.wav"
         wav.write_bytes(b"RIFF")
         pipeline = _make_pipeline()
@@ -218,7 +249,9 @@ class TestProcessLlmFailure:
         mock_paste.assert_called_once()
         assert "raw whisper output" in mock_paste.call_args[0][0]
 
-    def test_notifies_user_of_llm_failure(self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path):
+    def test_notifies_user_of_llm_failure(
+        self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path
+    ):
         wav = tmp_path / "test.wav"
         wav.write_bytes(b"RIFF")
         pipeline = _make_pipeline()
@@ -237,13 +270,15 @@ class TestProcessLlmFailure:
 # _process() — batch output path
 # ---------------------------------------------------------------------------
 
+
 @patch("linux_speech_flow.transcription.GLib")
 @patch("linux_speech_flow.transcription.send_notification")
 @patch("linux_speech_flow.transcription.play_sound")
 @patch("linux_speech_flow.transcription.paste_text")
 class TestProcessBatchPath:
-
-    def test_no_paste_when_batch_path_set(self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path):
+    def test_no_paste_when_batch_path_set(
+        self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path
+    ):
         wav = tmp_path / "test.wav"
         wav.write_bytes(b"RIFF")
         output_file = tmp_path / "batch.txt"
@@ -251,23 +286,30 @@ class TestProcessBatchPath:
         pipeline = _make_pipeline()
         info = _window_info(batch_output_path=str(output_file))
 
-        with patch("linux_speech_flow.transcription.groq.Groq", return_value=_mock_groq_client()), \
-             patch("subprocess.Popen"):
+        with patch(
+            "linux_speech_flow.transcription.groq.Groq",
+            return_value=_mock_groq_client(),
+        ), patch("subprocess.Popen"):
             pipeline._process(str(wav), info, _config())
 
         mock_paste.assert_not_called()
 
-    def test_appends_result_to_batch_file(self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path):
+    def test_appends_result_to_batch_file(
+        self, mock_paste, mock_sound, mock_notify, mock_glib, tmp_path
+    ):
         wav = tmp_path / "test.wav"
         wav.write_bytes(b"RIFF")
         output_file = tmp_path / "batch.txt"
         output_file.write_text("")
         pipeline = _make_pipeline()
         info = _window_info(batch_output_path=str(output_file))
-        client = _mock_groq_client(transcript="dictated text", llm_result="Dictated text.")
+        client = _mock_groq_client(
+            transcript="dictated text", llm_result="Dictated text."
+        )
 
-        with patch("linux_speech_flow.transcription.groq.Groq", return_value=client), \
-             patch("subprocess.Popen"):
+        with patch(
+            "linux_speech_flow.transcription.groq.Groq", return_value=client
+        ), patch("subprocess.Popen"):
             pipeline._process(str(wav), info, _config())
 
         assert "Dictated text." in output_file.read_text()
@@ -277,15 +319,19 @@ class TestProcessBatchPath:
 # submit() — leaked_hotkey_count invariant (the critical bug fix)
 # ---------------------------------------------------------------------------
 
-class TestSubmitLeakedHotkeyCount:
 
+class TestSubmitLeakedHotkeyCount:
     def test_count_zero_when_stop_was_hotkey_true(self, tmp_path):
         wav = tmp_path / "test.wav"
         wav.write_bytes(b"RIFF")
         pipeline = _make_pipeline()
 
-        with patch("linux_speech_flow.transcription.load_config", return_value={"app_categories": {}}), \
-             patch("linux_speech_flow.transcription.get_active_window_info", return_value={}):
+        with patch(
+            "linux_speech_flow.transcription.load_config",
+            return_value={"app_categories": {}},
+        ), patch(
+            "linux_speech_flow.transcription.get_active_window_info", return_value={}
+        ):
             pipeline.submit(str(wav), stop_was_hotkey=True)
 
         _, window_info, _ = pipeline._queue.get_nowait()
@@ -296,8 +342,12 @@ class TestSubmitLeakedHotkeyCount:
         wav.write_bytes(b"RIFF")
         pipeline = _make_pipeline()
 
-        with patch("linux_speech_flow.transcription.load_config", return_value={"app_categories": {}}), \
-             patch("linux_speech_flow.transcription.get_active_window_info", return_value={}):
+        with patch(
+            "linux_speech_flow.transcription.load_config",
+            return_value={"app_categories": {}},
+        ), patch(
+            "linux_speech_flow.transcription.get_active_window_info", return_value={}
+        ):
             pipeline.submit(str(wav), stop_was_hotkey=False)
 
         _, window_info, _ = pipeline._queue.get_nowait()

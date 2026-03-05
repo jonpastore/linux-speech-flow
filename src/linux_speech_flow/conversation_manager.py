@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 
 import gi
+
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 
@@ -56,8 +57,10 @@ class ConversationManager:
         self._hard_limit_timer: int | None = None
         self._speech_heartbeat_timer: int | None = None
         self._silence_dialog: Gtk.Window | None = None
-        self._in_flight: int = 0       # active transcription threads
+        self._in_flight: int = 0  # active transcription threads
         self._session_ending: bool = False  # True while draining after stop
+        self._recorder_done: bool = False  # True when record_loop has exited
+        self._wait_dialog: Gtk.Window | None = None
 
         # Silence display accumulation (across chunk boundaries)
         self._silence_offset_sec: int = 0
@@ -75,12 +78,14 @@ class ConversationManager:
         self._silence_offset_sec = 0
         self._last_silence_frames = -1
         if self._on_tray_state:
-            self._on_tray_state('conv_recording')
+            self._on_tray_state("conv_recording")
 
         config = load_config()
-        play_sound("start.wav",
-                   output_device=config.get("sounds_output_device", ""),
-                   enabled=config.get("sounds_enabled", True))
+        play_sound(
+            "start.wav",
+            output_device=config.get("sounds_output_device", ""),
+            enabled=config.get("sounds_enabled", True),
+        )
 
         feedback_mode = config.get("conv_feedback_mode", "status_window")
         if feedback_mode == "status_window":
@@ -88,29 +93,38 @@ class ConversationManager:
 
         device_name = config.get("microphone", "")
         chunk_silence_sec = config.get("conv_chunk_silence_sec", 3)
+        chunk_max_sec = config.get("conv_chunk_max_sec", 30)
         silence_rms_threshold = config.get("conv_silence_rms_threshold", 0.005)
         warn_sec = config.get("conv_silence_warn_sec", 30)
         stop_sec = config.get("conv_silence_stop_sec", 60)
         hard_limit = config.get("conv_hard_limit_sec", 14400)
 
         logger.info(
-            "start_session: device=%r chunk_silence=%ds rms_threshold=%.4f "
+            "start_session: device=%r chunk_silence=%ds chunk_max=%ds rms_threshold=%.4f "
             "warn=%ds stop=%ds hard_limit=%ds",
-            device_name or "default", chunk_silence_sec, silence_rms_threshold,
-            warn_sec, stop_sec, hard_limit,
+            device_name or "default",
+            chunk_silence_sec,
+            chunk_max_sec,
+            silence_rms_threshold,
+            warn_sec,
+            stop_sec,
+            hard_limit,
         )
 
         self._recorder = ConversationRecorder(
             device_name=device_name,
             chunk_silence_sec=chunk_silence_sec,
             silence_rms_threshold=silence_rms_threshold,
+            chunk_max_sec=chunk_max_sec,
         )
+        self._recorder_done = False
         self._recorder.start(
             on_chunk_ready=self._on_chunk_ready,
             on_error=self._on_recorder_error,
             on_silence_tick=self._on_silence_tick,
             on_audio_level=self._on_audio_level,
             on_threshold_calibrated=self._on_threshold_calibrated,
+            on_done=self._on_recorder_done,
         )
 
         # Hard limit timer
@@ -130,10 +144,15 @@ class ConversationManager:
         if self._state != _STATE_CONVERSATION:
             logger.debug("stop_session(%s) ignored — state=%s", reason, self._state)
             return
-        elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
+        elapsed = (
+            int(time.monotonic() - self._session_start) if self._session_start else 0
+        )
         logger.info(
             "stop_session: reason=%s elapsed=%ds chunks=%d texts=%d",
-            reason, elapsed, self._chunk_count, len(self._chunk_texts),
+            reason,
+            elapsed,
+            self._chunk_count,
+            len(self._chunk_texts),
         )
         self._state = _STATE_IDLE
         self._cancel_all_timers()
@@ -141,9 +160,9 @@ class ConversationManager:
         self._session_ending = True
         if self._recorder:
             self._recorder.stop()
-            # 200ms lets the recorder's final GLib.idle_add(on_chunk_ready) reach
-            # the GTK main loop before we check _in_flight.
-            GLib.timeout_add(200, self._try_finish_after_stop)
+            # _on_recorder_done fires (via idle_add at record_loop exit) after all
+            # chunk idle_adds are already queued — so by the time it runs on the
+            # GTK main thread, _in_flight already reflects every pending chunk.
         else:
             self._session_ending = False
             self._finish_session()
@@ -163,17 +182,21 @@ class ConversationManager:
             if self._state == _STATE_CONVERSATION:
                 self._show_status_window()
         from linux_speech_flow.config import save_config
+
         save_config(config)
 
     # --- Internal GTK-thread methods ---
 
     def _show_status_window(self) -> None:
         from linux_speech_flow.conversation_status import ConversationStatusWindow
+
         if self._status_window is None:
             self._status_window = ConversationStatusWindow(
                 application=self._app,
                 on_threshold_changed=self.set_threshold,
+                on_stop_clicked=self.stop_session,
             )
+        self._status_window.clear_transcript()
         self._status_window.start()
         self._status_window.present()
 
@@ -183,12 +206,15 @@ class ConversationManager:
             return False
         self._chunk_count += 1
         self._in_flight += 1
-        elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
-        logger.info(
-            "chunk_ready: chunk=%d elapsed=%ds wav=%s — resetting silence timers",
-            self._chunk_count, elapsed, wav_path,
+        elapsed = (
+            int(time.monotonic() - self._session_start) if self._session_start else 0
         )
-        self._reset_silence_timers(reason=f"chunk_{self._chunk_count}")
+        logger.info(
+            "chunk_ready: chunk=%d elapsed=%ds wav=%s",
+            self._chunk_count,
+            elapsed,
+            wav_path,
+        )
         if self._status_window:
             self._status_window.update_status(self._chunk_count, "transcribing...")
         threading.Thread(
@@ -201,11 +227,11 @@ class ConversationManager:
     def _transcribe_chunk_thread(self, wav_path: str, chunk_num: int) -> None:
         """Worker thread: transcribe one chunk, then clean up WAV."""
         try:
-            text = self._pipeline.transcribe_chunk(wav_path)
-            GLib.idle_add(self._on_chunk_transcribed, text, chunk_num)
+            text, confidence = self._pipeline.transcribe_chunk_verbose(wav_path)
+            GLib.idle_add(self._on_chunk_transcribed, text, chunk_num, confidence)
         except Exception as exc:
             logger.error("Chunk %d transcription failed: %s", chunk_num, exc)
-            GLib.idle_add(self._on_chunk_transcribed, "", chunk_num)
+            GLib.idle_add(self._on_chunk_transcribed, "", chunk_num, 0.0)
         finally:
             try:
                 os.unlink(wav_path)
@@ -213,18 +239,20 @@ class ConversationManager:
                 pass
             GLib.idle_add(self._on_thread_done)
 
-    def _on_chunk_transcribed(self, text: str, chunk_num: int) -> bool:
+    def _on_chunk_transcribed(self, text: str, chunk_num: int, confidence: float = 0.0) -> bool:
         """GTK main thread: store transcribed text."""
         if text:
             self._chunk_texts.append(text)
-            logger.info("chunk %d transcribed: %d chars — %r", chunk_num, len(text), text[:80])
+            logger.info(
+                "chunk %d transcribed: %d chars — %r", chunk_num, len(text), text[:80]
+            )
         else:
             logger.info("chunk %d transcribed: empty (no speech detected)", chunk_num)
         if self._status_window:
-            ts_ago = "just now"
+            pct = int(confidence * 100)
+            conf_str = f" {pct}%" if pct > 0 else ""
             self._status_window.update_status(
-                len(self._chunk_texts),
-                f"last chunk: {ts_ago}"
+                len(self._chunk_texts), f"last chunk: just now{conf_str}"
             )
             if text:
                 self._status_window.update_transcript(text)
@@ -254,6 +282,8 @@ class ConversationManager:
         silence boundary, frames reset to 0. We carry forward the prior silence via
         _silence_offset_sec so the display counts up continuously across chunk boundaries.
         """
+        if self._state != _STATE_CONVERSATION:
+            return False
         if silence_frames == 0:
             # Voice detected — reset accumulated silence and restart session timers
             # so the warn/stop timers measure inactivity from last speech, not last chunk.
@@ -293,20 +323,31 @@ class ConversationManager:
         elapsed = int(now - self._session_start) if self._session_start else 0
         logger.info(
             "silence_timers_reset: reason=%s elapsed=%ds warn_in=%ds stop_in=%ds cancelled=%s",
-            reason, elapsed, warn_sec, stop_sec, cancelled or "none",
+            reason,
+            elapsed,
+            warn_sec,
+            stop_sec,
+            cancelled or "none",
         )
 
     def _on_silence_warn(self) -> bool:
         """Session-level silence warn threshold reached: show continue/stop dialog."""
         self._warn_timer = None
+        if self._state != _STATE_CONVERSATION:
+            return False
         config = load_config()
         stop_sec = config.get("conv_silence_stop_sec", 60)
         warn_sec = config.get("conv_silence_warn_sec", 30)
         extra = max(stop_sec - warn_sec, 5)
-        elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
+        elapsed = (
+            int(time.monotonic() - self._session_start) if self._session_start else 0
+        )
         logger.info(
             "silence_warn_fired: elapsed=%ds warn_sec=%d stop_sec=%d extra_until_autostop=%ds",
-            elapsed, warn_sec, stop_sec, extra,
+            elapsed,
+            warn_sec,
+            stop_sec,
+            extra,
         )
         self._show_silence_modal()
         self._stop_timer = GLib.timeout_add_seconds(extra, self._on_silence_autostop)
@@ -314,7 +355,9 @@ class ConversationManager:
         return False
 
     def _show_silence_modal(self) -> None:
-        elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
+        elapsed = (
+            int(time.monotonic() - self._session_start) if self._session_start else 0
+        )
         h, rem = divmod(elapsed, 3600)
         m, s = divmod(rem, 60)
         elapsed_str = f"{h}:{m:02d}:{s:02d}"
@@ -350,18 +393,26 @@ class ConversationManager:
                 self._silence_dialog = None
 
         stop_btn = Gtk.Button(label="Stop Recording")
-        stop_btn.connect("clicked", lambda _b: (
-            logger.info("silence_dialog: user clicked Stop Recording"),
-            _close_dialog(), self.stop_session(reason="silence_dialog_stop"),
-        ))
+        stop_btn.connect(
+            "clicked",
+            lambda _b: (
+                logger.info("silence_dialog: user clicked Stop Recording"),
+                _close_dialog(),
+                self.stop_session(reason="silence_dialog_stop"),
+            ),
+        )
         btn_box.append(stop_btn)
 
         continue_btn = Gtk.Button(label="Continue")
         continue_btn.add_css_class("suggested-action")
-        continue_btn.connect("clicked", lambda _b: (
-            logger.info("silence_dialog: user clicked Continue"),
-            _close_dialog(), self._reset_silence_timers(reason="silence_dialog_continue"),
-        ))
+        continue_btn.connect(
+            "clicked",
+            lambda _b: (
+                logger.info("silence_dialog: user clicked Continue"),
+                _close_dialog(),
+                self._reset_silence_timers(reason="silence_dialog_continue"),
+            ),
+        )
         btn_box.append(continue_btn)
 
         self._silence_dialog = dialog
@@ -370,27 +421,39 @@ class ConversationManager:
     def _on_silence_autostop(self) -> bool:
         """Auto-stop after silence stop threshold: close warn dialog and stop."""
         self._stop_timer = None
-        elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
-        logger.info("silence_autostop_fired: elapsed=%ds — closing dialog and stopping", elapsed)
+        if self._state != _STATE_CONVERSATION:
+            return False
+        elapsed = (
+            int(time.monotonic() - self._session_start) if self._session_start else 0
+        )
+        logger.info(
+            "silence_autostop_fired: elapsed=%ds — closing dialog and stopping", elapsed
+        )
         if self._silence_dialog:
             self._silence_dialog.close()
             self._silence_dialog = None
         config = load_config()
-        play_sound("stop.wav",
-                   output_device=config.get("sounds_output_device", ""),
-                   enabled=config.get("sounds_enabled", True))
+        play_sound(
+            "stop.wav",
+            output_device=config.get("sounds_output_device", ""),
+            enabled=config.get("sounds_enabled", True),
+        )
         self.stop_session(reason="silence_autostop")
         return False
 
     def _on_hard_limit(self) -> bool:
         """Hard recording time limit reached: stop session."""
         self._hard_limit_timer = None
-        elapsed = int(time.monotonic() - self._session_start) if self._session_start else 0
+        elapsed = (
+            int(time.monotonic() - self._session_start) if self._session_start else 0
+        )
         logger.info("hard_limit_fired: elapsed=%ds", elapsed)
         config = load_config()
-        play_sound("error.wav",
-                   output_device=config.get("sounds_output_device", ""),
-                   enabled=config.get("sounds_enabled", True))
+        play_sound(
+            "error.wav",
+            output_device=config.get("sounds_output_device", ""),
+            enabled=config.get("sounds_enabled", True),
+        )
         self.stop_session(reason="hard_limit")
         return False
 
@@ -414,26 +477,77 @@ class ConversationManager:
                 GLib.source_remove(self._warn_timer)
             self._warn_timer = GLib.timeout_add_seconds(warn_sec, self._on_silence_warn)
             if self._status_window:
-                self._status_window.set_silence_baseline(time.monotonic(), warn_sec, stop_sec)
-            logger.debug("speech_heartbeat: user speaking — renewed warn timer warn_in=%ds", warn_sec)
+                self._status_window.set_silence_baseline(
+                    time.monotonic(), warn_sec, stop_sec
+                )
+            logger.debug(
+                "speech_heartbeat: user speaking — renewed warn timer warn_in=%ds",
+                warn_sec,
+            )
         return True
 
     def _on_thread_done(self) -> bool:
         """GTK main thread: called when a transcription thread finishes."""
         self._in_flight = max(0, self._in_flight - 1)
-        logger.debug("thread_done: in_flight=%d session_ending=%s", self._in_flight, self._session_ending)
-        if self._in_flight == 0 and self._session_ending:
+        logger.debug(
+            "thread_done: in_flight=%d session_ending=%s recorder_done=%s",
+            self._in_flight,
+            self._session_ending,
+            self._recorder_done,
+        )
+        if self._in_flight == 0 and self._session_ending and self._recorder_done:
+            self._dismiss_wait_dialog()
             self._session_ending = False
             self._finish_session()
         return False
 
-    def _try_finish_after_stop(self) -> bool:
-        """GTK main thread: called 200ms after stop to check if all threads are done."""
+    def _try_finish_after_stop(self) -> None:
+        """GTK main thread: called when recorder stops or a thread finishes.
+        Calls _finish_session if all in-flight threads are done; otherwise
+        leaves _session_ending=True for _on_thread_done to handle.
+        """
         if self._in_flight == 0:
             self._session_ending = False
             self._finish_session()
-        # else: _on_thread_done will call _finish_session when last thread completes
+
+    def _on_recorder_done(self) -> bool:
+        """GTK main thread: record_loop has exited — no more chunks will be queued.
+        All chunk idle_adds fired before this one (same thread, same queue order).
+        Now either finish immediately or show wait dialog if transcriptions pending.
+        """
+        self._recorder_done = True
+        if not self._session_ending:
+            return False
+        if self._in_flight == 0:
+            self._session_ending = False
+            self._finish_session()
+        else:
+            self._show_wait_dialog()
         return False
+
+    def _show_wait_dialog(self) -> None:
+        if self._wait_dialog:
+            return
+        dialog = Gtk.Window(title="Please wait")
+        dialog.set_default_size(320, 100)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        box.set_margin_start(24)
+        box.set_margin_end(24)
+        box.set_margin_top(20)
+        box.set_margin_bottom(20)
+        dialog.set_child(box)
+        spinner = Gtk.Spinner()
+        spinner.start()
+        box.append(spinner)
+        lbl = Gtk.Label(label="Finishing transcription…")
+        box.append(lbl)
+        self._wait_dialog = dialog
+        dialog.present()
+
+    def _dismiss_wait_dialog(self) -> None:
+        if self._wait_dialog:
+            self._wait_dialog.close()
+            self._wait_dialog = None
 
     def _on_threshold_calibrated(self, value: float) -> bool:
         """GTK main thread: auto-calibration set a new silence threshold."""
@@ -443,7 +557,12 @@ class ConversationManager:
         return False
 
     def _cancel_all_timers(self) -> None:
-        for attr in ('_warn_timer', '_stop_timer', '_hard_limit_timer', '_speech_heartbeat_timer'):
+        for attr in (
+            "_warn_timer",
+            "_stop_timer",
+            "_hard_limit_timer",
+            "_speech_heartbeat_timer",
+        ):
             tid = getattr(self, attr)
             if tid:
                 GLib.source_remove(tid)
@@ -453,30 +572,36 @@ class ConversationManager:
         """Assemble final transcript and fire on_session_complete. GTK main thread."""
         self._session_ending = False
         logger.info(
-            "finish_session: assembling transcript from %d chunk(s)", len(self._chunk_texts)
+            "finish_session: assembling transcript from %d chunk(s)",
+            len(self._chunk_texts),
         )
         config = load_config()
-        play_sound("stop.wav",
-                   output_device=config.get("sounds_output_device", ""),
-                   enabled=config.get("sounds_enabled", True))
+        play_sound(
+            "stop.wav",
+            output_device=config.get("sounds_output_device", ""),
+            enabled=config.get("sounds_enabled", True),
+        )
 
         if self._status_window:
             self._status_window.stop()
             self._status_window.close()
             self._status_window = None
         if self._on_tray_state:
-            self._on_tray_state('idle')
+            self._on_tray_state("idle")
 
         if self._recorder:
             self._recorder.cleanup()
             self._recorder = None
 
-        duration_sec = int(time.monotonic() - self._session_start) if self._session_start else 0
+        duration_sec = (
+            int(time.monotonic() - self._session_start) if self._session_start else 0
+        )
         h, rem = divmod(duration_sec, 3600)
         m, s = divmod(rem, 60)
         duration_str = f"{h}h {m:02d}m {s:02d}s" if h else f"{m}m {s:02d}s"
 
         from datetime import datetime
+
         metadata = {
             "date": datetime.now().isoformat(timespec="seconds"),
             "duration": duration_str,
@@ -486,7 +611,8 @@ class ConversationManager:
         full_transcript = " ".join(self._chunk_texts)
         logger.info(
             "finish_session: transcript=%d chars duration=%s — firing on_session_complete",
-            len(full_transcript), duration_str,
+            len(full_transcript),
+            duration_str,
         )
 
         if self._on_session_complete:

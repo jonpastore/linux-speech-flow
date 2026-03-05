@@ -21,8 +21,8 @@ from linux_speech_flow.transcription import (
 # _strip_hallucinations
 # ---------------------------------------------------------------------------
 
-class TestStripHallucinations:
 
+class TestStripHallucinations:
     def test_clean_transcript_unchanged(self):
         text = "The quick brown fox jumps over the lazy dog."
         assert _strip_hallucinations(text) == text
@@ -86,19 +86,27 @@ class TestStripHallucinations:
 # _build_user_message
 # ---------------------------------------------------------------------------
 
-class TestBuildUserMessage:
 
+class TestBuildUserMessage:
     def test_includes_raw_transcript(self):
         result = _build_user_message("my transcript", {}, [])
         assert "my transcript" in result
 
     def test_includes_app_name_when_present(self):
-        window_info = {"wm_class": "gedit", "title": "untitled.txt", "category": "editor"}
+        window_info = {
+            "wm_class": "gedit",
+            "title": "untitled.txt",
+            "category": "editor",
+        }
         result = _build_user_message("text", window_info, [])
         assert "gedit" in result
 
     def test_includes_window_title_when_present(self):
-        window_info = {"wm_class": "gedit", "title": "report.docx", "category": "editor"}
+        window_info = {
+            "wm_class": "gedit",
+            "title": "report.docx",
+            "category": "editor",
+        }
         result = _build_user_message("text", window_info, [])
         assert "report.docx" in result
 
@@ -127,7 +135,11 @@ class TestBuildUserMessage:
         assert "Terminal" in result
 
     def test_category_included_in_context(self):
-        window_info = {"wm_class": "gnome-terminal", "title": "~", "category": "terminal"}
+        window_info = {
+            "wm_class": "gnome-terminal",
+            "title": "~",
+            "category": "terminal",
+        }
         result = _build_user_message("text", window_info, [])
         assert "terminal" in result
 
@@ -136,8 +148,8 @@ class TestBuildUserMessage:
 # _classify_groq_error
 # ---------------------------------------------------------------------------
 
-class TestClassifyGroqError:
 
+class TestClassifyGroqError:
     def _make_exc(self, exc_class, status_code=None):
         """Create a minimal groq API error instance."""
         try:
@@ -177,8 +189,8 @@ class TestClassifyGroqError:
 # _call_with_retry
 # ---------------------------------------------------------------------------
 
-class TestCallWithRetry:
 
+class TestCallWithRetry:
     def test_returns_result_on_first_success(self):
         fn = lambda: 42
         result = _call_with_retry(fn, retryable=(ValueError,))

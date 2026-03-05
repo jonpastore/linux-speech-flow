@@ -14,10 +14,7 @@ def list_sinks() -> list[dict]:
     try:
         with pulsectl.Pulse("linux-speech-flow") as pulse:
             sinks = pulse.sink_list()
-        return [
-            {"name": s.name, "description": s.description}
-            for s in sinks
-        ]
+        return [{"name": s.name, "description": s.description} for s in sinks]
     except pulsectl.PulseError:
         return []
 

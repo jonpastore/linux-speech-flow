@@ -1,4 +1,5 @@
 import gi
+
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib, Pango
 
@@ -8,6 +9,7 @@ from linux_speech_flow.config import load_config
 def _do_transcript_copy(transcript: str) -> str:
     """Copy transcript to clipboard. Returns status message."""
     from linux_speech_flow.injector import copy_to_clipboard
+
     copy_to_clipboard(transcript)
     return "Copied to clipboard."
 
@@ -15,6 +17,7 @@ def _do_transcript_copy(transcript: str) -> str:
 def _do_transcript_paste(transcript: str, window_info: dict) -> str:
     """Paste transcript to active window. Returns status message."""
     from linux_speech_flow.injector import paste_text
+
     paste_text(transcript, window_info)
     return "Pasted to active window."
 
@@ -24,8 +27,11 @@ def _do_transcript_save(transcript: str, metadata: dict) -> str:
     try:
         from pathlib import Path
         from linux_speech_flow.conversation_pipeline import conv_filename, coalesce_file
+
         config = load_config()
-        save_dir = Path(config.get("conv_save_dir", "~/Documents/conversations")).expanduser()
+        save_dir = Path(
+            config.get("conv_save_dir", "~/Documents/conversations")
+        ).expanduser()
         save_dir.mkdir(parents=True, exist_ok=True)
         path = str(save_dir / conv_filename("transcript"))
         coalesce_file(path, metadata, "", [], transcript)
@@ -42,8 +48,15 @@ def _window_label(window_info: dict) -> str:
 
 
 class ConversationDialog(Gtk.ApplicationWindow):
-    def __init__(self, application, transcript: str, metadata: dict,
-                 on_submit, on_cancel=None, window_info: dict | None = None):
+    def __init__(
+        self,
+        application,
+        transcript: str,
+        metadata: dict,
+        on_submit,
+        on_cancel=None,
+        window_info: dict | None = None,
+    ):
         super().__init__(application=application, title="Conversation Analysis")
         self.set_default_size(560, 720)
         self.set_resizable(True)
@@ -95,7 +108,9 @@ class ConversationDialog(Gtk.ApplicationWindow):
         transcript_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
         transcript_view.set_editable(False)
         transcript_view.set_cursor_visible(False)
-        transcript_view.get_buffer().set_text(transcript or "(no transcript — chunks may still be transcribing)")
+        transcript_view.get_buffer().set_text(
+            transcript or "(no transcript — chunks may still be transcribing)"
+        )
         transcript_scroll.set_child(transcript_view)
         content.append(transcript_scroll)
 
@@ -115,7 +130,9 @@ class ConversationDialog(Gtk.ApplicationWindow):
             answer_entry = Gtk.Entry()
             answer_entry.set_placeholder_text("Your answer...")
             answer_entry.set_margin_start(24)
-            q_check.connect("toggled", lambda cb, e=answer_entry: e.set_sensitive(cb.get_active()))
+            q_check.connect(
+                "toggled", lambda cb, e=answer_entry: e.set_sensitive(cb.get_active())
+            )
             content.append(answer_entry)
             self._answer_rows.append((q_check, answer_entry))
 
@@ -162,7 +179,11 @@ class ConversationDialog(Gtk.ApplicationWindow):
             self._paste_check.set_tooltip_text("Window ID not captured (X11 only)")
         content.append(self._paste_check)
 
-        target_label = Gtk.Label(label=f"Target: {_window_label(self._window_info)}" if can_paste else "Target: (none captured)")
+        target_label = Gtk.Label(
+            label=f"Target: {_window_label(self._window_info)}"
+            if can_paste
+            else "Target: (none captured)"
+        )
         target_label.add_css_class("caption")
         target_label.set_xalign(0)
         target_label.set_margin_start(24)
@@ -206,7 +227,7 @@ class ConversationDialog(Gtk.ApplicationWindow):
 
         grok_key = config.get("grok_api_key", "")
         self._grok_check = Gtk.CheckButton(label="Grok")
-        self._grok_check.set_active(False)
+        self._grok_check.set_active(bool(grok_key))
         if not grok_key:
             self._grok_check.set_sensitive(False)
             self._grok_check.set_tooltip_text("Add API key in Settings to enable")
@@ -214,11 +235,24 @@ class ConversationDialog(Gtk.ApplicationWindow):
 
         gemini_key = config.get("gemini_api_key", "")
         self._gemini_check = Gtk.CheckButton(label="Gemini")
-        self._gemini_check.set_active(False)
+        self._gemini_check.set_active(bool(gemini_key))
         if not gemini_key:
             self._gemini_check.set_sensitive(False)
             self._gemini_check.set_tooltip_text("Add API key in Settings to enable")
         content.append(self._gemini_check)
+
+        coalesce_label = Gtk.Label(label="Coalescing model (when multiple selected):")
+        coalesce_label.add_css_class("caption")
+        coalesce_label.set_xalign(0)
+        coalesce_label.set_margin_top(4)
+        content.append(coalesce_label)
+
+        self._coalesce_combo = Gtk.ComboBoxText()
+        self._coalesce_combo.append("groq", "Groq")
+        self._coalesce_combo.append("grok", "Grok")
+        self._coalesce_combo.append("gemini", "Gemini")
+        self._coalesce_combo.set_active_id(config.get("conv_meta_model", "groq"))
+        content.append(self._coalesce_combo)
 
         btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         btn_row.set_margin_start(24)
@@ -258,8 +292,8 @@ class ConversationDialog(Gtk.ApplicationWindow):
 
     def _on_submit(self, _btn):
         prompt = self._prompt_buf.get_text(
-            self._prompt_buf.get_start_iter(),
-            self._prompt_buf.get_end_iter(), False)
+            self._prompt_buf.get_start_iter(), self._prompt_buf.get_end_iter(), False
+        )
         qualifying_answers = "\n".join(
             f"Q: {q}\nA: {e.get_text()}"
             for q, (cb, e) in zip(self._questions, self._answer_rows)
@@ -267,15 +301,22 @@ class ConversationDialog(Gtk.ApplicationWindow):
         )
         selected_models = []
         if self._groq_check.get_active():
-            selected_models.append('groq')
+            selected_models.append("groq")
         if self._grok_check.get_active() and self._grok_check.get_sensitive():
-            selected_models.append('grok')
+            selected_models.append("grok")
         if self._gemini_check.get_active() and self._gemini_check.get_sensitive():
-            selected_models.append('gemini')
+            selected_models.append("gemini")
         if not selected_models:
-            selected_models = ['groq']
+            selected_models = ["groq"]
+        meta_model = self._coalesce_combo.get_active_id() or "groq"
+        from linux_speech_flow.config import save_config
+        cfg = load_config()
+        cfg["conv_meta_model"] = meta_model
+        save_config(cfg)
         self.on_submit_cb(
-            self._transcript, prompt, qualifying_answers,
+            self._transcript,
+            prompt,
+            qualifying_answers,
             selected_models,
             self._save_check.get_active(),
             self._inject_check.get_active(),
@@ -293,11 +334,18 @@ class ConversationDialog(Gtk.ApplicationWindow):
 
 
 class TranscriptOutputWindow(Gtk.ApplicationWindow):
-    """Shown after 'Skip Analysis' — explicit buttons to copy/paste/save the raw transcript."""
+    """Shown after 'Skip Analysis' or QA finalise — copy/paste/save the output."""
 
-    def __init__(self, application, transcript: str, metadata: dict,
-                 window_info: dict | None = None):
-        super().__init__(application=application, title="Transcript Output")
+    def __init__(
+        self,
+        application,
+        transcript: str,
+        metadata: dict,
+        window_info: dict | None = None,
+        heading: str = "Raw Transcript",
+    ):
+        title = "Analysis Output" if heading != "Raw Transcript" else "Transcript Output"
+        super().__init__(application=application, title=title)
         self.set_default_size(520, 480)
         self.set_resizable(True)
         self.set_modal(True)
@@ -316,7 +364,7 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         content.set_margin_bottom(8)
         outer.append(content)
 
-        header = Gtk.Label(label="Raw Transcript")
+        header = Gtk.Label(label=heading)
         header.add_css_class("title-3")
         header.set_xalign(0)
         content.append(header)
@@ -352,7 +400,11 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         btn_box.append(copy_btn)
 
         can_paste = bool(self._window_info.get("window_id"))
-        paste_label = f"Paste to {_window_label(self._window_info)}" if can_paste else "Paste to Active Window"
+        paste_label = (
+            f"Paste to {_window_label(self._window_info)}"
+            if can_paste
+            else "Paste to Active Window"
+        )
         paste_btn = Gtk.Button(label=paste_label)
         paste_btn.set_sensitive(can_paste)
         if not can_paste:
@@ -372,13 +424,18 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         self._status_label.set_text(_do_transcript_copy(self._transcript))
 
     def _do_paste(self) -> None:
-        self._status_label.set_text(_do_transcript_paste(self._transcript, self._window_info))
+        self._status_label.set_text(
+            _do_transcript_paste(self._transcript, self._window_info)
+        )
 
     def _do_save(self) -> None:
         from pathlib import Path
         from linux_speech_flow.conversation_pipeline import conv_filename
+
         config = load_config()
-        save_dir = Path(config.get("conv_save_dir", "~/Documents/conversations")).expanduser()
+        save_dir = Path(
+            config.get("conv_save_dir", "~/Documents/conversations")
+        ).expanduser()
         save_dir.mkdir(parents=True, exist_ok=True)
 
         chooser = Gtk.FileChooserNative.new(
@@ -387,6 +444,7 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         chooser.set_current_name(conv_filename("transcript"))
         try:
             from gi.repository import Gio
+
             chooser.set_current_folder(Gio.File.new_for_path(str(save_dir)))
         except Exception:
             pass
@@ -404,6 +462,7 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         path = gfile.get_path()
         try:
             from linux_speech_flow.conversation_pipeline import coalesce_file
+
             coalesce_file(path, self._metadata, "", [], self._transcript)
             self._status_label.set_text(f"Saved: {path}")
         except Exception as exc:

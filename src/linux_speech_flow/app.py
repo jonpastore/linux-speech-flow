@@ -367,6 +367,8 @@ class App(Gtk.Application):
             self._on_huddle_start_for(team_id, channel_id)
 
     def _on_huddle_stop(self) -> None:
+        if self._hotkey_manager:
+            self._hotkey_manager.reset_to_idle()
         if self._huddle_manager:
             self._huddle_manager.stop_session()
             if self._tray:
@@ -455,35 +457,20 @@ class App(Gtk.Application):
         window_info=None,
         huddle_metadata=None,
     ):
-        from pathlib import Path
-        from linux_speech_flow.conversation_pipeline import conv_filename, coalesce_file
-
-        config = load_config()
-        save_dir = Path(
-            config.get("conv_save_dir", "~/Documents/conversations")
-        ).expanduser()
-        save_dir.mkdir(parents=True, exist_ok=True)
-
-        initial_path = str(save_dir / conv_filename("huddle"))
-        if save_to_file:
-            coalesce_file(initial_path, metadata, "", [], transcript)
-
-        def on_finalised(final_path: str) -> None:
-            if huddle_metadata and self._huddle_manager:
+        def on_finalised(save_path: str | None) -> None:
+            if save_path and huddle_metadata and self._huddle_manager:
                 team_id = huddle_metadata.get("team_id")
                 channel_id = huddle_metadata.get("channel_id")
                 if team_id and channel_id:
                     threading.Thread(
                         target=self._huddle_manager.post_huddle_results,
-                        args=(team_id, channel_id, {}, final_path),
+                        args=(team_id, channel_id, {}, save_path),
                         daemon=True,
                     ).start()
 
         if not selected_models:
             if self._huddle_manager:
                 self._huddle_manager.debug_post("analysis skipped — no models selected", "medium")
-            if save_to_file:
-                on_finalised(initial_path)
             return
 
         if self._huddle_manager:
@@ -511,11 +498,11 @@ class App(Gtk.Application):
                 metadata=metadata,
                 pipeline=pipeline,
                 initial_result=result,
-                save_path=initial_path,
-                on_finalised=lambda final_path: self._on_huddle_analysis_complete(
-                    result, final_path, huddle_metadata
+                on_finalised=lambda save_path: self._on_huddle_analysis_complete(
+                    result, save_path, huddle_metadata
                 ),
                 selected_models=selected_models,
+                save_analysis=save_to_file,
             )
             qa_window.present()
             return False
@@ -646,12 +633,9 @@ class App(Gtk.Application):
         window_info=None,
     ):
         import logging
-        from pathlib import Path
-        from linux_speech_flow.conversation_pipeline import conv_filename, coalesce_file
         from linux_speech_flow.conversation_qa import ConversationQAWindow
 
         logger = logging.getLogger(__name__)
-        config = load_config()
 
         # Immediate raw transcript actions (before AI analysis)
         if copy_to_clipboard:
@@ -671,32 +655,8 @@ class App(Gtk.Application):
                 window_info.get("window_id"),
             )
             paste_text(transcript, window_info)
-        save_dir = Path(
-            config.get("conv_save_dir", "~/Documents/conversations")
-        ).expanduser()
-        save_dir.mkdir(parents=True, exist_ok=True)
-
-        initial_path = str(save_dir / conv_filename("untitled"))
-        if save_to_file:
-            coalesce_file(initial_path, metadata, "", [], transcript)
-
-        def on_finalised(final_path: str) -> None:
-            if inject_to_window and window_info and window_info.get("window_id"):
-                try:
-                    content = Path(final_path).read_text(encoding="utf-8")
-                    from linux_speech_flow.injector import paste_text
-
-                    logger.info(
-                        "conv_on_finalised: injecting analysis to window_id=%s",
-                        window_info.get("window_id"),
-                    )
-                    paste_text(content, window_info)
-                except Exception as exc:
-                    logger.error("conv_on_finalised: inject failed: %s", exc)
 
         if not selected_models:
-            if save_to_file:
-                on_finalised(initial_path)
             return
 
         pipeline = self._conv_manager._pipeline if self._conv_manager else None
@@ -718,9 +678,10 @@ class App(Gtk.Application):
                 metadata=metadata,
                 pipeline=pipeline,
                 initial_result=result,
-                save_path=initial_path,
-                on_finalised=on_finalised,
                 selected_models=selected_models,
+                window_info=window_info,
+                save_analysis=save_to_file,
+                inject_to_window=inject_to_window,
             )
             qa_window.present()
             return False

@@ -15,8 +15,12 @@ from linux_speech_flow.huddle_recorder import (
 class TestGetDefaultMonitorSource:
     def test_returns_default_sink_monitor(self):
         mock_pulse_instance = MagicMock()
-        mock_pulse_instance.server_info.return_value.default_sink_name = "alsa_output.pci"
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls:
+        mock_pulse_instance.server_info.return_value.default_sink_name = (
+            "alsa_output.pci"
+        )
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls:
             mock_pulse_cls.return_value.__enter__ = lambda s: mock_pulse_instance
             mock_pulse_cls.return_value.__exit__ = MagicMock(return_value=False)
             result = get_default_monitor_source()
@@ -25,7 +29,9 @@ class TestGetDefaultMonitorSource:
     def test_appends_dot_monitor_suffix(self):
         mock_pulse_instance = MagicMock()
         mock_pulse_instance.server_info.return_value.default_sink_name = "my_sink"
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls:
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls:
             mock_pulse_cls.return_value.__enter__ = lambda s: mock_pulse_instance
             mock_pulse_cls.return_value.__exit__ = MagicMock(return_value=False)
             result = get_default_monitor_source()
@@ -36,7 +42,9 @@ class TestExistingSinkModuleId:
     def test_returns_none_when_no_sink_exists(self):
         mock_pulse_instance = MagicMock()
         mock_pulse_instance.sink_list.return_value = []
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls:
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls:
             mock_pulse_cls.return_value.__enter__ = lambda s: mock_pulse_instance
             mock_pulse_cls.return_value.__exit__ = MagicMock(return_value=False)
             result = _existing_sink_module_id("lsf-huddle-mix")
@@ -48,7 +56,9 @@ class TestExistingSinkModuleId:
         mock_sink.owner_module = 42
         mock_pulse_instance = MagicMock()
         mock_pulse_instance.sink_list.return_value = [mock_sink]
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls:
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls:
             mock_pulse_cls.return_value.__enter__ = lambda s: mock_pulse_instance
             mock_pulse_cls.return_value.__exit__ = MagicMock(return_value=False)
             result = _existing_sink_module_id("lsf-huddle-mix")
@@ -60,14 +70,18 @@ class TestExistingSinkModuleId:
         mock_sink.owner_module = 99
         mock_pulse_instance = MagicMock()
         mock_pulse_instance.sink_list.return_value = [mock_sink]
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls:
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls:
             mock_pulse_cls.return_value.__enter__ = lambda s: mock_pulse_instance
             mock_pulse_cls.return_value.__exit__ = MagicMock(return_value=False)
             result = _existing_sink_module_id("lsf-huddle-mix")
         assert result is None
 
     def test_returns_none_on_pulsectl_exception(self):
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls:
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls:
             mock_pulse_cls.side_effect = Exception("connection failed")
             result = _existing_sink_module_id("lsf-huddle-mix")
         assert result is None
@@ -80,7 +94,9 @@ class TestSetupMixSink:
             MagicMock(stdout="102\n"),
             MagicMock(stdout="103\n"),
         ]
-        with patch("linux_speech_flow.huddle_recorder.subprocess.run", side_effect=run_results) as mock_run:
+        with patch(
+            "linux_speech_flow.huddle_recorder.subprocess.run", side_effect=run_results
+        ) as mock_run:
             ids = _setup_mix_sink("mic_src", "sys_monitor")
 
         assert ids == ["101", "102", "103"]
@@ -109,7 +125,9 @@ class TestSetupMixSink:
             MagicMock(stdout="102\n"),
             MagicMock(stdout="103\n"),
         ]
-        with patch("linux_speech_flow.huddle_recorder.subprocess.run", side_effect=run_results):
+        with patch(
+            "linux_speech_flow.huddle_recorder.subprocess.run", side_effect=run_results
+        ):
             ids = _setup_mix_sink("mic", "monitor")
         for mod_id in ids:
             assert "\n" not in mod_id
@@ -169,9 +187,14 @@ class TestHuddleRecorderStart:
         on_chunk = MagicMock()
 
         pulse_instance = self._mock_pulse_no_sink()
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls, \
-             patch("linux_speech_flow.huddle_recorder.subprocess.run", side_effect=self._make_run_side_effects()), \
-             patch("linux_speech_flow.huddle_recorder.ConversationRecorder") as mock_recorder_cls:
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls, patch(
+            "linux_speech_flow.huddle_recorder.subprocess.run",
+            side_effect=self._make_run_side_effects(),
+        ), patch(
+            "linux_speech_flow.huddle_recorder.ConversationRecorder"
+        ) as mock_recorder_cls:
             mock_pulse_cls.return_value.__enter__ = lambda s: pulse_instance
             mock_pulse_cls.return_value.__exit__ = MagicMock(return_value=False)
             mock_recorder = MagicMock()
@@ -193,16 +216,23 @@ class TestHuddleRecorderStart:
         pulse_instance = self._mock_pulse_no_sink()
         pulse_instance.server_info.return_value.default_sink_name = "default_sink"
 
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls, \
-             patch("linux_speech_flow.huddle_recorder.subprocess.run", side_effect=self._make_run_side_effects()) as mock_run, \
-             patch("linux_speech_flow.huddle_recorder.ConversationRecorder") as mock_recorder_cls:
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls, patch(
+            "linux_speech_flow.huddle_recorder.subprocess.run",
+            side_effect=self._make_run_side_effects(),
+        ) as mock_run, patch(
+            "linux_speech_flow.huddle_recorder.ConversationRecorder"
+        ) as mock_recorder_cls:
             mock_pulse_cls.return_value.__enter__ = lambda s: pulse_instance
             mock_pulse_cls.return_value.__exit__ = MagicMock(return_value=False)
             mock_recorder_cls.return_value = MagicMock()
 
             hr.start(on_chunk)
 
-        loopback_calls = [c for c in mock_run.call_args_list if "module-loopback" in c[0][0]]
+        loopback_calls = [
+            c for c in mock_run.call_args_list if "module-loopback" in c[0][0]
+        ]
         system_loopback = loopback_calls[1][0][0]
         assert "source=default_sink.monitor" in system_loopback
 
@@ -211,16 +241,23 @@ class TestHuddleRecorderStart:
         on_chunk = MagicMock()
 
         pulse_instance = self._mock_pulse_no_sink()
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls, \
-             patch("linux_speech_flow.huddle_recorder.subprocess.run", side_effect=self._make_run_side_effects()) as mock_run, \
-             patch("linux_speech_flow.huddle_recorder.ConversationRecorder") as mock_recorder_cls:
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls, patch(
+            "linux_speech_flow.huddle_recorder.subprocess.run",
+            side_effect=self._make_run_side_effects(),
+        ) as mock_run, patch(
+            "linux_speech_flow.huddle_recorder.ConversationRecorder"
+        ) as mock_recorder_cls:
             mock_pulse_cls.return_value.__enter__ = lambda s: pulse_instance
             mock_pulse_cls.return_value.__exit__ = MagicMock(return_value=False)
             mock_recorder_cls.return_value = MagicMock()
 
             hr.start(on_chunk)
 
-        unload_calls = [c for c in mock_run.call_args_list if "unload-module" in c[0][0]]
+        unload_calls = [
+            c for c in mock_run.call_args_list if "unload-module" in c[0][0]
+        ]
         assert len(unload_calls) == 0
 
     def test_start_crash_recovery_unloads_existing_sink(self):
@@ -236,9 +273,14 @@ class TestHuddleRecorderStart:
         load_results = self._make_run_side_effects()
         all_run_results = [MagicMock()] + load_results
 
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls, \
-             patch("linux_speech_flow.huddle_recorder.subprocess.run", side_effect=all_run_results) as mock_run, \
-             patch("linux_speech_flow.huddle_recorder.ConversationRecorder") as mock_recorder_cls:
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls, patch(
+            "linux_speech_flow.huddle_recorder.subprocess.run",
+            side_effect=all_run_results,
+        ) as mock_run, patch(
+            "linux_speech_flow.huddle_recorder.ConversationRecorder"
+        ) as mock_recorder_cls:
             mock_pulse_cls.return_value.__enter__ = lambda s: pulse_instance
             mock_pulse_cls.return_value.__exit__ = MagicMock(return_value=False)
             mock_recorder_cls.return_value = MagicMock()
@@ -257,9 +299,13 @@ class TestHuddleRecorderStart:
         load_results = self._make_run_side_effects()
         teardown_results = [MagicMock(), MagicMock(), MagicMock()]
 
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls, \
-             patch("linux_speech_flow.huddle_recorder.subprocess.run") as mock_run, \
-             patch("linux_speech_flow.huddle_recorder.ConversationRecorder") as mock_recorder_cls:
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls, patch(
+            "linux_speech_flow.huddle_recorder.subprocess.run"
+        ) as mock_run, patch(
+            "linux_speech_flow.huddle_recorder.ConversationRecorder"
+        ) as mock_recorder_cls:
             mock_pulse_cls.return_value.__enter__ = lambda s: pulse_instance
             mock_pulse_cls.return_value.__exit__ = MagicMock(return_value=False)
             mock_run.side_effect = load_results + teardown_results
@@ -270,7 +316,9 @@ class TestHuddleRecorderStart:
             with pytest.raises(RuntimeError):
                 hr.start(on_chunk)
 
-        unload_calls = [c for c in mock_run.call_args_list if "unload-module" in c[0][0]]
+        unload_calls = [
+            c for c in mock_run.call_args_list if "unload-module" in c[0][0]
+        ]
         assert len(unload_calls) == 3
 
     def test_start_teardown_clears_module_ids_on_exception(self):
@@ -280,9 +328,14 @@ class TestHuddleRecorderStart:
         load_results = self._make_run_side_effects()
         teardown_results = [MagicMock(), MagicMock(), MagicMock()]
 
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls, \
-             patch("linux_speech_flow.huddle_recorder.subprocess.run", side_effect=load_results + teardown_results), \
-             patch("linux_speech_flow.huddle_recorder.ConversationRecorder") as mock_recorder_cls:
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls, patch(
+            "linux_speech_flow.huddle_recorder.subprocess.run",
+            side_effect=load_results + teardown_results,
+        ), patch(
+            "linux_speech_flow.huddle_recorder.ConversationRecorder"
+        ) as mock_recorder_cls:
             mock_pulse_cls.return_value.__enter__ = lambda s: pulse_instance
             mock_pulse_cls.return_value.__exit__ = MagicMock(return_value=False)
             mock_recorder = MagicMock()
@@ -303,9 +356,13 @@ class TestHuddleRecorderStop:
             MagicMock(stdout="102\n"),
             MagicMock(stdout="103\n"),
         ]
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls, \
-             patch("linux_speech_flow.huddle_recorder.subprocess.run", side_effect=load_results), \
-             patch("linux_speech_flow.huddle_recorder.ConversationRecorder") as mock_recorder_cls:
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls, patch(
+            "linux_speech_flow.huddle_recorder.subprocess.run", side_effect=load_results
+        ), patch(
+            "linux_speech_flow.huddle_recorder.ConversationRecorder"
+        ) as mock_recorder_cls:
             mock_pulse_cls.return_value.__enter__ = lambda s: pulse_instance
             mock_pulse_cls.return_value.__exit__ = MagicMock(return_value=False)
             mock_recorder = MagicMock()
@@ -333,7 +390,9 @@ class TestHuddleRecorderStop:
         with patch("linux_speech_flow.huddle_recorder.subprocess.run") as mock_run:
             hr.stop()
 
-        unload_calls = [c for c in mock_run.call_args_list if "unload-module" in c[0][0]]
+        unload_calls = [
+            c for c in mock_run.call_args_list if "unload-module" in c[0][0]
+        ]
         assert len(unload_calls) == 3
 
     def test_stop_teardown_even_when_recorder_raises(self):
@@ -347,7 +406,9 @@ class TestHuddleRecorderStop:
             with pytest.raises(RuntimeError):
                 hr.stop()
 
-        unload_calls = [c for c in mock_run.call_args_list if "unload-module" in c[0][0]]
+        unload_calls = [
+            c for c in mock_run.call_args_list if "unload-module" in c[0][0]
+        ]
         assert len(unload_calls) == 3
 
     def test_stop_clears_module_ids(self):
@@ -384,9 +445,13 @@ class TestHuddleRecorderCleanup:
             MagicMock(stdout="102\n"),
             MagicMock(stdout="103\n"),
         ]
-        with patch("linux_speech_flow.huddle_recorder.pulsectl.Pulse") as mock_pulse_cls, \
-             patch("linux_speech_flow.huddle_recorder.subprocess.run", side_effect=load_results), \
-             patch("linux_speech_flow.huddle_recorder.ConversationRecorder") as mock_recorder_cls:
+        with patch(
+            "linux_speech_flow.huddle_recorder.pulsectl.Pulse"
+        ) as mock_pulse_cls, patch(
+            "linux_speech_flow.huddle_recorder.subprocess.run", side_effect=load_results
+        ), patch(
+            "linux_speech_flow.huddle_recorder.ConversationRecorder"
+        ) as mock_recorder_cls:
             mock_pulse_cls.return_value.__enter__ = lambda s: pulse_instance
             mock_pulse_cls.return_value.__exit__ = MagicMock(return_value=False)
             mock_recorder = MagicMock()

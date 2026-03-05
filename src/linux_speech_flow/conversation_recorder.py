@@ -15,13 +15,17 @@ logger = logging.getLogger(__name__)
 SAMPLE_RATE = 16000
 CHANNELS = 1
 SAMPLE_WIDTH = 2
-CHUNK_DURATION = 0.1            # seconds per read() call
+CHUNK_DURATION = 0.1  # seconds per read() call
 CHUNK_BYTES = int(SAMPLE_RATE * CHANNELS * SAMPLE_WIDTH * CHUNK_DURATION)
-MIN_GUARD_FRAMES = 10           # ignore silence detection for first N frames (PulseAudio buffer fill)
-RMS_DISPLAY_SCALE = 12          # multiplier so typical speech reaches ~0.5–1.0 on a 0–1 LevelBar
-CALIB_FACTOR = 4.0          # threshold = ambient_rms * CALIB_FACTOR
-CALIB_MIN = 0.002           # floor: never go below this
-CALIB_MAX = 0.030           # ceiling: noisy environments
+MIN_GUARD_FRAMES = (
+    10  # ignore silence detection for first N frames (PulseAudio buffer fill)
+)
+RMS_DISPLAY_SCALE = (
+    12  # multiplier so typical speech reaches ~0.5–1.0 on a 0–1 LevelBar
+)
+CALIB_FACTOR = 4.0  # threshold = ambient_rms * CALIB_FACTOR
+CALIB_MIN = 0.002  # floor: never go below this
+CALIB_MAX = 0.030  # ceiling: noisy environments
 
 
 class ConversationRecorder:
@@ -46,10 +50,12 @@ class ConversationRecorder:
         device_name: str | None,
         chunk_silence_sec: int = 3,
         silence_rms_threshold: float = 0.005,
+        chunk_max_sec: int = 30,
     ):
         self._device_name = device_name or None
         self._chunk_silence_sec = chunk_silence_sec
         self._silence_rms_threshold = silence_rms_threshold
+        self._chunk_max_sec = chunk_max_sec
         self._stop_event = threading.Event()
         self._chunk_dir = tempfile.mkdtemp(prefix="lsf-conv-")
         self._on_chunk_ready = None
@@ -57,8 +63,17 @@ class ConversationRecorder:
         self._on_silence_tick = None
         self._on_audio_level = None
         self._on_threshold_calibrated = None
+        self._on_done = None
 
-    def start(self, on_chunk_ready, on_error, on_silence_tick=None, on_audio_level=None, on_threshold_calibrated=None) -> None:
+    def start(
+        self,
+        on_chunk_ready,
+        on_error,
+        on_silence_tick=None,
+        on_audio_level=None,
+        on_threshold_calibrated=None,
+        on_done=None,
+    ) -> None:
         """Start recording in a daemon thread.
 
         Args:
@@ -81,6 +96,7 @@ class ConversationRecorder:
         self._on_silence_tick = on_silence_tick
         self._on_audio_level = on_audio_level
         self._on_threshold_calibrated = on_threshold_calibrated
+        self._on_done = on_done
         self._stop_event.clear()
         threading.Thread(target=self._record_loop, daemon=True).start()
 
@@ -103,10 +119,16 @@ class ConversationRecorder:
 
     def _record_loop(self) -> None:
         silence_limit_frames = int(self._chunk_silence_sec / CHUNK_DURATION)
+        max_chunk_frames = int(self._chunk_max_sec / CHUNK_DURATION)
         chunk_index = 0
         logger.info(
-            "record_loop: start device=%r chunk_silence_frames=%d (%.1fs) rms_threshold=%.4f",
-            self._device_name or "default", silence_limit_frames, self._chunk_silence_sec,
+            "record_loop: start device=%r chunk_silence_frames=%d (%.1fs) "
+            "max_chunk_frames=%d (%.1fs) rms_threshold=%.4f",
+            self._device_name or "default",
+            silence_limit_frames,
+            self._chunk_silence_sec,
+            max_chunk_frames,
+            self._chunk_max_sec,
             self._silence_rms_threshold,
         )
 
@@ -125,19 +147,25 @@ class ConversationRecorder:
                         self._chunk_dir, f"chunk_{chunk_index:04d}.wav"
                     )
                     frames_written, had_audio = self._record_one_chunk(
-                        pa, chunk_path, silence_limit_frames, chunk_index,
+                        pa,
+                        chunk_path,
+                        silence_limit_frames,
+                        chunk_index,
+                        max_chunk_frames,
                     )
                     if frames_written > 0 and had_audio:
                         logger.info(
                             "record_loop: chunk %d complete (audio) frames=%d — dispatching",
-                            chunk_index, frames_written,
+                            chunk_index,
+                            frames_written,
                         )
                         chunk_index += 1
                         GLib.idle_add(self._on_chunk_ready, chunk_path)
                     elif frames_written > 0:
                         logger.info(
                             "record_loop: chunk %d complete (silence-only) frames=%d — discarding",
-                            chunk_index, frames_written,
+                            chunk_index,
+                            frames_written,
                         )
                         # Pure silence chunk (e.g. noise floor at start); discard
                         try:
@@ -150,8 +178,17 @@ class ConversationRecorder:
             GLib.idle_add(self._on_error, str(exc))
 
         logger.info("record_loop: exit — stop_event was set")
+        if self._on_done:
+            GLib.idle_add(self._on_done)
 
-    def _record_one_chunk(self, pa, wav_path: str, silence_limit_frames: int, chunk_index: int = 0):
+    def _record_one_chunk(
+        self,
+        pa,
+        wav_path: str,
+        silence_limit_frames: int,
+        chunk_index: int = 0,
+        max_chunk_frames: int = 0,
+    ):
         """Record until a silence boundary or stop_event is set.
 
         Returns (frames_written: int, had_audio: bool).
@@ -167,7 +204,7 @@ class ConversationRecorder:
 
         # Auto-calibration: measure ambient noise during guard period of first chunk only
         calib_rms_sum = 0.0
-        calib_done = (chunk_index != 0)
+        calib_done = chunk_index != 0
 
         with wave.open(wav_path, "wb") as wf:
             wf.setnchannels(CHANNELS)
@@ -198,17 +235,24 @@ class ConversationRecorder:
                                 logger.info(
                                     "auto_calibrate: skipped — ambient_rms=%.5f >= threshold=%.5f"
                                     " (user likely speaking during guard)",
-                                    ambient, self._silence_rms_threshold,
+                                    ambient,
+                                    self._silence_rms_threshold,
                                 )
                             else:
-                                calibrated = max(CALIB_MIN, min(CALIB_MAX, ambient * CALIB_FACTOR))
+                                calibrated = max(
+                                    CALIB_MIN, min(CALIB_MAX, ambient * CALIB_FACTOR)
+                                )
                                 logger.info(
                                     "auto_calibrate: ambient_rms=%.5f -> threshold=%.5f (%.1fx)",
-                                    ambient, calibrated, CALIB_FACTOR,
+                                    ambient,
+                                    calibrated,
+                                    CALIB_FACTOR,
                                 )
                                 self._silence_rms_threshold = calibrated
                                 if self._on_threshold_calibrated:
-                                    GLib.idle_add(self._on_threshold_calibrated, calibrated)
+                                    GLib.idle_add(
+                                        self._on_threshold_calibrated, calibrated
+                                    )
                         calib_done = True
 
                 if frames_written >= MIN_GUARD_FRAMES:
@@ -219,7 +263,9 @@ class ConversationRecorder:
                         had_audio = True
 
                     if self._on_audio_level:
-                        GLib.idle_add(self._on_audio_level, min(1.0, rms * RMS_DISPLAY_SCALE))
+                        GLib.idle_add(
+                            self._on_audio_level, min(1.0, rms * RMS_DISPLAY_SCALE)
+                        )
 
                     if self._on_silence_tick and silence_frames != last_emitted_silence:
                         last_emitted_silence = silence_frames
@@ -229,23 +275,72 @@ class ConversationRecorder:
                         last_logged_frame = frames_written
                         logger.debug(
                             "chunk %d: frame=%d silence_frames=%d/%.0f had_audio=%s rms=%.4f threshold=%.4f",
-                            chunk_index, frames_written, silence_frames, silence_limit_frames,
-                            had_audio, rms, self._silence_rms_threshold,
+                            chunk_index,
+                            frames_written,
+                            silence_frames,
+                            silence_limit_frames,
+                            had_audio,
+                            rms,
+                            self._silence_rms_threshold,
                         )
 
                     if silence_frames >= silence_limit_frames:
                         logger.info(
                             "chunk %d: silence boundary reached at frame=%d "
                             "(%.1fs silence) had_audio=%s",
-                            chunk_index, frames_written,
-                            silence_frames * CHUNK_DURATION, had_audio,
+                            chunk_index,
+                            frames_written,
+                            silence_frames * CHUNK_DURATION,
+                            had_audio,
                         )
+                        break
+
+                    if max_chunk_frames > 0 and frames_written >= max_chunk_frames and had_audio:
+                        logger.info(
+                            "chunk %d: time boundary reached at frame=%d (%.1fs) had_audio=%s",
+                            chunk_index,
+                            frames_written,
+                            frames_written * CHUNK_DURATION,
+                            had_audio,
+                        )
+                        break
+
+            # Drain remaining speech after stop so last words aren't truncated.
+            # Continue reading until 1s of natural silence or 10s max.
+            if self._stop_event.is_set() and had_audio and silence_frames < silence_limit_frames:
+                drain_silence_frames = int(1.0 / CHUNK_DURATION)
+                drain_max_frames = int(10.0 / CHUNK_DURATION)
+                drained = 0
+                logger.info(
+                    "chunk %d: draining after stop — silence_frames=%d drain_threshold=%d",
+                    chunk_index,
+                    silence_frames,
+                    drain_silence_frames,
+                )
+                while drained < drain_max_frames:
+                    try:
+                        raw = pa.read(CHUNK_BYTES)
+                    except Exception:
+                        break
+                    wf.writeframes(raw)
+                    frames_written += 1
+                    drained += 1
+                    samples = struct.unpack(f"{len(raw) // SAMPLE_WIDTH}h", raw)
+                    rms = math.sqrt(sum(s * s for s in samples) / len(samples)) / 32768.0
+                    if rms < self._silence_rms_threshold:
+                        silence_frames += 1
+                    else:
+                        silence_frames = 0
+                        had_audio = True
+                    if silence_frames >= drain_silence_frames:
                         break
 
         if self._stop_event.is_set():
             logger.info(
                 "chunk %d: stopped by stop_event at frame=%d had_audio=%s",
-                chunk_index, frames_written, had_audio,
+                chunk_index,
+                frames_written,
+                had_audio,
             )
 
         return frames_written, had_audio

@@ -1,6 +1,7 @@
 import subprocess
 
 import gi
+
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
 from pathlib import Path
@@ -9,7 +10,9 @@ from pathlib import Path
 class ReprocessDialog(Gtk.Window):
     """Modal window listing failed WAV recordings for reprocess selection."""
 
-    def __init__(self, failed_wavs: list[str], on_selected, application=None, parent=None):
+    def __init__(
+        self, failed_wavs: list[str], on_selected, application=None, parent=None
+    ):
         super().__init__(title="Reprocess Recordings", application=application)
         self.set_modal(True)
         self.set_default_size(500, 320)
@@ -89,7 +92,9 @@ class ReprocessDialog(Gtk.Window):
         row.append(delete_btn)
 
         self._list_box.append(row)
-        self._rows.append({"check": check, "path": wav_path, "row": row, "deleted": False})
+        self._rows.append(
+            {"check": check, "path": wav_path, "row": row, "deleted": False}
+        )
 
     def _on_play(self, _btn, wav_path: str):
         subprocess.Popen(["paplay", wav_path], stderr=subprocess.DEVNULL)
@@ -107,7 +112,8 @@ class ReprocessDialog(Gtk.Window):
 
     def _on_reprocess_selected(self, _btn):
         selected = [
-            e["path"] for e in self._rows
+            e["path"]
+            for e in self._rows
             if not e["deleted"] and e["check"].get_active()
         ]
         if not selected:

@@ -47,7 +47,9 @@ def test_format_fail_short_makes_no_http_call():
 def test_valid_format_200_returns_ok():
     mock_response = MagicMock()
     mock_response.status_code = 200
-    with patch("linux_speech_flow.groq_client.requests.get", return_value=mock_response):
+    with patch(
+        "linux_speech_flow.groq_client.requests.get", return_value=mock_response
+    ):
         result = validate_api_key(VALID_KEY)
     assert result["ok"] is True
     assert "message" not in result
@@ -56,7 +58,9 @@ def test_valid_format_200_returns_ok():
 def test_valid_format_401_returns_invalid_key():
     mock_response = MagicMock()
     mock_response.status_code = 401
-    with patch("linux_speech_flow.groq_client.requests.get", return_value=mock_response):
+    with patch(
+        "linux_speech_flow.groq_client.requests.get", return_value=mock_response
+    ):
         result = validate_api_key(VALID_KEY)
     assert result["ok"] is False
     assert result["message"] == "Invalid API key"
@@ -65,21 +69,29 @@ def test_valid_format_401_returns_invalid_key():
 def test_valid_format_500_returns_unexpected():
     mock_response = MagicMock()
     mock_response.status_code = 500
-    with patch("linux_speech_flow.groq_client.requests.get", return_value=mock_response):
+    with patch(
+        "linux_speech_flow.groq_client.requests.get", return_value=mock_response
+    ):
         result = validate_api_key(VALID_KEY)
     assert result["ok"] is False
     assert "500" in result["message"]
 
 
 def test_connection_error_returns_connect_message():
-    with patch("linux_speech_flow.groq_client.requests.get", side_effect=requests.exceptions.ConnectionError()):
+    with patch(
+        "linux_speech_flow.groq_client.requests.get",
+        side_effect=requests.exceptions.ConnectionError(),
+    ):
         result = validate_api_key(VALID_KEY)
     assert result["ok"] is False
     assert "connect" in result["message"].lower()
 
 
 def test_timeout_returns_connect_message():
-    with patch("linux_speech_flow.groq_client.requests.get", side_effect=requests.exceptions.Timeout()):
+    with patch(
+        "linux_speech_flow.groq_client.requests.get",
+        side_effect=requests.exceptions.Timeout(),
+    ):
         result = validate_api_key(VALID_KEY)
     assert result["ok"] is False
     assert "connect" in result["message"].lower()
@@ -88,7 +100,9 @@ def test_timeout_returns_connect_message():
 def test_http_call_uses_correct_url_and_header():
     mock_response = MagicMock()
     mock_response.status_code = 200
-    with patch("linux_speech_flow.groq_client.requests.get", return_value=mock_response) as mock_get:
+    with patch(
+        "linux_speech_flow.groq_client.requests.get", return_value=mock_response
+    ) as mock_get:
         validate_api_key(VALID_KEY)
     mock_get.assert_called_once()
     call_args = mock_get.call_args

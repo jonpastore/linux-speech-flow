@@ -15,11 +15,12 @@ from linux_speech_flow.injector import paste_text, copy_to_clipboard
 # copy_to_clipboard
 # ---------------------------------------------------------------------------
 
-class TestCopyToClipboard:
 
+class TestCopyToClipboard:
     def test_x11_calls_xclip_clipboard_selection(self):
-        with patch("linux_speech_flow.injector.os.environ.get", return_value="x11"), \
-             patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen:
+        with patch(
+            "linux_speech_flow.injector.os.environ.get", return_value="x11"
+        ), patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen:
             mock_proc = MagicMock()
             mock_popen.return_value = mock_proc
 
@@ -30,8 +31,9 @@ class TestCopyToClipboard:
             assert ["xclip", "-selection", "clipboard"] in cmds
 
     def test_x11_calls_xclip_primary_selection(self):
-        with patch("linux_speech_flow.injector.os.environ.get", return_value="x11"), \
-             patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen:
+        with patch(
+            "linux_speech_flow.injector.os.environ.get", return_value="x11"
+        ), patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen:
             mock_proc = MagicMock()
             mock_popen.return_value = mock_proc
 
@@ -41,8 +43,9 @@ class TestCopyToClipboard:
             assert ["xclip", "-selection", "primary"] in cmds
 
     def test_x11_writes_text_to_stdin(self):
-        with patch("linux_speech_flow.injector.os.environ.get", return_value="x11"), \
-             patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen:
+        with patch(
+            "linux_speech_flow.injector.os.environ.get", return_value="x11"
+        ), patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen:
             mock_proc = MagicMock()
             mock_popen.return_value = mock_proc
 
@@ -52,16 +55,20 @@ class TestCopyToClipboard:
 
     def test_x11_xclip_not_found_logs_warning(self, caplog):
         import logging
-        with patch("linux_speech_flow.injector.os.environ.get", return_value="x11"), \
-             patch("linux_speech_flow.injector.subprocess.Popen",
-                   side_effect=FileNotFoundError):
+
+        with patch(
+            "linux_speech_flow.injector.os.environ.get", return_value="x11"
+        ), patch(
+            "linux_speech_flow.injector.subprocess.Popen", side_effect=FileNotFoundError
+        ):
             with caplog.at_level(logging.WARNING, logger="linux_speech_flow.injector"):
                 copy_to_clipboard("text")
             assert "xclip not found" in caplog.text
 
     def test_wayland_calls_wl_copy(self):
-        with patch("linux_speech_flow.injector.os.environ.get", return_value="wayland"), \
-             patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen:
+        with patch(
+            "linux_speech_flow.injector.os.environ.get", return_value="wayland"
+        ), patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen:
             mock_proc = MagicMock()
             mock_popen.return_value = mock_proc
 
@@ -72,8 +79,9 @@ class TestCopyToClipboard:
             assert cmd == ["wl-copy"]
 
     def test_wayland_uses_communicate(self):
-        with patch("linux_speech_flow.injector.os.environ.get", return_value="wayland"), \
-             patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen:
+        with patch(
+            "linux_speech_flow.injector.os.environ.get", return_value="wayland"
+        ), patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen:
             mock_proc = MagicMock()
             mock_popen.return_value = mock_proc
 
@@ -83,16 +91,20 @@ class TestCopyToClipboard:
 
     def test_wayland_wl_copy_not_found_logs_warning(self, caplog):
         import logging
-        with patch("linux_speech_flow.injector.os.environ.get", return_value="wayland"), \
-             patch("linux_speech_flow.injector.subprocess.Popen",
-                   side_effect=FileNotFoundError):
+
+        with patch(
+            "linux_speech_flow.injector.os.environ.get", return_value="wayland"
+        ), patch(
+            "linux_speech_flow.injector.subprocess.Popen", side_effect=FileNotFoundError
+        ):
             with caplog.at_level(logging.WARNING, logger="linux_speech_flow.injector"):
                 copy_to_clipboard("text")
             assert "wl-copy not found" in caplog.text
 
     def test_unicode_text_encoded_as_utf8(self):
-        with patch("linux_speech_flow.injector.os.environ.get", return_value="x11"), \
-             patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen:
+        with patch(
+            "linux_speech_flow.injector.os.environ.get", return_value="x11"
+        ), patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen:
             mock_proc = MagicMock()
             mock_popen.return_value = mock_proc
 
@@ -105,8 +117,8 @@ class TestCopyToClipboard:
 # paste_text (X11 paths)
 # ---------------------------------------------------------------------------
 
-class TestPasteTextX11:
 
+class TestPasteTextX11:
     def _x11_window_info(self, window_id="12345", category="other", wm_class="gedit"):
         return {
             "session": "x11",
@@ -116,10 +128,11 @@ class TestPasteTextX11:
         }
 
     def test_standard_window_sends_ctrl_v(self):
-        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, \
-             patch("linux_speech_flow.injector.subprocess.run") as mock_run, \
-             patch("linux_speech_flow.injector.time.sleep"), \
-             patch.dict(os.environ, {"DISPLAY": ":0"}):
+        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, patch(
+            "linux_speech_flow.injector.subprocess.run"
+        ) as mock_run, patch("linux_speech_flow.injector.time.sleep"), patch.dict(
+            os.environ, {"DISPLAY": ":0"}
+        ):
             mock_proc = MagicMock()
             mock_popen.return_value = mock_proc
             mock_run.return_value = MagicMock(returncode=0, stderr="")
@@ -130,10 +143,11 @@ class TestPasteTextX11:
             assert any("ctrl+v" in cmd for cmd in run_cmds)
 
     def test_terminal_window_sends_ctrl_shift_v(self):
-        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, \
-             patch("linux_speech_flow.injector.subprocess.run") as mock_run, \
-             patch("linux_speech_flow.injector.time.sleep"), \
-             patch.dict(os.environ, {"DISPLAY": ":0"}):
+        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, patch(
+            "linux_speech_flow.injector.subprocess.run"
+        ) as mock_run, patch("linux_speech_flow.injector.time.sleep"), patch.dict(
+            os.environ, {"DISPLAY": ":0"}
+        ):
             mock_proc = MagicMock()
             mock_popen.return_value = mock_proc
             mock_run.return_value = MagicMock(returncode=0, stderr="")
@@ -144,10 +158,11 @@ class TestPasteTextX11:
             assert any("ctrl+shift+v" in cmd for cmd in run_cmds)
 
     def test_vim_window_sends_shift_insert(self):
-        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, \
-             patch("linux_speech_flow.injector.subprocess.run") as mock_run, \
-             patch("linux_speech_flow.injector.time.sleep"), \
-             patch.dict(os.environ, {"DISPLAY": ":0"}):
+        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, patch(
+            "linux_speech_flow.injector.subprocess.run"
+        ) as mock_run, patch("linux_speech_flow.injector.time.sleep"), patch.dict(
+            os.environ, {"DISPLAY": ":0"}
+        ):
             mock_proc = MagicMock()
             mock_popen.return_value = mock_proc
             mock_run.return_value = MagicMock(returncode=0, stderr="")
@@ -159,33 +174,34 @@ class TestPasteTextX11:
             assert any("shift+Insert" in cmd for cmd in run_cmds)
 
     def test_vim_backspace_guard_fires_when_count_nonzero(self):
-        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, \
-             patch("linux_speech_flow.injector.subprocess.run") as mock_run, \
-             patch("linux_speech_flow.injector.time.sleep"), \
-             patch.dict(os.environ, {"DISPLAY": ":0"}):
+        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, patch(
+            "linux_speech_flow.injector.subprocess.run"
+        ) as mock_run, patch("linux_speech_flow.injector.time.sleep"), patch.dict(
+            os.environ, {"DISPLAY": ":0"}
+        ):
             mock_proc = MagicMock()
             mock_popen.return_value = mock_proc
             mock_run.return_value = MagicMock(returncode=0, stderr="")
 
             info = self._x11_window_info(wm_class="gvim")
-            info["leaked_hotkey_count"] = 2  # hypothetical future hotkey leaking 2 chars
+            info[
+                "leaked_hotkey_count"
+            ] = 2  # hypothetical future hotkey leaking 2 chars
 
             paste_text("hello", info)
 
-            bs_calls = [
-                c for c in mock_run.call_args_list
-                if "BackSpace" in str(c)
-            ]
+            bs_calls = [c for c in mock_run.call_args_list if "BackSpace" in str(c)]
             assert len(bs_calls) == 1
             bs_cmd = bs_calls[0][0][0]
             repeat_idx = bs_cmd.index("--repeat")
             assert bs_cmd[repeat_idx + 1] == "8"  # 2 * 4
 
     def test_vim_no_backspace_when_leaked_count_zero(self):
-        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, \
-             patch("linux_speech_flow.injector.subprocess.run") as mock_run, \
-             patch("linux_speech_flow.injector.time.sleep"), \
-             patch.dict(os.environ, {"DISPLAY": ":0"}):
+        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, patch(
+            "linux_speech_flow.injector.subprocess.run"
+        ) as mock_run, patch("linux_speech_flow.injector.time.sleep"), patch.dict(
+            os.environ, {"DISPLAY": ":0"}
+        ):
             mock_proc = MagicMock()
             mock_popen.return_value = mock_proc
             mock_run.return_value = MagicMock(returncode=0, stderr="")
@@ -196,17 +212,15 @@ class TestPasteTextX11:
 
             paste_text("hello", info)
 
-            bs_calls = [
-                c for c in mock_run.call_args_list
-                if "BackSpace" in str(c)
-            ]
+            bs_calls = [c for c in mock_run.call_args_list if "BackSpace" in str(c)]
             assert len(bs_calls) == 0
 
     def test_no_display_skips_xdotool(self):
-        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, \
-             patch("linux_speech_flow.injector.subprocess.run") as mock_run, \
-             patch("linux_speech_flow.injector.time.sleep"), \
-             patch.dict(os.environ, {}, clear=True):
+        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, patch(
+            "linux_speech_flow.injector.subprocess.run"
+        ) as mock_run, patch("linux_speech_flow.injector.time.sleep"), patch.dict(
+            os.environ, {}, clear=True
+        ):
             # Remove DISPLAY from env
             env = {k: v for k, v in os.environ.items() if k != "DISPLAY"}
             with patch.dict(os.environ, env, clear=True):
@@ -215,10 +229,11 @@ class TestPasteTextX11:
             mock_run.assert_not_called()
 
     def test_activates_window_before_keystroke(self):
-        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, \
-             patch("linux_speech_flow.injector.subprocess.run") as mock_run, \
-             patch("linux_speech_flow.injector.time.sleep"), \
-             patch.dict(os.environ, {"DISPLAY": ":0"}):
+        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, patch(
+            "linux_speech_flow.injector.subprocess.run"
+        ) as mock_run, patch("linux_speech_flow.injector.time.sleep"), patch.dict(
+            os.environ, {"DISPLAY": ":0"}
+        ):
             mock_proc = MagicMock()
             mock_popen.return_value = mock_proc
             mock_run.return_value = MagicMock(returncode=0, stderr="")
@@ -226,8 +241,7 @@ class TestPasteTextX11:
             paste_text("hello", self._x11_window_info(window_id="999"))
 
             activate_calls = [
-                c for c in mock_run.call_args_list
-                if "windowactivate" in str(c)
+                c for c in mock_run.call_args_list if "windowactivate" in str(c)
             ]
             assert len(activate_calls) == 1
 
@@ -236,8 +250,8 @@ class TestPasteTextX11:
 # paste_text (Wayland path)
 # ---------------------------------------------------------------------------
 
-class TestPasteTextWayland:
 
+class TestPasteTextWayland:
     def test_wayland_calls_wl_copy(self):
         with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen:
             mock_proc = MagicMock()
@@ -249,8 +263,9 @@ class TestPasteTextWayland:
             assert mock_popen.call_args[0][0] == ["wl-copy"]
 
     def test_wayland_does_not_call_xdotool(self):
-        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, \
-             patch("linux_speech_flow.injector.subprocess.run") as mock_run:
+        with patch("linux_speech_flow.injector.subprocess.Popen") as mock_popen, patch(
+            "linux_speech_flow.injector.subprocess.run"
+        ) as mock_run:
             mock_proc = MagicMock()
             mock_popen.return_value = mock_proc
 
@@ -260,7 +275,8 @@ class TestPasteTextWayland:
             mock_run.assert_not_called()
 
     def test_wayland_wl_copy_missing_silent(self):
-        with patch("linux_speech_flow.injector.subprocess.Popen",
-                   side_effect=FileNotFoundError):
+        with patch(
+            "linux_speech_flow.injector.subprocess.Popen", side_effect=FileNotFoundError
+        ):
             # Should not raise
             paste_text("text", {"session": "wayland"})

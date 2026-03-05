@@ -6,10 +6,12 @@ import pytest
 
 # ── TranscriptOutputWindow action functions ──────────────────────────────────
 
+
 class TestTranscriptCopy:
     def test_calls_copy_to_clipboard(self):
         with patch("linux_speech_flow.injector.copy_to_clipboard") as mock_copy:
             from linux_speech_flow.conversation_dialog import _do_transcript_copy
+
             result = _do_transcript_copy("hello world")
         mock_copy.assert_called_once_with("hello world")
         assert result == "Copied to clipboard."
@@ -17,6 +19,7 @@ class TestTranscriptCopy:
     def test_empty_transcript(self):
         with patch("linux_speech_flow.injector.copy_to_clipboard") as mock_copy:
             from linux_speech_flow.conversation_dialog import _do_transcript_copy
+
             result = _do_transcript_copy("")
         mock_copy.assert_called_once_with("")
         assert result == "Copied to clipboard."
@@ -27,6 +30,7 @@ class TestTranscriptPaste:
         wi = {"window_id": "0xabc", "wm_class": "code"}
         with patch("linux_speech_flow.injector.paste_text") as mock_paste:
             from linux_speech_flow.conversation_dialog import _do_transcript_paste
+
             result = _do_transcript_paste("hello", wi)
         mock_paste.assert_called_once_with("hello", wi)
         assert result == "Pasted to active window."
@@ -34,6 +38,7 @@ class TestTranscriptPaste:
     def test_empty_window_info(self):
         with patch("linux_speech_flow.injector.paste_text") as mock_paste:
             from linux_speech_flow.conversation_dialog import _do_transcript_paste
+
             _do_transcript_paste("text", {})
         mock_paste.assert_called_once_with("text", {})
 
@@ -46,9 +51,12 @@ class TestTranscriptSave:
             "chunk_count": 2,
             "models_used": "",
         }
-        with patch("linux_speech_flow.conversation_dialog.load_config",
-                   return_value={"conv_save_dir": str(tmp_path)}):
+        with patch(
+            "linux_speech_flow.conversation_dialog.load_config",
+            return_value={"conv_save_dir": str(tmp_path)},
+        ):
             from linux_speech_flow.conversation_dialog import _do_transcript_save
+
             result = _do_transcript_save("my transcript text", metadata)
 
         assert result.startswith("Saved:")
@@ -64,9 +72,12 @@ class TestTranscriptSave:
             "chunk_count": 1,
             "models_used": "",
         }
-        with patch("linux_speech_flow.conversation_dialog.load_config",
-                   return_value={"conv_save_dir": str(tmp_path)}):
+        with patch(
+            "linux_speech_flow.conversation_dialog.load_config",
+            return_value={"conv_save_dir": str(tmp_path)},
+        ):
             from linux_speech_flow.conversation_dialog import _do_transcript_save
+
             result = _do_transcript_save("content", metadata)
 
         assert str(tmp_path) in result
@@ -79,15 +90,19 @@ class TestTranscriptSave:
             "chunk_count": 1,
             "models_used": "",
         }
-        with patch("linux_speech_flow.conversation_dialog.load_config",
-                   return_value={"conv_save_dir": str(new_dir)}):
+        with patch(
+            "linux_speech_flow.conversation_dialog.load_config",
+            return_value={"conv_save_dir": str(new_dir)},
+        ):
             from linux_speech_flow.conversation_dialog import _do_transcript_save
+
             _do_transcript_save("text", metadata)
 
         assert new_dir.exists()
 
 
 # ── ConversationManager silence / heartbeat logic ────────────────────────────
+
 
 def _make_manager(mock_glib):
     """Build a ConversationManager with all GTK dependencies patched out."""
@@ -96,7 +111,10 @@ def _make_manager(mock_glib):
     mock_glib.source_remove.return_value = True
     mock_glib.idle_add.side_effect = lambda f, *a: f(*a)
     from linux_speech_flow.conversation_manager import ConversationManager
-    mgr = ConversationManager(application=None, on_session_complete=None, on_tray_state=None)
+
+    mgr = ConversationManager(
+        application=None, on_session_complete=None, on_tray_state=None
+    )
     mgr._status_window = None
     mgr._silence_dialog = None
     return mgr
@@ -107,7 +125,7 @@ class TestSpeechHeartbeat:
     def test_renews_warn_timer_when_speaking(self, mock_glib):
         mgr = _make_manager(mock_glib)
         mgr._state = "conversation"
-        mgr._last_silence_frames = 0   # user is speaking
+        mgr._last_silence_frames = 0  # user is speaking
         mgr._warn_timer = 42
         mock_glib.timeout_add_seconds.return_value = 99
 
@@ -197,7 +215,7 @@ class TestSilenceTick:
         mgr._state = "conversation"
         mgr._warn_timer = None
         mgr._stop_timer = None
-        mgr._last_silence_frames = 20   # was at 20 (2s silence) before boundary
+        mgr._last_silence_frames = 20  # was at 20 (2s silence) before boundary
         mgr._silence_offset_sec = 0
 
         mgr._on_silence_tick(3)  # new chunk: only 3 frames in so far → went backwards
@@ -250,12 +268,15 @@ class TestInFlightTracking:
         mgr = _make_manager(mock_glib)
         mgr._in_flight = 1
         mgr._session_ending = True
+        mgr._recorder_done = True
         mgr._chunk_texts = ["hello"]
         mgr._chunk_count = 1
         mgr._session_start = time.monotonic()
         finish_called = []
 
-        with patch.object(mgr, "_finish_session", side_effect=lambda: finish_called.append(1)):
+        with patch.object(
+            mgr, "_finish_session", side_effect=lambda: finish_called.append(1)
+        ):
             mgr._on_thread_done()
 
         assert len(finish_called) == 1
@@ -267,7 +288,9 @@ class TestInFlightTracking:
         mgr._session_ending = True
         finish_called = []
 
-        with patch.object(mgr, "_finish_session", side_effect=lambda: finish_called.append(1)):
+        with patch.object(
+            mgr, "_finish_session", side_effect=lambda: finish_called.append(1)
+        ):
             mgr._on_thread_done()
 
         assert len(finish_called) == 0
@@ -281,7 +304,9 @@ class TestInFlightTracking:
         mgr._session_start = time.monotonic()
         finish_called = []
 
-        with patch.object(mgr, "_finish_session", side_effect=lambda: finish_called.append(1)):
+        with patch.object(
+            mgr, "_finish_session", side_effect=lambda: finish_called.append(1)
+        ):
             mgr._try_finish_after_stop()
 
         assert len(finish_called) == 1
@@ -292,7 +317,9 @@ class TestInFlightTracking:
         mgr._session_ending = True
         finish_called = []
 
-        with patch.object(mgr, "_finish_session", side_effect=lambda: finish_called.append(1)):
+        with patch.object(
+            mgr, "_finish_session", side_effect=lambda: finish_called.append(1)
+        ):
             mgr._try_finish_after_stop()
 
         assert len(finish_called) == 0
@@ -304,8 +331,8 @@ class TestInFlightTracking:
         mock_glib.idle_add.return_value = True
         mock_glib.timeout_add_seconds.return_value = 99
         mgr = _make_manager(mock_glib)
-        mgr._state = "idle"           # stop_session already set this
-        mgr._session_ending = True    # but we're still draining
+        mgr._state = "idle"  # stop_session already set this
+        mgr._session_ending = True  # but we're still draining
         mgr._session_start = time.monotonic()
         mgr._warn_timer = None
         mgr._stop_timer = None
@@ -320,10 +347,12 @@ class TestInFlightTracking:
 
 # ── ConversationRecorder auto-calibration ────────────────────────────────────
 
+
 @patch("linux_speech_flow.conversation_recorder.GLib")
 class TestAutoCalibration:
     def _make_recorder(self):
         from linux_speech_flow.conversation_recorder import ConversationRecorder
+
         rec = ConversationRecorder(device_name=None)
         return rec
 
@@ -331,6 +360,7 @@ class TestAutoCalibration:
         """PA stub that returns frames with given RMS levels."""
         import struct, math
         from linux_speech_flow.conversation_recorder import CHUNK_BYTES, SAMPLE_WIDTH
+
         frames = []
         n_samples = CHUNK_BYTES // SAMPLE_WIDTH
         for rms in rms_values:
@@ -348,20 +378,30 @@ class TestAutoCalibration:
         """Calibrated threshold = ambient_rms * CALIB_FACTOR, clamped."""
         import threading, struct
         from linux_speech_flow.conversation_recorder import (
-            ConversationRecorder, MIN_GUARD_FRAMES, CALIB_FACTOR, CALIB_MIN, CALIB_MAX,
-            CHUNK_BYTES, SAMPLE_WIDTH,
+            ConversationRecorder,
+            MIN_GUARD_FRAMES,
+            CALIB_FACTOR,
+            CALIB_MIN,
+            CALIB_MAX,
+            CHUNK_BYTES,
+            SAMPLE_WIDTH,
         )
+
         rec = ConversationRecorder(device_name=None)
 
         captured = []
+
         def fake_idle_add(fn, *args):
             captured.append((fn, args))
+
         mock_glib.idle_add.side_effect = fake_idle_add
 
         ambient_rms = 0.002
         n_samples = CHUNK_BYTES // SAMPLE_WIDTH
         amp = int(ambient_rms * 32768)
-        ambient_frame = struct.pack(f"{n_samples}h", *[amp if i % 2 == 0 else -amp for i in range(n_samples)])
+        ambient_frame = struct.pack(
+            f"{n_samples}h", *[amp if i % 2 == 0 else -amp for i in range(n_samples)]
+        )
         silent_frame = b"\x00" * CHUNK_BYTES
 
         stop_event = threading.Event()
@@ -388,13 +428,16 @@ class TestAutoCalibration:
         rec._on_threshold_calibrated = lambda v: captured.append(v)
 
         import tempfile, os
+
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             wav_path = f.name
         try:
             rec._record_one_chunk(pa, wav_path, 300, chunk_index=0)
         finally:
-            try: os.unlink(wav_path)
-            except: pass
+            try:
+                os.unlink(wav_path)
+            except:
+                pass
 
         # Threshold should have been updated
         expected = max(CALIB_MIN, min(CALIB_MAX, ambient_rms * CALIB_FACTOR))
@@ -403,7 +446,11 @@ class TestAutoCalibration:
     def test_calibration_skipped_for_non_first_chunk(self, mock_glib):
         """chunk_index != 0 skips calibration to preserve threshold from chunk 0."""
         import threading
-        from linux_speech_flow.conversation_recorder import ConversationRecorder, MIN_GUARD_FRAMES
+        from linux_speech_flow.conversation_recorder import (
+            ConversationRecorder,
+            MIN_GUARD_FRAMES,
+        )
+
         rec = ConversationRecorder(device_name=None)
         rec._silence_rms_threshold = 0.010  # set by chunk 0 calibration
 
@@ -421,13 +468,16 @@ class TestAutoCalibration:
         rec._on_threshold_calibrated = MagicMock()
 
         import tempfile, os
+
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             wav_path = f.name
         try:
             rec._record_one_chunk(pa, wav_path, 30, chunk_index=1)  # not first chunk
         finally:
-            try: os.unlink(wav_path)
-            except: pass
+            try:
+                os.unlink(wav_path)
+            except:
+                pass
 
         # Threshold unchanged
         assert abs(rec._silence_rms_threshold - 0.010) < 0.001
@@ -437,8 +487,12 @@ class TestAutoCalibration:
         """If guard-period RMS >= current threshold, user was speaking — skip calibration."""
         import threading, struct
         from linux_speech_flow.conversation_recorder import (
-            ConversationRecorder, MIN_GUARD_FRAMES, CHUNK_BYTES, SAMPLE_WIDTH,
+            ConversationRecorder,
+            MIN_GUARD_FRAMES,
+            CHUNK_BYTES,
+            SAMPLE_WIDTH,
         )
+
         rec = ConversationRecorder(device_name=None)
         default_threshold = rec._silence_rms_threshold  # 0.005
 
@@ -446,7 +500,9 @@ class TestAutoCalibration:
         speech_rms = 0.020  # clearly above 0.005
         n_samples = CHUNK_BYTES // SAMPLE_WIDTH
         amp = int(speech_rms * 32768)
-        speech_frame = struct.pack(f"{n_samples}h", *[amp if i % 2 == 0 else -amp for i in range(n_samples)])
+        speech_frame = struct.pack(
+            f"{n_samples}h", *[amp if i % 2 == 0 else -amp for i in range(n_samples)]
+        )
 
         stop_event = threading.Event()
         rec._stop_event = stop_event
@@ -469,13 +525,16 @@ class TestAutoCalibration:
         rec._on_threshold_calibrated = MagicMock()
 
         import tempfile, os
+
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             wav_path = f.name
         try:
             rec._record_one_chunk(pa, wav_path, 300, chunk_index=0)
         finally:
-            try: os.unlink(wav_path)
-            except: pass
+            try:
+                os.unlink(wav_path)
+            except:
+                pass
 
         # Threshold should be UNCHANGED because guard frames had speech-level signal
         assert abs(rec._silence_rms_threshold - default_threshold) < 0.001

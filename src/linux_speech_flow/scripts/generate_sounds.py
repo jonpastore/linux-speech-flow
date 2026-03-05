@@ -56,7 +56,9 @@ def main():
     write_wav(OUT_DIR / "processing.wav", proc_data)
     print(f"Written: {OUT_DIR / 'processing.wav'}")
 
-    succ_data = generate_tone(523, 0.1) + generate_tone(659, 0.1) + generate_tone(784, 0.15)
+    succ_data = (
+        generate_tone(523, 0.1) + generate_tone(659, 0.1) + generate_tone(784, 0.15)
+    )
     write_wav(OUT_DIR / "success.wav", succ_data)
     print(f"Written: {OUT_DIR / 'success.wav'}")
 

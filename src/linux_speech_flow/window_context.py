@@ -18,7 +18,13 @@ def get_active_window_info(app_categories: dict | None = None) -> dict:
     focus theft from notifications stealing the window ID.
     """
     session = os.environ.get("XDG_SESSION_TYPE", "x11").lower()
-    default = {"window_id": None, "title": "", "wm_class": "", "category": "other", "session": session}
+    default = {
+        "window_id": None,
+        "title": "",
+        "wm_class": "",
+        "category": "other",
+        "session": session,
+    }
 
     if session == "wayland":
         return default
@@ -39,7 +45,13 @@ def get_active_window_info(app_categories: dict | None = None) -> dict:
         parts = xprop_out.split("=")[-1].strip().strip('"').split('", "')
         wm_class = parts[-1].rstrip('"').lower() if parts else ""
         category = _classify(wm_class, app_categories or {})
-        return {"window_id": win_id, "title": title, "wm_class": wm_class, "category": category, "session": session}
+        return {
+            "window_id": win_id,
+            "title": title,
+            "wm_class": wm_class,
+            "category": category,
+            "session": session,
+        }
     except Exception:
         return default
 

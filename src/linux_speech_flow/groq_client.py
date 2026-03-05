@@ -14,7 +14,10 @@ def validate_api_key(api_key: str) -> dict:
             timeout=10,
         )
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        return {"ok": False, "message": "Could not connect to Groq — check your internet connection"}
+        return {
+            "ok": False,
+            "message": "Could not connect to Groq — check your internet connection",
+        }
 
     if response.status_code == 200:
         return {"ok": True}

@@ -77,7 +77,9 @@ def _classify_groq_error(exc: groq.APIError) -> str:
     return f"Groq API error: {getattr(exc, 'status_code', 'unknown')}"
 
 
-def _build_user_message(raw_transcript: str, window_info: dict, vocabulary: list) -> str:
+def _build_user_message(
+    raw_transcript: str, window_info: dict, vocabulary: list
+) -> str:
     parts = []
     if window_info.get("wm_class") or window_info.get("title"):
         parts.append(
@@ -110,19 +112,27 @@ class TranscriptionPipeline:
       active pipeline add to the queue; the caller shows a "Recording queued" notification.
     """
 
-    def __init__(self, on_paste_complete=None, on_error=None, on_failed_count_changed=None,
-                 history_store=None, on_history_entry=None):
+    def __init__(
+        self,
+        on_paste_complete=None,
+        on_error=None,
+        on_failed_count_changed=None,
+        history_store=None,
+        on_history_entry=None,
+    ):
         self._queue: queue.Queue = queue.Queue()
         self._on_paste_complete = on_paste_complete
         self._on_error = on_error
         self._on_failed_count_changed = on_failed_count_changed
         self._history_store = history_store
         self._on_history_entry = on_history_entry
-        self._worker = threading.Thread(target=self._run, daemon=True, name="transcription-worker")
+        self._worker = threading.Thread(
+            target=self._run, daemon=True, name="transcription-worker"
+        )
         self._worker.start()
 
     def _get_failed_count(self) -> int:
-        return len(list(FAILED_DIR.glob('*.wav'))) if FAILED_DIR.exists() else 0
+        return len(list(FAILED_DIR.glob("*.wav"))) if FAILED_DIR.exists() else 0
 
     def _notify_failed_count(self):
         if self._on_failed_count_changed:
@@ -164,7 +174,10 @@ class TranscriptionPipeline:
         in the default text editor via xdg-open.
         """
         import tempfile
-        fd, output_path = tempfile.mkstemp(suffix=".txt", prefix="linux-speech-flow-batch-")
+
+        fd, output_path = tempfile.mkstemp(
+            suffix=".txt", prefix="linux-speech-flow-batch-"
+        )
         os.close(fd)
         for wav_path in wav_paths:
             config = load_config()
@@ -200,19 +213,36 @@ class TranscriptionPipeline:
         system_prompt = config.get("llm_system_prompt", "")
         vocabulary = config.get("vocabulary", [])
 
-        logger.info("processing wav=%s whisper_model=%s llm_model=%s", wav_path, whisper_model, llm_model)
+        logger.info(
+            "processing wav=%s whisper_model=%s llm_model=%s",
+            wav_path,
+            whisper_model,
+            llm_model,
+        )
 
         if sounds_enabled and processing_enabled:
-            GLib.timeout_add(400, play_sound, "processing.wav", output_device, True, processing_sound_file)
+            GLib.timeout_add(
+                400,
+                play_sound,
+                "processing.wav",
+                output_device,
+                True,
+                processing_sound_file,
+            )
 
         retryable_errors = (groq.APIConnectionError, groq.RateLimitError)
         try:
             logger.info("calling Whisper API...")
             raw_transcript = _call_with_retry(
-                self._transcribe, client, wav_path, whisper_model,
+                self._transcribe,
+                client,
+                wav_path,
+                whisper_model,
                 retryable=retryable_errors,
             )
-            logger.info("transcript (%d chars): %r", len(raw_transcript), raw_transcript[:120])
+            logger.info(
+                "transcript (%d chars): %r", len(raw_transcript), raw_transcript[:120]
+            )
         except groq.AuthenticationError as exc:
             msg = _classify_groq_error(exc)
             logger.error("Whisper auth error: %s", msg)
@@ -221,7 +251,11 @@ class TranscriptionPipeline:
             GLib.idle_add(self._dispatch_api_error, msg, wav_path)
             return
         except Exception as exc:
-            msg = _classify_groq_error(exc) if isinstance(exc, groq.APIError) else str(exc)
+            msg = (
+                _classify_groq_error(exc)
+                if isinstance(exc, groq.APIError)
+                else str(exc)
+            )
             logger.error("Whisper error: %s", msg)
             self._save_failed_wav(wav_path)
             GLib.idle_add(play_sound, "error.wav", output_device, sounds_enabled)
@@ -229,12 +263,19 @@ class TranscriptionPipeline:
             return
 
         if len(raw_transcript.strip()) < MIN_TRANSCRIPT_LEN:
-            logger.info("transcript too short (%d chars) — skipping", len(raw_transcript.strip()))
+            logger.info(
+                "transcript too short (%d chars) — skipping",
+                len(raw_transcript.strip()),
+            )
             try:
                 os.unlink(wav_path)
             except OSError:
                 pass
-            GLib.idle_add(send_notification, "No speech detected", "Recording was too short or silent.")
+            GLib.idle_add(
+                send_notification,
+                "No speech detected",
+                "Recording was too short or silent.",
+            )
             return
 
         final_text = raw_transcript
@@ -243,12 +284,18 @@ class TranscriptionPipeline:
             logger.info("calling LLM post-process (model=%s)...", llm_model)
             user_message = _build_user_message(raw_transcript, window_info, vocabulary)
             final_text = _call_with_retry(
-                self._postprocess, client, user_message, system_prompt, llm_model,
+                self._postprocess,
+                client,
+                user_message,
+                system_prompt,
+                llm_model,
                 retryable=retryable_errors,
             )
             logger.info("LLM result (%d chars): %r", len(final_text), final_text[:120])
         except Exception as exc:
-            logger.warning("LLM post-process failed (%s) — falling back to raw transcript", exc)
+            logger.warning(
+                "LLM post-process failed (%s) — falling back to raw transcript", exc
+            )
             llm_failed = True
             final_text = raw_transcript
 
@@ -258,6 +305,7 @@ class TranscriptionPipeline:
                 f.write(final_text + "\n\n")
             if self._queue.empty():
                 import subprocess
+
                 subprocess.Popen(["xdg-open", batch_path], stderr=subprocess.DEVNULL)
             try:
                 os.unlink(wav_path)
@@ -267,7 +315,11 @@ class TranscriptionPipeline:
             return
 
         final_text = final_text + " "
-        logger.info("pasting %d chars to window_id=%s", len(final_text), window_info.get("window_id"))
+        logger.info(
+            "pasting %d chars to window_id=%s",
+            len(final_text),
+            window_info.get("window_id"),
+        )
         paste_text(final_text, window_info)
 
         try:
@@ -277,36 +329,46 @@ class TranscriptionPipeline:
 
         duration = (datetime.utcnow() - started_at).total_seconds()
         if self._history_store:
-            max_entries = config.get('history_max_entries', 20)
-            self._history_store.insert({
-                'entry_type': 'transcription',
-                'created_at': started_at.isoformat(),
-                'duration_sec': duration,
-                'raw_text': raw_transcript,
-                'processed_text': final_text.strip(),
-                'app_name': window_info.get('wm_class', ''),
-                'window_title': window_info.get('title', ''),
-            }, max_entries=max_entries)
+            max_entries = config.get("history_max_entries", 20)
+            self._history_store.insert(
+                {
+                    "entry_type": "transcription",
+                    "created_at": started_at.isoformat(),
+                    "duration_sec": duration,
+                    "raw_text": raw_transcript,
+                    "processed_text": final_text.strip(),
+                    "app_name": window_info.get("wm_class", ""),
+                    "window_title": window_info.get("title", ""),
+                },
+                max_entries=max_entries,
+            )
         if self._on_history_entry:
-            GLib.idle_add(self._on_history_entry, {
-                'entry_type': 'transcription',
-                'created_at': started_at.isoformat(),
-                'duration_sec': duration,
-                'raw_text': raw_transcript,
-                'processed_text': final_text.strip(),
-                'app_name': window_info.get('wm_class', ''),
-                'window_title': window_info.get('title', ''),
-            })
+            GLib.idle_add(
+                self._on_history_entry,
+                {
+                    "entry_type": "transcription",
+                    "created_at": started_at.isoformat(),
+                    "duration_sec": duration,
+                    "raw_text": raw_transcript,
+                    "processed_text": final_text.strip(),
+                    "app_name": window_info.get("wm_class", ""),
+                    "window_title": window_info.get("title", ""),
+                },
+            )
 
         self._notify_failed_count()
 
         if llm_failed:
             GLib.idle_add(send_notification, "LLM failed — raw transcript pasted", "")
         elif window_info.get("session") == "wayland":
-            GLib.idle_add(send_notification, "Text copied to clipboard", "Press Ctrl+V to paste.")
+            GLib.idle_add(
+                send_notification, "Text copied to clipboard", "Press Ctrl+V to paste."
+            )
 
         if sounds_enabled and success_enabled:
-            GLib.idle_add(play_sound, "success.wav", output_device, True, success_sound_file)
+            GLib.idle_add(
+                play_sound, "success.wav", output_device, True, success_sound_file
+            )
 
         if self._on_paste_complete:
             GLib.idle_add(self._on_paste_complete)
@@ -323,7 +385,9 @@ class TranscriptionPipeline:
         raw = result.strip() if isinstance(result, str) else str(result).strip()
         return _strip_hallucinations(raw)
 
-    def _postprocess(self, client: groq.Groq, user_message: str, system_prompt: str, model: str) -> str:
+    def _postprocess(
+        self, client: groq.Groq, user_message: str, system_prompt: str, model: str
+    ) -> str:
         response = client.chat.completions.create(
             model=model,
             messages=[
@@ -350,7 +414,9 @@ class TranscriptionPipeline:
 
     def _dispatch_api_error(self, message: str, wav_path: str):
         logger.info("dispatching API error notification: %s", message)
-        result = send_notification("Transcription failed — Press Ctrl+Alt+P to reprocess", message)
+        result = send_notification(
+            "Transcription failed — Press Ctrl+Alt+P to reprocess", message
+        )
         logger.info("notification sent, id=%s", result)
         if self._on_error:
             self._on_error(message)

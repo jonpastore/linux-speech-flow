@@ -28,6 +28,7 @@ class TestVerifyToken:
 
     def test_verify_token_slack_api_error(self):
         from slack_sdk.errors import SlackApiError
+
         manager = SlackManager()
         with patch("linux_speech_flow.slack_manager.WebClient") as mock_client_cls:
             mock_client = MagicMock()
@@ -96,7 +97,9 @@ class TestPostMessage:
             mock_client_cls.return_value = mock_client
             result = manager.post_message("T001", "C001", "hello", _path=tmp_config)
         assert result is True
-        mock_client.chat_postMessage.assert_called_once_with(channel="C001", text="hello")
+        mock_client.chat_postMessage.assert_called_once_with(
+            channel="C001", text="hello"
+        )
 
     def test_post_message_with_blocks(self, tmp_config):
         manager = SlackManager()
@@ -105,19 +108,26 @@ class TestPostMessage:
         with patch("linux_speech_flow.slack_manager.WebClient") as mock_client_cls:
             mock_client = MagicMock()
             mock_client_cls.return_value = mock_client
-            result = manager.post_message("T001", "C001", "hello", blocks=blocks, _path=tmp_config)
+            result = manager.post_message(
+                "T001", "C001", "hello", blocks=blocks, _path=tmp_config
+            )
         assert result is True
-        mock_client.chat_postMessage.assert_called_once_with(channel="C001", text="hello", blocks=blocks)
+        mock_client.chat_postMessage.assert_called_once_with(
+            channel="C001", text="hello", blocks=blocks
+        )
 
     def test_post_message_slack_api_error_returns_false(self, tmp_config):
         from slack_sdk.errors import SlackApiError
+
         manager = SlackManager()
         manager.add_workspace("T001", {"bot_token": "xoxb-1"}, _path=tmp_config)
         with patch("linux_speech_flow.slack_manager.WebClient") as mock_client_cls:
             mock_client = MagicMock()
             mock_response = MagicMock()
             mock_response.get.return_value = "channel_not_found"
-            mock_client.chat_postMessage.side_effect = SlackApiError("error", mock_response)
+            mock_client.chat_postMessage.side_effect = SlackApiError(
+                "error", mock_response
+            )
             mock_client_cls.return_value = mock_client
             result = manager.post_message("T001", "C_BAD", "hello", _path=tmp_config)
         assert result is False
@@ -137,7 +147,9 @@ class TestUploadFile:
         with patch("linux_speech_flow.slack_manager.WebClient") as mock_client_cls:
             mock_client = MagicMock()
             mock_client_cls.return_value = mock_client
-            result = manager.upload_file("T001", "C001", str(fake_file), "Huddle Recording", _path=tmp_config)
+            result = manager.upload_file(
+                "T001", "C001", str(fake_file), "Huddle Recording", _path=tmp_config
+            )
         assert result is True
         mock_client.files_upload_v2.assert_called_once_with(
             channel="C001",
@@ -147,15 +159,20 @@ class TestUploadFile:
 
     def test_upload_file_slack_api_error_returns_false(self, tmp_config, tmp_path):
         from slack_sdk.errors import SlackApiError
+
         manager = SlackManager()
         manager.add_workspace("T001", {"bot_token": "xoxb-1"}, _path=tmp_config)
         with patch("linux_speech_flow.slack_manager.WebClient") as mock_client_cls:
             mock_client = MagicMock()
             mock_response = MagicMock()
             mock_response.get.return_value = "file_upload_failed"
-            mock_client.files_upload_v2.side_effect = SlackApiError("error", mock_response)
+            mock_client.files_upload_v2.side_effect = SlackApiError(
+                "error", mock_response
+            )
             mock_client_cls.return_value = mock_client
-            result = manager.upload_file("T001", "C001", "/fake/path.wav", "Test", _path=tmp_config)
+            result = manager.upload_file(
+                "T001", "C001", "/fake/path.wav", "Test", _path=tmp_config
+            )
         assert result is False
 
     def test_upload_file_uses_v2_not_v1(self, tmp_config, tmp_path):
@@ -166,6 +183,8 @@ class TestUploadFile:
         with patch("linux_speech_flow.slack_manager.WebClient") as mock_client_cls:
             mock_client = MagicMock()
             mock_client_cls.return_value = mock_client
-            manager.upload_file("T001", "C001", str(fake_file), "Test", _path=tmp_config)
+            manager.upload_file(
+                "T001", "C001", str(fake_file), "Test", _path=tmp_config
+            )
         mock_client.files_upload_v2.assert_called_once()
         mock_client.files_upload.assert_not_called()

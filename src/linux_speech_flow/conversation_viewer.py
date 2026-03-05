@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import gi
+
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, GLib
 
@@ -63,7 +64,7 @@ class ConversationViewer(Gtk.ApplicationWindow):
         list_scroll = Gtk.ScrolledWindow()
         list_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         list_scroll.set_size_request(200, -1)
-        paned.set_start_child(list_scroll)   # GTK4 API
+        paned.set_start_child(list_scroll)  # GTK4 API
         paned.set_resize_start_child(False)
 
         self._listbox = Gtk.ListBox()
@@ -93,7 +94,9 @@ class ConversationViewer(Gtk.ApplicationWindow):
     def _load_conversations(self) -> None:
         """Scan conv_save_dir and populate list. Called on init and refresh."""
         config = load_config()
-        save_dir = Path(config.get("conv_save_dir", "~/Documents/conversations")).expanduser()
+        save_dir = Path(
+            config.get("conv_save_dir", "~/Documents/conversations")
+        ).expanduser()
 
         while True:
             row = self._listbox.get_row_at_index(0)
@@ -112,7 +115,9 @@ class ConversationViewer(Gtk.ApplicationWindow):
             self._listbox.append(row)
             return
 
-        files = sorted(save_dir.glob("*.txt"), key=lambda p: p.stat().st_mtime, reverse=True)
+        files = sorted(
+            save_dir.glob("*.txt"), key=lambda p: p.stat().st_mtime, reverse=True
+        )
         self._file_paths = [str(p) for p in files]
 
         for file_path in self._file_paths:

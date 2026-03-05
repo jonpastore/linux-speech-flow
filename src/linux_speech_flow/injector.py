@@ -51,7 +51,11 @@ def _x11_paste(text: str, window_info: dict) -> None:
 
     logger.info(
         "paste: window_id=%s category=%s wm_class=%s is_vim=%s text_len=%d",
-        window_id, category, wm_class, is_vim, len(text),
+        window_id,
+        category,
+        wm_class,
+        is_vim,
+        len(text),
     )
 
     # Activate the target window first (makes GTK4 apps accept synthetic keystrokes;
@@ -59,9 +63,14 @@ def _x11_paste(text: str, window_info: dict) -> None:
     if window_id:
         activate = subprocess.run(
             ["xdotool", "windowactivate", "--sync", window_id],
-            check=False, capture_output=True, text=True, timeout=3,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=3,
         )
-        logger.info("windowactivate rc=%d %s", activate.returncode, activate.stderr.strip())
+        logger.info(
+            "windowactivate rc=%d %s", activate.returncode, activate.stderr.strip()
+        )
         time.sleep(0.05)
 
     if is_vim:
@@ -69,32 +78,58 @@ def _x11_paste(text: str, window_info: dict) -> None:
         # Ctrl+Alt combos produce no literal text (count=0), so this is a no-op for normal use.
         leaked = window_info.get("leaked_hotkey_count", 0)
         backspace_count = leaked * 4
-        logger.info("vim: deleting %d chars (%d leaked F9s) then shift+Insert", backspace_count, leaked)
+        logger.info(
+            "vim: deleting %d chars (%d leaked F9s) then shift+Insert",
+            backspace_count,
+            leaked,
+        )
         if backspace_count:
             subprocess.run(
-                ["xdotool", "key", "--clearmodifiers",
-                 "--repeat", str(backspace_count), "--repeat-delay", "10", "BackSpace"],
-                check=False, capture_output=True, text=True, timeout=5,
+                [
+                    "xdotool",
+                    "key",
+                    "--clearmodifiers",
+                    "--repeat",
+                    str(backspace_count),
+                    "--repeat-delay",
+                    "10",
+                    "BackSpace",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             time.sleep(0.05)
         # shift+Insert pastes from PRIMARY selection in vim/gvim.
         result = subprocess.run(
             ["xdotool", "key", "--clearmodifiers", "shift+Insert"],
-            check=False, capture_output=True, text=True, timeout=3,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=3,
         )
     elif category == "terminal":
         result = subprocess.run(
             ["xdotool", "key", "--clearmodifiers", "ctrl+shift+v"],
-            check=False, capture_output=True, text=True, timeout=3,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=3,
         )
     else:
         result = subprocess.run(
             ["xdotool", "key", "--clearmodifiers", "ctrl+v"],
-            check=False, capture_output=True, text=True, timeout=3,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=3,
         )
 
     if result.returncode != 0:
-        logger.warning("xdotool key returned %d: %s", result.returncode, result.stderr.strip())
+        logger.warning(
+            "xdotool key returned %d: %s", result.returncode, result.stderr.strip()
+        )
     else:
         logger.info("paste complete")
 

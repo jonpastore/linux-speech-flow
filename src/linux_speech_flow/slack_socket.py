@@ -58,9 +58,15 @@ class SlackSocket:
                     event = payload.get("event", {})
                     if event.get("type") == "user_huddle_changed":
                         event_user = event.get("user", {})
-                        user_id = event_user.get("id") if isinstance(event_user, dict) else event_user
+                        user_id = (
+                            event_user.get("id")
+                            if isinstance(event_user, dict)
+                            else event_user
+                        )
                         if user_id == authed_user_id:
-                            event_user_dict = event_user if isinstance(event_user, dict) else {}
+                            event_user_dict = (
+                                event_user if isinstance(event_user, dict) else {}
+                            )
                             is_active = event_user_dict.get("is_huddle_active", True)
                             if not is_active:
                                 GLib.idle_add(on_huddle_end)
@@ -68,10 +74,12 @@ class SlackSocket:
                                 GLib.idle_add(on_huddle_event, event)
                         else:
                             logger.debug(
-                                "Ignoring huddle event for user %s (not authed user)", user_id
+                                "Ignoring huddle event for user %s (not authed user)",
+                                user_id,
                             )
             finally:
                 client.send_socket_mode_response(
                     SocketModeResponse(envelope_id=req.envelope_id)
                 )
+
         return listener

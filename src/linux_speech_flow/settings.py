@@ -3,12 +3,17 @@ import struct
 import subprocess
 import threading
 import gi
+
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Gdk, GLib, GObject, Gio, Pango
 
 from linux_speech_flow.hotkey import (
-    parse_combo, combo_display, HOTKEY_DEFAULTS, HOTKEY_CONFIG_KEYS,
-    HOTKEY_ACTION_LABELS, DANGEROUS_COMBOS,
+    parse_combo,
+    combo_display,
+    HOTKEY_DEFAULTS,
+    HOTKEY_CONFIG_KEYS,
+    HOTKEY_ACTION_LABELS,
+    DANGEROUS_COMBOS,
 )
 
 _GTK_MODIFIER_KEYSYMS: frozenset
@@ -128,7 +133,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         grok_sub.set_xalign(0)
         grok_sub.set_margin_top(8)
         _attrs2 = Pango.AttrList()
-        _attrs2.insert(Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold")))
+        _attrs2.insert(
+            Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold"))
+        )
         grok_sub.set_attributes(_attrs2)
         content.append(grok_sub)
 
@@ -157,7 +164,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         gemini_sub.set_xalign(0)
         gemini_sub.set_margin_top(8)
         _attrs3 = Pango.AttrList()
-        _attrs3.insert(Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold")))
+        _attrs3.insert(
+            Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold"))
+        )
         gemini_sub.set_attributes(_attrs3)
         content.append(gemini_sub)
 
@@ -199,15 +208,17 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._hotkey_error_label.set_wrap(True)
 
         for action, cfg_key in HOTKEY_CONFIG_KEYS.items():
-            self._hotkey_values[action] = self._config.get(cfg_key, HOTKEY_DEFAULTS[action])
+            self._hotkey_values[action] = self._config.get(
+                cfg_key, HOTKEY_DEFAULTS[action]
+            )
 
         _ACTION_ROWS = [
-            ("Record Toggle",     "record"),
-            ("Stop Recording",    "stop"),
+            ("Record Toggle", "record"),
+            ("Stop Recording", "stop"),
             ("Conversation Mode", "conversation"),
-            ("Reprocess Failed",  "reprocess"),
-            ("Feedback Toggle",   "feedback"),
-            ("Huddle Recording",  "huddle"),
+            ("Reprocess Failed", "reprocess"),
+            ("Feedback Toggle", "feedback"),
+            ("Huddle Recording", "huddle"),
         ]
         for lbl_text, action in _ACTION_ROWS:
             content.append(self._make_hotkey_row(lbl_text, action))
@@ -225,7 +236,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         vocab_title.set_xalign(0)
         content.append(vocab_title)
 
-        vocab_desc = Gtk.Label(label="Enter custom words or phrases, one per line. Leave empty to skip.")
+        vocab_desc = Gtk.Label(
+            label="Enter custom words or phrases, one per line. Leave empty to skip."
+        )
         vocab_desc.set_xalign(0)
         vocab_desc.set_wrap(True)
         content.append(vocab_desc)
@@ -274,7 +287,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._vu_bar.set_margin_bottom(4)
         content.append(self._vu_bar)
 
-        vu_hint = Gtk.Label(label="Speak to confirm your microphone is picking up audio.")
+        vu_hint = Gtk.Label(
+            label="Speak to confirm your microphone is picking up audio."
+        )
         vu_hint.set_xalign(0)
         vu_hint.set_wrap(True)
         vu_hint.add_css_class("dim-label")
@@ -310,7 +325,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         dur_label.set_margin_top(4)
         content.append(dur_label)
         self._max_duration_spin = Gtk.SpinButton.new_with_range(10, 600, 10)
-        self._max_duration_spin.set_value(self._config.get("max_recording_duration", 300))
+        self._max_duration_spin.set_value(
+            self._config.get("max_recording_duration", 300)
+        )
         _block_scroll_spin(self._max_duration_spin)
         content.append(self._max_duration_spin)
 
@@ -361,7 +378,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         proc_section.set_margin_top(4)
 
         proc_path_val = self._config.get("processing_sound_file", "") or ""
-        self._proc_path_label = Gtk.Label(label=proc_path_val if proc_path_val else "Bundled default")
+        self._proc_path_label = Gtk.Label(
+            label=proc_path_val if proc_path_val else "Bundled default"
+        )
         self._proc_path_label.set_xalign(0)
         self._proc_path_label.add_css_class("dim-label")
         self._proc_path_label.set_ellipsize(Pango.EllipsizeMode.START)
@@ -372,11 +391,20 @@ class SettingsWindow(Gtk.ApplicationWindow):
         processing_label.set_xalign(0)
         proc_play_btn = Gtk.Button(label="▶")
         proc_play_btn.set_tooltip_text("Preview sound")
-        proc_play_btn.connect("clicked", self._on_play_sound, "processing.wav", "processing_sound_file")
+        proc_play_btn.connect(
+            "clicked", self._on_play_sound, "processing.wav", "processing_sound_file"
+        )
         proc_choose_btn = Gtk.Button(label="Choose file")
-        proc_choose_btn.connect("clicked", self._on_choose_sound, "processing_sound_file", self._proc_path_label)
+        proc_choose_btn.connect(
+            "clicked",
+            self._on_choose_sound,
+            "processing_sound_file",
+            self._proc_path_label,
+        )
         self._processing_sound_switch = Gtk.Switch()
-        self._processing_sound_switch.set_active(self._config.get("processing_sound_enabled", True))
+        self._processing_sound_switch.set_active(
+            self._config.get("processing_sound_enabled", True)
+        )
         proc_row.append(processing_label)
         proc_row.append(proc_play_btn)
         proc_row.append(proc_choose_btn)
@@ -390,7 +418,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         success_section.set_margin_top(4)
 
         success_path_val = self._config.get("success_sound_file", "") or ""
-        self._success_path_label = Gtk.Label(label=success_path_val if success_path_val else "Bundled default")
+        self._success_path_label = Gtk.Label(
+            label=success_path_val if success_path_val else "Bundled default"
+        )
         self._success_path_label.set_xalign(0)
         self._success_path_label.add_css_class("dim-label")
         self._success_path_label.set_ellipsize(Pango.EllipsizeMode.START)
@@ -401,11 +431,20 @@ class SettingsWindow(Gtk.ApplicationWindow):
         success_label.set_xalign(0)
         success_play_btn = Gtk.Button(label="▶")
         success_play_btn.set_tooltip_text("Preview sound")
-        success_play_btn.connect("clicked", self._on_play_sound, "success.wav", "success_sound_file")
+        success_play_btn.connect(
+            "clicked", self._on_play_sound, "success.wav", "success_sound_file"
+        )
         success_choose_btn = Gtk.Button(label="Choose file")
-        success_choose_btn.connect("clicked", self._on_choose_sound, "success_sound_file", self._success_path_label)
+        success_choose_btn.connect(
+            "clicked",
+            self._on_choose_sound,
+            "success_sound_file",
+            self._success_path_label,
+        )
         self._success_sound_switch = Gtk.Switch()
-        self._success_sound_switch.set_active(self._config.get("success_sound_enabled", True))
+        self._success_sound_switch.set_active(
+            self._config.get("success_sound_enabled", True)
+        )
         success_row.append(success_label)
         success_row.append(success_play_btn)
         success_row.append(success_choose_btn)
@@ -460,7 +499,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
 
         history_header = Gtk.Label(label="History")
         attrs_bold = Pango.AttrList()
-        attrs_bold.insert(Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold")))
+        attrs_bold.insert(
+            Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold"))
+        )
         history_header.set_attributes(attrs_bold)
         history_header.set_xalign(0)
         history_header.set_margin_top(4)
@@ -471,7 +512,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         content.append(max_entries_label)
 
         self._history_max_entries_spin = Gtk.SpinButton.new_with_range(5, 500, 1)
-        self._history_max_entries_spin.set_value(self._config.get('history_max_entries', 20))
+        self._history_max_entries_spin.set_value(
+            self._config.get("history_max_entries", 20)
+        )
         _block_scroll_spin(self._history_max_entries_spin)
         content.append(self._history_max_entries_spin)
 
@@ -490,7 +533,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._maint_status_label.add_css_class("dim-label")
         content.append(self._maint_status_label)
 
-        advanced_expander = Gtk.Expander(label="Advanced — changing the prompt may break post-processing")
+        advanced_expander = Gtk.Expander(
+            label="Advanced — changing the prompt may break post-processing"
+        )
         advanced_expander.set_margin_top(8)
         content.append(advanced_expander)
 
@@ -510,7 +555,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         prompt_scroll.set_child(self._prompt_view)
         advanced_box.append(prompt_scroll)
 
-        self._prompt_view.get_buffer().set_text(self._config.get("llm_system_prompt", ""))
+        self._prompt_view.get_buffer().set_text(
+            self._config.get("llm_system_prompt", "")
+        )
 
         reset_btn = Gtk.Button(label="Reset to Default")
         reset_btn.connect("clicked", self._on_reset_prompt)
@@ -546,7 +593,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
             self._config.get("conv_silence_rms_threshold", 0.005)
         )
         self._conv_threshold_scale.set_draw_value(False)
-        self._conv_threshold_scale.connect("value-changed", self._on_conv_threshold_changed)
+        self._conv_threshold_scale.connect(
+            "value-changed", self._on_conv_threshold_changed
+        )
         content.append(self._conv_threshold_scale)
 
         thresh_hint = Gtk.Label(
@@ -563,24 +612,22 @@ class SettingsWindow(Gtk.ApplicationWindow):
         content.append(warn_label)
         self._conv_warn_spin = Gtk.SpinButton.new_with_range(5, 300, 5)
         _block_scroll_spin(self._conv_warn_spin)
-        self._conv_warn_spin.set_value(
-            self._config.get("conv_silence_warn_sec", 30)
-        )
+        self._conv_warn_spin.set_value(self._config.get("conv_silence_warn_sec", 30))
         content.append(self._conv_warn_spin)
 
         stop_label = Gtk.Label(label="Silence auto-stop timeout (seconds)")
         stop_label.set_xalign(0)
         content.append(stop_label)
-        stop_hint = Gtk.Label(label="Auto-stops if you ignore the prompt. Must be > prompt timeout.")
+        stop_hint = Gtk.Label(
+            label="Auto-stops if you ignore the prompt. Must be > prompt timeout."
+        )
         stop_hint.set_xalign(0)
         stop_hint.set_wrap(True)
         stop_hint.add_css_class("dim-label")
         content.append(stop_hint)
         self._conv_stop_spin = Gtk.SpinButton.new_with_range(10, 600, 5)
         _block_scroll_spin(self._conv_stop_spin)
-        self._conv_stop_spin.set_value(
-            self._config.get("conv_silence_stop_sec", 60)
-        )
+        self._conv_stop_spin.set_value(self._config.get("conv_silence_stop_sec", 60))
         content.append(self._conv_stop_spin)
 
         save_label = Gtk.Label(label="Conversation Files Location")
@@ -614,16 +661,16 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._qa_spin.configure(
             Gtk.Adjustment.new(
                 self._config.get("conv_max_qa_iterations", 3), 1, 20, 1, 1, 0
-            ), 1, 0
+            ),
+            1,
+            0,
         )
         content.append(self._qa_spin)
 
         self._auto_analyze_check = Gtk.CheckButton(
             label="Auto-enable AI analysis in post-stop dialog"
         )
-        self._auto_analyze_check.set_active(
-            self._config.get("conv_auto_analyze", True)
-        )
+        self._auto_analyze_check.set_active(self._config.get("conv_auto_analyze", True))
         content.append(self._auto_analyze_check)
 
         conv_prompt_label = Gtk.Label(label="Default Analysis Prompt")
@@ -634,9 +681,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
         conv_prompt_scroll.set_min_content_height(80)
         conv_prompt_scroll.set_max_content_height(120)
         self._conv_prompt_buf = Gtk.TextBuffer()
-        self._conv_prompt_buf.set_text(
-            self._config.get("conv_default_prompt", "")
-        )
+        self._conv_prompt_buf.set_text(self._config.get("conv_default_prompt", ""))
         conv_prompt_tv = Gtk.TextView(buffer=self._conv_prompt_buf)
         conv_prompt_tv.set_wrap_mode(Gtk.WrapMode.WORD)
         conv_prompt_scroll.set_child(conv_prompt_tv)
@@ -645,7 +690,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         qq_label = Gtk.Label(label="Qualifying Questions (one per line)")
         qq_label.set_xalign(0)
         content.append(qq_label)
-        qq_sub = Gtk.Label(label="Shown in the post-stop dialog to help calibrate AI response complexity")
+        qq_sub = Gtk.Label(
+            label="Shown in the post-stop dialog to help calibrate AI response complexity"
+        )
         qq_sub.add_css_class("caption")
         qq_sub.set_xalign(0)
         content.append(qq_sub)
@@ -662,7 +709,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
             "Are there specific topics or sections to prioritize?",
         ]
         existing_qq = self._config.get("conv_qualifying_questions", _default_qq)
-        self._conv_qq_buf.set_text("\n".join(existing_qq) if isinstance(existing_qq, list) else existing_qq)
+        self._conv_qq_buf.set_text(
+            "\n".join(existing_qq) if isinstance(existing_qq, list) else existing_qq
+        )
         qq_tv = Gtk.TextView(buffer=self._conv_qq_buf)
         qq_tv.set_wrap_mode(Gtk.WrapMode.WORD)
         qq_scroll.set_child(qq_tv)
@@ -678,7 +727,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         slack_sub = Gtk.Label(label="Slack")
         slack_sub.set_xalign(0)
         _attrs_slack = Pango.AttrList()
-        _attrs_slack.insert(Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold")))
+        _attrs_slack.insert(
+            Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold"))
+        )
         slack_sub.set_attributes(_attrs_slack)
         slack_sub.set_margin_top(4)
         content.append(slack_sub)
@@ -793,6 +844,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
 
     def _enumerate_sinks(self):
         from linux_speech_flow.audio import list_sinks
+
         self._sinks = list_sinks()
         self._sink_combo.remove_all()
         self._sink_combo.append_text("System default")
@@ -833,8 +885,14 @@ class SettingsWindow(Gtk.ApplicationWindow):
     def _vu_worker(self, source_name: str):
         RATE, CHUNK = 16000, 800
         cmd = [
-            "parec", "--raw", "--channels=1", "--format=s16le",
-            f"--rate={RATE}", "--latency-msec=50", "-d", source_name,
+            "parec",
+            "--raw",
+            "--channels=1",
+            "--format=s16le",
+            f"--rate={RATE}",
+            "--latency-msec=50",
+            "-d",
+            source_name,
         ]
         self._vu_proc = None
         try:
@@ -867,6 +925,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
 
     def _draw_conv_mic(self, area, cr, width, height, _data) -> None:
         from linux_speech_flow.conversation_recorder import RMS_DISPLAY_SCALE
+
         thresh = self._conv_threshold_scale.get_value()
         thresh_x = min(1.0, thresh * RMS_DISPLAY_SCALE) * width
         fill_w = self._conv_vu_level * width
@@ -925,7 +984,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         if result["ok"]:
             self._set_status(self._groq_status, True, "API key is valid.")
         else:
-            self._set_status(self._groq_status, False, result.get("message", "Validation failed"))
+            self._set_status(
+                self._groq_status, False, result.get("message", "Validation failed")
+            )
         return False
 
     def _on_test_grok(self, _btn):
@@ -937,11 +998,14 @@ class SettingsWindow(Gtk.ApplicationWindow):
         def run():
             try:
                 from openai import OpenAI
+
                 client = OpenAI(api_key=key, base_url="https://api.x.ai/v1")
                 client.models.list()
                 GLib.idle_add(self._on_test_grok_done, {"ok": True})
             except Exception as exc:
-                GLib.idle_add(self._on_test_grok_done, {"ok": False, "message": str(exc)})
+                GLib.idle_add(
+                    self._on_test_grok_done, {"ok": False, "message": str(exc)}
+                )
             return False
 
         threading.Thread(target=run, daemon=True).start()
@@ -952,7 +1016,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         if result["ok"]:
             self._set_status(self._grok_status, True, "API key is valid.")
         else:
-            self._set_status(self._grok_status, False, result.get("message", "Test failed"))
+            self._set_status(
+                self._grok_status, False, result.get("message", "Test failed")
+            )
         return False
 
     def _on_test_gemini(self, _btn):
@@ -964,11 +1030,14 @@ class SettingsWindow(Gtk.ApplicationWindow):
         def run():
             try:
                 from google import genai
+
                 client = genai.Client(api_key=key)
                 list(client.models.list())
                 GLib.idle_add(self._on_test_gemini_done, {"ok": True})
             except Exception as exc:
-                GLib.idle_add(self._on_test_gemini_done, {"ok": False, "message": str(exc)})
+                GLib.idle_add(
+                    self._on_test_gemini_done, {"ok": False, "message": str(exc)}
+                )
             return False
 
         threading.Thread(target=run, daemon=True).start()
@@ -979,7 +1048,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         if result["ok"]:
             self._set_status(self._gemini_status, True, "API key is valid.")
         else:
-            self._set_status(self._gemini_status, False, result.get("message", "Test failed"))
+            self._set_status(
+                self._gemini_status, False, result.get("message", "Test failed")
+            )
         return False
 
     def _on_save(self, _btn):
@@ -1003,7 +1074,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
             config["sounds_output_device"] = self._sinks[sink_active - 1]["name"]
         config["max_recording_duration"] = int(self._max_duration_spin.get_value())
         config["silence_stop_duration"] = int(self._silence_spin.get_value())
-        config["llm_model"] = self._llm_model_list[self._llm_model_dropdown.get_selected()]
+        config["llm_model"] = self._llm_model_list[
+            self._llm_model_dropdown.get_selected()
+        ]
         config["pipeline_timeout"] = int(self._pipeline_timeout_spin.get_value())
         config["processing_sound_enabled"] = self._processing_sound_switch.get_active()
         config["processing_sound_file"] = self._config.get("processing_sound_file", "")
@@ -1016,16 +1089,18 @@ class SettingsWindow(Gtk.ApplicationWindow):
         config["conv_silence_warn_sec"] = int(self._conv_warn_spin.get_value())
         config["conv_silence_stop_sec"] = int(self._conv_stop_spin.get_value())
         config["conv_save_dir"] = self._conv_save_entry.get_text().strip()
-        config["conv_feedback_mode"] = self._feedback_combo.get_active_id() or "status_window"
+        config["conv_feedback_mode"] = (
+            self._feedback_combo.get_active_id() or "status_window"
+        )
         config["conv_max_qa_iterations"] = int(self._qa_spin.get_value())
         config["conv_auto_analyze"] = self._auto_analyze_check.get_active()
         config["conv_default_prompt"] = self._conv_prompt_buf.get_text(
             self._conv_prompt_buf.get_start_iter(),
-            self._conv_prompt_buf.get_end_iter(), False
+            self._conv_prompt_buf.get_end_iter(),
+            False,
         )
         _qq_raw = self._conv_qq_buf.get_text(
-            self._conv_qq_buf.get_start_iter(),
-            self._conv_qq_buf.get_end_iter(), False
+            self._conv_qq_buf.get_start_iter(), self._conv_qq_buf.get_end_iter(), False
         )
         config["conv_qualifying_questions"] = [
             q.strip() for q in _qq_raw.splitlines() if q.strip()
@@ -1047,8 +1122,12 @@ class SettingsWindow(Gtk.ApplicationWindow):
         )
         for action, cfg_key in HOTKEY_CONFIG_KEYS.items():
             config[cfg_key] = self._hotkey_values[action]
-        config["slack_huddle_auto_detect"] = self._huddle_auto_detect_combo.get_active_id() or "prompt"
-        config["slack_activation_word"] = self._slack_activation_entry.get_text().strip()
+        config["slack_huddle_auto_detect"] = (
+            self._huddle_auto_detect_combo.get_active_id() or "prompt"
+        )
+        config[
+            "slack_activation_word"
+        ] = self._slack_activation_entry.get_text().strip()
         config["slack_confidence_threshold"] = self._slack_confidence_spin.get_value()
         save_config(config)
         self._closing = True
@@ -1056,6 +1135,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
 
     def _on_play_sound(self, _btn, default_name: str, config_key: str):
         from linux_speech_flow.sounds import play_sound
+
         config = load_config()
         output_device = config.get("sounds_output_device", "")
         custom_path = self._config.get(config_key, "") or None
@@ -1080,7 +1160,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         native.connect("response", self._on_sound_chosen, config_key, path_label)
         native.show()
 
-    def _on_sound_chosen(self, dialog, response, config_key: str, path_label: Gtk.Label):
+    def _on_sound_chosen(
+        self, dialog, response, config_key: str, path_label: Gtk.Label
+    ):
         self._active_chooser = None
         if response == Gtk.ResponseType.ACCEPT:
             f = dialog.get_file()
@@ -1090,6 +1172,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
 
     def _on_reset_prompt(self, _btn):
         from linux_speech_flow.config import DEFAULT_CONFIG
+
         self._prompt_view.get_buffer().set_text(DEFAULT_CONFIG["llm_system_prompt"])
 
     def _mark_dirty(self, *_):
@@ -1136,7 +1219,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._capture_buttons[action] = btn
         reset_btn = Gtk.Button()
         reset_btn.set_icon_name("view-refresh-symbolic")
-        reset_btn.set_tooltip_text(f"Reset to default ({combo_display(HOTKEY_DEFAULTS[action])})")
+        reset_btn.set_tooltip_text(
+            f"Reset to default ({combo_display(HOTKEY_DEFAULTS[action])})"
+        )
         reset_btn.connect("clicked", self._on_reset_hotkey, action)
         row.append(lbl)
         row.append(btn)
@@ -1154,18 +1239,26 @@ class SettingsWindow(Gtk.ApplicationWindow):
 
     def _handle_capture_key(self, keyval: int, state) -> bool:
         from gi.repository import Gdk as _Gdk
+
         global _GTK_MODIFIER_KEYSYMS
         try:
             _GTK_MODIFIER_KEYSYMS
         except NameError:
-            _GTK_MODIFIER_KEYSYMS = frozenset({
-                _Gdk.KEY_Control_L, _Gdk.KEY_Control_R,
-                _Gdk.KEY_Alt_L, _Gdk.KEY_Alt_R,
-                _Gdk.KEY_Shift_L, _Gdk.KEY_Shift_R,
-                _Gdk.KEY_Super_L, _Gdk.KEY_Super_R,
-                _Gdk.KEY_ISO_Level3_Shift,
-                _Gdk.KEY_Caps_Lock, _Gdk.KEY_Num_Lock,
-            })
+            _GTK_MODIFIER_KEYSYMS = frozenset(
+                {
+                    _Gdk.KEY_Control_L,
+                    _Gdk.KEY_Control_R,
+                    _Gdk.KEY_Alt_L,
+                    _Gdk.KEY_Alt_R,
+                    _Gdk.KEY_Shift_L,
+                    _Gdk.KEY_Shift_R,
+                    _Gdk.KEY_Super_L,
+                    _Gdk.KEY_Super_R,
+                    _Gdk.KEY_ISO_Level3_Shift,
+                    _Gdk.KEY_Caps_Lock,
+                    _Gdk.KEY_Num_Lock,
+                }
+            )
 
         if keyval == _Gdk.KEY_Escape:
             self._cancel_capture()
@@ -1175,42 +1268,61 @@ class SettingsWindow(Gtk.ApplicationWindow):
             return True
 
         mods = set()
-        if state & _Gdk.ModifierType.CONTROL_MASK: mods.add('ctrl')
-        if state & _Gdk.ModifierType.ALT_MASK:     mods.add('alt')
-        if state & _Gdk.ModifierType.SHIFT_MASK:   mods.add('shift')
-        if state & _Gdk.ModifierType.SUPER_MASK:   mods.add('super')
+        if state & _Gdk.ModifierType.CONTROL_MASK:
+            mods.add("ctrl")
+        if state & _Gdk.ModifierType.ALT_MASK:
+            mods.add("alt")
+        if state & _Gdk.ModifierType.SHIFT_MASK:
+            mods.add("shift")
+        if state & _Gdk.ModifierType.SUPER_MASK:
+            mods.add("super")
 
         if not mods:
-            self._hotkey_error_label.set_text("Combo must include at least one modifier (Ctrl, Alt, Shift, Super)")
+            self._hotkey_error_label.set_text(
+                "Combo must include at least one modifier (Ctrl, Alt, Shift, Super)"
+            )
             return True
 
         key_id = self._gdk_keyval_to_id(keyval)
         if key_id is None:
             return True
 
-        mod_order = ['ctrl', 'alt', 'shift', 'super']
-        combo_str = '+'.join(m for m in mod_order if m in mods) + '+' + key_id
+        mod_order = ["ctrl", "alt", "shift", "super"]
+        combo_str = "+".join(m for m in mod_order if m in mods) + "+" + key_id
         self._accept_capture(combo_str)
         return True
 
     @staticmethod
     def _gdk_keyval_to_id(keyval: int) -> str | None:
         from gi.repository import Gdk as _Gdk
+
         _SPECIAL = {
-            _Gdk.KEY_Escape: 'esc',
-            _Gdk.KEY_Delete: 'delete',
-            _Gdk.KEY_Return: 'enter',
-            _Gdk.KEY_Tab: 'tab',
-            _Gdk.KEY_space: 'space',
-            _Gdk.KEY_Left: 'left',   _Gdk.KEY_Right: 'right',
-            _Gdk.KEY_Up: 'up',       _Gdk.KEY_Down: 'down',
-            _Gdk.KEY_Home: 'home',   _Gdk.KEY_End: 'end',
-            _Gdk.KEY_Page_Up: 'page_up', _Gdk.KEY_Page_Down: 'page_down',
-            _Gdk.KEY_Insert: 'insert',
-            _Gdk.KEY_F1: 'f1',   _Gdk.KEY_F2: 'f2',   _Gdk.KEY_F3: 'f3',
-            _Gdk.KEY_F4: 'f4',   _Gdk.KEY_F5: 'f5',   _Gdk.KEY_F6: 'f6',
-            _Gdk.KEY_F7: 'f7',   _Gdk.KEY_F8: 'f8',   _Gdk.KEY_F9: 'f9',
-            _Gdk.KEY_F10: 'f10', _Gdk.KEY_F11: 'f11', _Gdk.KEY_F12: 'f12',
+            _Gdk.KEY_Escape: "esc",
+            _Gdk.KEY_Delete: "delete",
+            _Gdk.KEY_Return: "enter",
+            _Gdk.KEY_Tab: "tab",
+            _Gdk.KEY_space: "space",
+            _Gdk.KEY_Left: "left",
+            _Gdk.KEY_Right: "right",
+            _Gdk.KEY_Up: "up",
+            _Gdk.KEY_Down: "down",
+            _Gdk.KEY_Home: "home",
+            _Gdk.KEY_End: "end",
+            _Gdk.KEY_Page_Up: "page_up",
+            _Gdk.KEY_Page_Down: "page_down",
+            _Gdk.KEY_Insert: "insert",
+            _Gdk.KEY_F1: "f1",
+            _Gdk.KEY_F2: "f2",
+            _Gdk.KEY_F3: "f3",
+            _Gdk.KEY_F4: "f4",
+            _Gdk.KEY_F5: "f5",
+            _Gdk.KEY_F6: "f6",
+            _Gdk.KEY_F7: "f7",
+            _Gdk.KEY_F8: "f8",
+            _Gdk.KEY_F9: "f9",
+            _Gdk.KEY_F10: "f10",
+            _Gdk.KEY_F11: "f11",
+            _Gdk.KEY_F12: "f12",
         }
         if keyval in _SPECIAL:
             return _SPECIAL[keyval]
@@ -1249,7 +1361,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
         action = self._capture_action
         self._capture_action = None
         if action and action in self._capture_buttons:
-            prev = self._capture_prev_combo or HOTKEY_DEFAULTS.get(action, '')
+            prev = self._capture_prev_combo or HOTKEY_DEFAULTS.get(action, "")
             self._capture_buttons[action].set_label(combo_display(prev))
 
     def _apply_binding(self, action: str, combo_str: str) -> None:
@@ -1301,10 +1413,12 @@ class SettingsWindow(Gtk.ApplicationWindow):
 
         clear_btn = Gtk.Button(label="Clear")
         clear_btn.add_css_class("destructive-action")
+
         def _do_clear(_b):
             dialog.close()
             HistoryStore().clear_all()
             self._maint_status_label.set_label("History cleared.")
+
         clear_btn.connect("clicked", _do_clear)
         btn_row.append(clear_btn)
 
@@ -1319,7 +1433,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
                     count += 1
                 except OSError:
                     pass
-        self._maint_status_label.set_label(f"Temp audio files cleared ({count} removed).")
+        self._maint_status_label.set_label(
+            f"Temp audio files cleared ({count} removed)."
+        )
 
     def _is_dirty(self):
         return self._dirty
@@ -1364,6 +1480,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
             self._workspace_listbox.remove(row)
 
         from linux_speech_flow.slack_manager import SlackManager
+
         workspaces = SlackManager().get_workspaces()
         for team_id, ws in workspaces.items():
             team_name = ws.get("team_name", team_id)
@@ -1383,7 +1500,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
             lbl.set_hexpand(True)
             row_box.append(lbl)
             edit_btn = Gtk.Button(label="Edit")
-            edit_btn.connect("clicked", lambda _b, tid=team_id, w=ws: self._on_edit_workspace(tid, w))
+            edit_btn.connect(
+                "clicked", lambda _b, tid=team_id, w=ws: self._on_edit_workspace(tid, w)
+            )
             row_box.append(edit_btn)
             row.set_child(row_box)
             self._workspace_listbox.append(row)
@@ -1405,12 +1524,15 @@ class SettingsWindow(Gtk.ApplicationWindow):
         if not team_id:
             return
         from linux_speech_flow.slack_manager import SlackManager
+
         SlackManager().remove_workspace(team_id)
         self._refresh_workspace_list()
         self._mark_dirty()
 
     def _on_edit_workspace(self, team_id: str, workspace_data: dict):
-        dialog = AddWorkspaceDialog(self, existing_team_id=team_id, existing_data=workspace_data)
+        dialog = AddWorkspaceDialog(
+            self, existing_team_id=team_id, existing_data=workspace_data
+        )
         dialog.connect("workspace-added", self._on_workspace_added)
         dialog.present()
 
@@ -1505,7 +1627,9 @@ class AddWorkspaceDialog(Gtk.Window):
         channel_lbl.set_margin_top(4)
         box.append(channel_lbl)
         self._channel_entry = Gtk.Entry()
-        self._channel_entry.set_property("placeholder-text", "C1234ABCD \u2014 channel ID, not name")
+        self._channel_entry.set_property(
+            "placeholder-text", "C1234ABCD \u2014 channel ID, not name"
+        )
         box.append(self._channel_entry)
 
         user_id_lbl = Gtk.Label(label="Your Slack User ID")
@@ -1513,7 +1637,9 @@ class AddWorkspaceDialog(Gtk.Window):
         user_id_lbl.set_margin_top(4)
         box.append(user_id_lbl)
         self._slack_user_id_entry = Gtk.Entry()
-        self._slack_user_id_entry.set_property("placeholder-text", "U0123ABCD \u2014 from your Slack profile")
+        self._slack_user_id_entry.set_property(
+            "placeholder-text", "U0123ABCD \u2014 from your Slack profile"
+        )
         box.append(self._slack_user_id_entry)
 
         if existing_data:
@@ -1567,10 +1693,12 @@ class AddWorkspaceDialog(Gtk.Window):
 
         def run():
             from linux_speech_flow.slack_manager import SlackManager
+
             manager = SlackManager()
             ok, err = manager.verify_token(bot_token, app_token)
             if ok:
                 from slack_sdk import WebClient
+
                 try:
                     client = WebClient(token=bot_token)
                     resp = client.auth_test()
@@ -1609,5 +1737,3 @@ class AddWorkspaceDialog(Gtk.Window):
         self._verify_status.remove_css_class("success")
         self._verify_status.add_css_class("success" if ok else "error")
         self._verify_status.set_text(message)
-
-
