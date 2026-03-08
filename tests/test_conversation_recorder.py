@@ -12,6 +12,7 @@ import pytest
 
 from linux_speech_flow.conversation_recorder import (
     CALIB_FACTOR,
+    CALIB_FRAMES,
     CALIB_MAX,
     CALIB_MIN,
     CHUNK_BYTES,
@@ -275,15 +276,15 @@ class TestRecordOneChunk:
 @patch("linux_speech_flow.conversation_recorder.GLib")
 class TestAutoCalibration:
     def test_calibrates_on_first_chunk(self, mock_glib, tmp_path):
-        """Ambient RMS during guard sets threshold = clamp(ambient * CALIB_FACTOR)."""
+        """Ambient RMS during guard sets threshold = clamp(ambient_25pct * CALIB_FACTOR)."""
         # Use tiny amplitude so calibrated threshold is different from default
         ambient_amplitude = 0.0003  # very quiet
         rec = _make_rec(silence_rms_threshold=0.005)
-        frames = [_audio_frame(ambient_amplitude)] * (MIN_GUARD_FRAMES + 2)
+        frames = [_audio_frame(ambient_amplitude)] * (CALIB_FRAMES + 2)
         pa = _mock_pa_from_seq(rec, frames)
         wav = str(tmp_path / "c.wav")
         rec._record_one_chunk(pa, wav, 1000, 0)
-        # threshold should be updated
+        # All uniform frames — 25th percentile equals the frame RMS
         ambient_rms = _rms(_audio_frame(ambient_amplitude))
         expected = max(CALIB_MIN, min(CALIB_MAX, ambient_rms * CALIB_FACTOR))
         assert rec._silence_rms_threshold == pytest.approx(expected, rel=0.01)
@@ -292,29 +293,36 @@ class TestAutoCalibration:
     def test_no_calibration_on_subsequent_chunks(self, mock_glib, tmp_path):
         """chunk_index != 0 → calib_done=True at start, threshold unchanged."""
         rec = _make_rec(silence_rms_threshold=0.005)
-        frames = [_audio_frame(0.0003)] * (MIN_GUARD_FRAMES + 2)
+        frames = [_audio_frame(0.0003)] * (CALIB_FRAMES + 2)
         pa = _mock_pa_from_seq(rec, frames)
         wav = str(tmp_path / "c.wav")
         rec._record_one_chunk(pa, wav, 1000, chunk_index=1)  # chunk 1 = no calib
         assert rec._silence_rms_threshold == pytest.approx(0.005)
         rec.cleanup()
 
-    def test_calibration_skipped_when_ambient_above_threshold(self, mock_glib, tmp_path):
-        """Guard contains loud audio → skip calibration, keep current threshold."""
-        loud_amplitude = 0.5  # well above threshold 0.005
+    def test_calibration_raises_threshold_for_noisy_environment(self, mock_glib, tmp_path):
+        """Loud ambient (restaurant music) → calibration fires and raises threshold.
+
+        Previously calibration was skipped when ambient > initial threshold, which
+        left the threshold at 0.005 and treated all background noise as speech.
+        """
+        music_amplitude = 0.015  # restaurant-level background music
         rec = _make_rec(silence_rms_threshold=0.005)
-        frames = [_audio_frame(loud_amplitude)] * (MIN_GUARD_FRAMES + 2)
+        frames = [_audio_frame(music_amplitude)] * (CALIB_FRAMES + 2)
         pa = _mock_pa_from_seq(rec, frames)
         wav = str(tmp_path / "c.wav")
         rec._record_one_chunk(pa, wav, 1000, 0)
-        # threshold should NOT have been lowered (user was speaking during guard)
-        assert rec._silence_rms_threshold == pytest.approx(0.005)
+        # Threshold must be raised above the music floor
+        music_rms = _rms(_audio_frame(music_amplitude))
+        expected = max(CALIB_MIN, min(CALIB_MAX, music_rms * CALIB_FACTOR))
+        assert rec._silence_rms_threshold == pytest.approx(expected, rel=0.01)
+        assert rec._silence_rms_threshold > 0.005  # must be higher than default
         rec.cleanup()
 
     def test_calibration_fires_on_threshold_calibrated_callback(self, mock_glib, tmp_path):
         """on_threshold_calibrated called via GLib.idle_add when calib succeeds."""
         rec = _make_rec(silence_rms_threshold=0.005)
-        frames = [_audio_frame(0.0003)] * (MIN_GUARD_FRAMES + 2)
+        frames = [_audio_frame(0.0003)] * (CALIB_FRAMES + 2)
         pa = _mock_pa_from_seq(rec, frames)
         wav = str(tmp_path / "c.wav")
         rec._record_one_chunk(pa, wav, 1000, 0)
@@ -330,7 +338,7 @@ class TestAutoCalibration:
         """Extremely quiet ambient → threshold clamped to CALIB_MIN."""
         rec = _make_rec(silence_rms_threshold=0.005)
         # Essentially silent guard frames
-        frames = [_silence_frame()] * (MIN_GUARD_FRAMES + 2)
+        frames = [_silence_frame()] * (CALIB_FRAMES + 2)
         pa = _mock_pa_from_seq(rec, frames)
         wav = str(tmp_path / "c.wav")
         rec._record_one_chunk(pa, wav, 1000, 0)

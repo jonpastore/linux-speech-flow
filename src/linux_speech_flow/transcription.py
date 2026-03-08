@@ -57,14 +57,13 @@ def _call_with_retry(fn, *args, retryable, **kwargs):
     """Call fn(*args, **kwargs), retrying on retryable exceptions with Fibonacci backoff.
     Raises the last exception after all delays are exhausted.
     """
-    last_exc = None
-    for delay in FIBONACCI_DELAYS:
+    for i, delay in enumerate(FIBONACCI_DELAYS):
         try:
             return fn(*args, **kwargs)
         except retryable as exc:
-            last_exc = exc
+            if i == len(FIBONACCI_DELAYS) - 1:
+                raise
             time.sleep(delay)
-    raise last_exc
 
 
 def _classify_groq_error(exc: groq.APIError) -> str:
@@ -200,8 +199,6 @@ class TranscriptionPipeline:
     def _process(self, wav_path: str, window_info: dict, config: dict):
         started_at = datetime.utcnow()
         api_key = config.get("groq_api_key", "")
-        client = groq.Groq(api_key=api_key, max_retries=0)
-
         sounds_enabled = config.get("sounds_enabled", True)
         output_device = config.get("sounds_output_device", "")
         processing_enabled = config.get("processing_sound_enabled", True)
@@ -219,6 +216,19 @@ class TranscriptionPipeline:
             whisper_model,
             llm_model,
         )
+
+        client = groq.Groq(api_key=api_key, max_retries=0, timeout=120.0)
+
+        _slow_timer = threading.Timer(
+            15.0,
+            lambda: GLib.idle_add(
+                send_notification,
+                "Still processing…",
+                "Groq API is responding slowly — please wait",
+            ),
+        )
+        _slow_timer.daemon = True
+        _slow_timer.start()
 
         if sounds_enabled and processing_enabled:
             GLib.timeout_add(
@@ -244,6 +254,7 @@ class TranscriptionPipeline:
                 "transcript (%d chars): %r", len(raw_transcript), raw_transcript[:120]
             )
         except groq.AuthenticationError as exc:
+            _slow_timer.cancel()
             msg = _classify_groq_error(exc)
             logger.error("Whisper auth error: %s", msg)
             self._save_failed_wav(wav_path)
@@ -251,6 +262,7 @@ class TranscriptionPipeline:
             GLib.idle_add(self._dispatch_api_error, msg, wav_path)
             return
         except Exception as exc:
+            _slow_timer.cancel()
             msg = (
                 _classify_groq_error(exc)
                 if isinstance(exc, groq.APIError)
@@ -263,6 +275,7 @@ class TranscriptionPipeline:
             return
 
         if len(raw_transcript.strip()) < MIN_TRANSCRIPT_LEN:
+            _slow_timer.cancel()
             logger.info(
                 "transcript too short (%d chars) — skipping",
                 len(raw_transcript.strip()),
@@ -298,6 +311,8 @@ class TranscriptionPipeline:
             )
             llm_failed = True
             final_text = raw_transcript
+
+        _slow_timer.cancel()
 
         batch_path = window_info.get("batch_output_path")
         if batch_path:

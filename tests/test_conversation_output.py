@@ -375,11 +375,11 @@ class TestAutoCalibration:
         return pa
 
     def test_calibration_sets_threshold(self, mock_glib):
-        """Calibrated threshold = ambient_rms * CALIB_FACTOR, clamped."""
+        """Calibrated threshold = ambient_25pct_rms * CALIB_FACTOR, clamped."""
         import threading, struct
         from linux_speech_flow.conversation_recorder import (
             ConversationRecorder,
-            MIN_GUARD_FRAMES,
+            CALIB_FRAMES,
             CALIB_FACTOR,
             CALIB_MIN,
             CALIB_MAX,
@@ -407,14 +407,14 @@ class TestAutoCalibration:
         stop_event = threading.Event()
         rec._stop_event = stop_event
 
-        # Set stop_event after MIN_GUARD_FRAMES + 1 reads so calibration completes
+        # Provide CALIB_FRAMES frames so calibration fires, then stop
         call_count = [0]
-        frames = [ambient_frame] * (MIN_GUARD_FRAMES + 1) + [silent_frame] * 200
+        frames = [ambient_frame] * CALIB_FRAMES + [silent_frame] * 200
 
         def read_side_effect(nbytes):
             idx = call_count[0]
             call_count[0] += 1
-            if call_count[0] > MIN_GUARD_FRAMES + 1:
+            if call_count[0] > CALIB_FRAMES:
                 stop_event.set()
             return frames[min(idx, len(frames) - 1)]
 
@@ -439,7 +439,7 @@ class TestAutoCalibration:
             except:
                 pass
 
-        # Threshold should have been updated
+        # All frames are uniform ambient_rms so 25th percentile = ambient_rms
         expected = max(CALIB_MIN, min(CALIB_MAX, ambient_rms * CALIB_FACTOR))
         assert abs(rec._silence_rms_threshold - expected) < 0.001
 
@@ -483,36 +483,41 @@ class TestAutoCalibration:
         assert abs(rec._silence_rms_threshold - 0.010) < 0.001
         rec._on_threshold_calibrated.assert_not_called()
 
-    def test_calibration_skipped_when_speaking_during_guard(self, mock_glib):
-        """If guard-period RMS >= current threshold, user was speaking — skip calibration."""
+    def test_calibration_fires_in_noisy_environment(self, mock_glib):
+        """Calibration always fires even when ambient > default threshold (restaurant music case).
+
+        Previously, ambient > initial threshold caused calibration to be skipped,
+        leaving threshold at 0.005 and treating background music as continuous speech.
+        """
         import threading, struct
         from linux_speech_flow.conversation_recorder import (
             ConversationRecorder,
-            MIN_GUARD_FRAMES,
+            CALIB_FRAMES,
+            CALIB_FACTOR,
+            CALIB_MIN,
+            CALIB_MAX,
             CHUNK_BYTES,
             SAMPLE_WIDTH,
         )
 
         rec = ConversationRecorder(device_name=None)
-        default_threshold = rec._silence_rms_threshold  # 0.005
-
-        # Guard frames contain speech-level signal (above threshold)
-        speech_rms = 0.020  # clearly above 0.005
+        # Restaurant music: ambient RMS above the default 0.005 threshold
+        music_rms = 0.012
         n_samples = CHUNK_BYTES // SAMPLE_WIDTH
-        amp = int(speech_rms * 32768)
-        speech_frame = struct.pack(
+        amp = int(music_rms * 32768)
+        music_frame = struct.pack(
             f"{n_samples}h", *[amp if i % 2 == 0 else -amp for i in range(n_samples)]
         )
 
         stop_event = threading.Event()
         rec._stop_event = stop_event
         call_count = [0]
-        frames = [speech_frame] * (MIN_GUARD_FRAMES + 2)
+        frames = [music_frame] * CALIB_FRAMES + [b"\x00" * CHUNK_BYTES] * 200
 
         def read_side_effect(nbytes):
             idx = call_count[0]
             call_count[0] += 1
-            if call_count[0] > MIN_GUARD_FRAMES + 1:
+            if call_count[0] > CALIB_FRAMES:
                 stop_event.set()
             return frames[min(idx, len(frames) - 1)]
 
@@ -536,6 +541,9 @@ class TestAutoCalibration:
             except:
                 pass
 
-        # Threshold should be UNCHANGED because guard frames had speech-level signal
-        assert abs(rec._silence_rms_threshold - default_threshold) < 0.001
-        rec._on_threshold_calibrated.assert_not_called()
+        # Calibration must fire and raise threshold above the music floor
+        expected = max(CALIB_MIN, min(CALIB_MAX, music_rms * CALIB_FACTOR))
+        assert abs(rec._silence_rms_threshold - expected) < 0.001
+        # Callback dispatched via GLib.idle_add — verify it was scheduled
+        idle_calls = [args[0] for args, _ in mock_glib.idle_add.call_args_list]
+        assert rec._on_threshold_calibrated in idle_calls

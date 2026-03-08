@@ -108,10 +108,10 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
         transcript_scroll.set_child(self._transcript_view)
         box.append(transcript_scroll)
 
-        stop_btn = Gtk.Button(label="Stop Recording")
-        stop_btn.add_css_class("destructive-action")
-        stop_btn.connect("clicked", self._on_stop_btn_clicked)
-        box.append(stop_btn)
+        self._stop_btn = Gtk.Button(label="Stop Recording")
+        self._stop_btn.add_css_class("destructive-action")
+        self._stop_btn.connect("clicked", self._on_stop_btn_clicked)
+        box.append(self._stop_btn)
 
         self._started_at = None
         self._timer_id = None
@@ -120,6 +120,13 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
     def _on_stop_btn_clicked(self, _btn) -> None:
         if self._on_stop_clicked:
             self._on_stop_clicked(reason="status_window_stop")
+
+    def on_recording_stopped(self) -> None:
+        """Called immediately when stop is initiated — before chunks finish processing."""
+        self._stop_btn.set_sensitive(False)
+        self._stop_btn.set_label("Stopped")
+        self._silence_started_at = None  # freeze silence bar (shows full/green)
+        self._status_label.set_text("Processing remaining chunks — please wait…")
 
     def start(self) -> None:
         self._started_at = time.monotonic()

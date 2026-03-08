@@ -379,29 +379,29 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
         )
         summary = self._current_result.get("summary", "")
         ai_title = self._current_result.get("title", "untitled")
+        confidence = self._current_result.get("confidence", 0.0)
+        action_items = self._current_result.get("action_items", [])
 
-        # Build combined output: transcript with analysis appended
-        combined = self._transcript
-        if summary:
-            combined += "\n\n---\n\n## AI Analysis\n\n" + summary
-        if self._qa_rounds:
-            combined += "\n\n## Q&A\n"
-            for r in self._qa_rounds:
-                combined += f"\nAI: {r['question']}\nYou: {r['answer']}\n"
+        config = load_config()
+        prompt = config.get("conv_default_prompt", "")
 
         save_path = None
         if self._save_analysis:
-            config = load_config()
             save_dir = Path(
                 config.get("conv_save_dir", "~/Documents/conversations")
             ).expanduser()
             save_dir.mkdir(parents=True, exist_ok=True)
             save_path = str(save_dir / conv_filename(ai_title))
-            coalesce_file(save_path, self._metadata, summary, self._qa_rounds, self._transcript)
-
-        if self._inject_to_window and self._window_info.get("window_id"):
-            from linux_speech_flow.injector import paste_text
-            paste_text(combined, self._window_info)
+            coalesce_file(
+                save_path,
+                self._metadata,
+                summary,
+                self._qa_rounds,
+                self._transcript,
+                confidence=confidence,
+                action_items=action_items,
+                prompt=prompt,
+            )
 
         if self._on_finalised:
             self._on_finalised(save_path)
@@ -409,14 +409,25 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
         app = self.get_application()
         metadata = dict(self._metadata)
         window_info = self._window_info
+
+        if self._inject_to_window and window_info.get("window_id"):
+            from linux_speech_flow.injector import paste_text
+            from linux_speech_flow.conversation_dialog import build_combined
+            paste_text(build_combined(self._transcript, summary, self._qa_rounds, action_items, confidence, prompt), window_info)
+
         self.close()
 
         out_win = TranscriptOutputWindow(
             application=app,
-            transcript=combined,
+            transcript=self._transcript,
             metadata=metadata,
             window_info=window_info,
             heading="Analysis Output",
+            summary=summary,
+            qa_rounds=self._qa_rounds,
+            action_items=action_items,
+            confidence=confidence,
+            prompt=prompt,
         )
         out_win.present()
 

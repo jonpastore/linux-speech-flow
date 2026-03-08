@@ -607,6 +607,8 @@ class App(Gtk.Application):
             self._conv_window_info.get("window_id"),
             self._conv_window_info.get("wm_class"),
         )
+        if self._hotkey_manager:
+            self._hotkey_manager.reset_to_idle()
         from linux_speech_flow.conversation_dialog import ConversationDialog
 
         dialog = ConversationDialog(

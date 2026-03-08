@@ -23,9 +23,11 @@ MIN_GUARD_FRAMES = (
 RMS_DISPLAY_SCALE = (
     12  # multiplier so typical speech reaches ~0.5–1.0 on a 0–1 LevelBar
 )
+CALIB_FRAMES = 30  # frames to sample for initial calibration (3 seconds)
 CALIB_FACTOR = 4.0  # threshold = ambient_rms * CALIB_FACTOR
 CALIB_MIN = 0.002  # floor: never go below this
-CALIB_MAX = 0.030  # ceiling: noisy environments
+CALIB_MAX = 0.060  # ceiling: noisy environments (restaurant-level music)
+RECALIB_SILENCE_FRAMES = 30  # re-calibrate after this many consecutive silent frames
 
 
 class ConversationRecorder:
@@ -202,9 +204,12 @@ class ConversationRecorder:
         LOG_SILENCE_EVERY = 100
         last_logged_frame = 0
 
-        # Auto-calibration: measure ambient noise during guard period of first chunk only
-        calib_rms_sum = 0.0
+        # Auto-calibration: collect RMS values during first CALIB_FRAMES of first chunk.
+        # Uses 25th-percentile (not mean) so speech spikes during guard don't inflate ambient.
+        calib_rms_values: list[float] = []
         calib_done = chunk_index != 0
+        # Adaptive re-calibration: accumulate RMS during silence periods.
+        recalib_buffer: list[float] = []
 
         with wave.open(wav_path, "wb") as wf:
             wf.setnchannels(CHANNELS)
@@ -220,47 +225,61 @@ class ConversationRecorder:
                 samples = struct.unpack(f"{len(raw) // SAMPLE_WIDTH}h", raw)
                 rms = math.sqrt(sum(s * s for s in samples) / len(samples)) / 32768.0
 
-                # Auto-calibration: accumulate ambient RMS during guard period
+                # Auto-calibration: collect samples for first CALIB_FRAMES of first chunk.
+                # Always calibrate regardless of ambient level — skipping on high ambient
+                # was the bug that broke calibration in noisy environments (restaurant music).
+                # 25th-percentile of collected values is used as the noise floor estimate
+                # so speech spikes during the guard window don't inflate the ambient.
                 if not calib_done:
-                    if frames_written < MIN_GUARD_FRAMES:
-                        calib_rms_sum += rms
-                    elif frames_written == MIN_GUARD_FRAMES:
-                        n = MIN_GUARD_FRAMES - 1
-                        if n > 0:
-                            ambient = calib_rms_sum / n
-                            if ambient >= self._silence_rms_threshold:
-                                # Guard frames contain audio above threshold — user was
-                                # already speaking; calibration would set a false ceiling.
-                                # Keep the current (more sensitive) threshold instead.
-                                logger.info(
-                                    "auto_calibrate: skipped — ambient_rms=%.5f >= threshold=%.5f"
-                                    " (user likely speaking during guard)",
-                                    ambient,
-                                    self._silence_rms_threshold,
-                                )
-                            else:
-                                calibrated = max(
-                                    CALIB_MIN, min(CALIB_MAX, ambient * CALIB_FACTOR)
-                                )
-                                logger.info(
-                                    "auto_calibrate: ambient_rms=%.5f -> threshold=%.5f (%.1fx)",
-                                    ambient,
-                                    calibrated,
-                                    CALIB_FACTOR,
-                                )
-                                self._silence_rms_threshold = calibrated
-                                if self._on_threshold_calibrated:
-                                    GLib.idle_add(
-                                        self._on_threshold_calibrated, calibrated
-                                    )
+                    calib_rms_values.append(rms)
+                    if frames_written == CALIB_FRAMES:
+                        sorted_rms = sorted(calib_rms_values)
+                        quartile_idx = max(0, len(sorted_rms) // 4 - 1)
+                        ambient = sorted_rms[quartile_idx]
+                        calibrated = max(CALIB_MIN, min(CALIB_MAX, ambient * CALIB_FACTOR))
+                        logger.info(
+                            "auto_calibrate: ambient_25pct=%.5f -> threshold=%.5f (%.1fx)",
+                            ambient,
+                            calibrated,
+                            CALIB_FACTOR,
+                        )
+                        self._silence_rms_threshold = calibrated
+                        if self._on_threshold_calibrated:
+                            GLib.idle_add(self._on_threshold_calibrated, calibrated)
                         calib_done = True
 
                 if frames_written >= MIN_GUARD_FRAMES:
                     if rms < self._silence_rms_threshold:
                         silence_frames += 1
+                        if calib_done:
+                            recalib_buffer.append(rms)
+                            # Re-calibrate periodically during sustained silence so the
+                            # threshold tracks slow changes in background noise level.
+                            if (
+                                silence_frames % RECALIB_SILENCE_FRAMES == 0
+                                and len(recalib_buffer) >= RECALIB_SILENCE_FRAMES
+                            ):
+                                recent = sorted(recalib_buffer[-RECALIB_SILENCE_FRAMES:])
+                                ambient = recent[len(recent) // 4]
+                                recalibrated = max(
+                                    CALIB_MIN, min(CALIB_MAX, ambient * CALIB_FACTOR)
+                                )
+                                if abs(recalibrated - self._silence_rms_threshold) > 0.001:
+                                    logger.info(
+                                        "recalibrate: silence_25pct=%.5f -> threshold %.5f -> %.5f",
+                                        ambient,
+                                        self._silence_rms_threshold,
+                                        recalibrated,
+                                    )
+                                    self._silence_rms_threshold = recalibrated
+                                    if self._on_threshold_calibrated:
+                                        GLib.idle_add(
+                                            self._on_threshold_calibrated, recalibrated
+                                        )
                     else:
                         silence_frames = 0
                         had_audio = True
+                        recalib_buffer.clear()
 
                     if self._on_audio_level:
                         GLib.idle_add(

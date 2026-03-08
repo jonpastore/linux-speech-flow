@@ -34,16 +34,31 @@ def conv_filename(title: str = "untitled") -> str:
 
 
 def coalesce_file(
-    save_path: str, metadata: dict, summary: str, qa_rounds: list, transcript: str
+    save_path: str,
+    metadata: dict,
+    summary: str,
+    qa_rounds: list,
+    transcript: str,
+    confidence: float = 0.0,
+    action_items: list | None = None,
+    prompt: str = "",
 ) -> None:
     lines = []
-    lines.append(f"Date: {metadata['date']}")
-    lines.append(f"Duration: {metadata['duration']}")
-    lines.append(f"Chunks: {metadata['chunk_count']}")
-    lines.append(f"Models: {metadata['models_used']}")
+    lines.append(f"Date: {metadata.get('date', '')}")
+    lines.append(f"Duration: {metadata.get('duration', '')}")
+    lines.append(f"Chunks: {metadata.get('chunk_count', '')}")
+    lines.append(f"Models: {metadata.get('models_used', 'None')}")
+    if confidence > 0:
+        lines.append(f"Confidence: {int(confidence * 100)}%")
     lines.append("")
     lines.append("## Summary")
-    lines.append(summary)
+    lines.append(summary or "(none)")
+
+    if action_items:
+        lines.append("")
+        lines.append("## Action Items")
+        for item in action_items:
+            lines.append(f"- {item}")
 
     if qa_rounds:
         lines.append("")
@@ -56,6 +71,11 @@ def coalesce_file(
     lines.append("")
     lines.append("## Transcript")
     lines.append(transcript)
+
+    if prompt:
+        lines.append("")
+        lines.append("## Analysis Prompt")
+        lines.append(prompt)
 
     with open(save_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))

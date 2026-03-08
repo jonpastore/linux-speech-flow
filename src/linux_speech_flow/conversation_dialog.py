@@ -6,24 +6,53 @@ from gi.repository import Gtk, GLib, Pango
 from linux_speech_flow.config import load_config
 
 
-def _do_transcript_copy(transcript: str) -> str:
-    """Copy transcript to clipboard. Returns status message."""
-    from linux_speech_flow.injector import copy_to_clipboard
+def build_combined(
+    transcript: str,
+    summary: str = "",
+    qa_rounds: list | None = None,
+    action_items: list | None = None,
+    confidence: float = 0.0,
+    prompt: str = "",
+) -> str:
+    """Build a single text blob from all conversation components."""
+    parts = []
+    if summary:
+        parts.append("## Summary\n\n" + summary)
+    if action_items:
+        parts.append("## Action Items\n\n" + "\n".join(f"- {a}" for a in action_items))
+    if confidence > 0:
+        parts.append(f"Confidence: {int(confidence * 100)}%")
+    if qa_rounds:
+        qa_text = "## Q&A\n\n"
+        for r in qa_rounds:
+            qa_text += f"**AI:** {r['question']}\n**You:** {r['answer']}\n\n"
+        parts.append(qa_text.rstrip())
+    parts.append("## Transcript\n\n" + transcript)
+    if prompt:
+        parts.append("## Analysis Prompt\n\n" + prompt)
+    return "\n\n---\n\n".join(parts)
 
+
+def _window_label(window_info: dict) -> str:
+    """Return a short human-readable label for the target window."""
+    title = window_info.get("title", "")
+    wm_class = window_info.get("wm_class", "")
+    return title or wm_class or "unknown"
+
+
+def _do_transcript_copy(transcript: str) -> str:
+    from linux_speech_flow.injector import copy_to_clipboard
     copy_to_clipboard(transcript)
     return "Copied to clipboard."
 
 
 def _do_transcript_paste(transcript: str, window_info: dict) -> str:
-    """Paste transcript to active window. Returns status message."""
     from linux_speech_flow.injector import paste_text
-
     paste_text(transcript, window_info)
     return "Pasted to active window."
 
 
 def _do_transcript_save(transcript: str, metadata: dict) -> str:
-    """Save raw transcript to file. Returns status message with path."""
     try:
         from pathlib import Path
         from linux_speech_flow.conversation_pipeline import conv_filename, coalesce_file
@@ -38,13 +67,6 @@ def _do_transcript_save(transcript: str, metadata: dict) -> str:
         return f"Saved: {path}"
     except Exception as exc:
         return f"Save failed: {exc}"
-
-
-def _window_label(window_info: dict) -> str:
-    """Return a short human-readable label for the target window."""
-    title = window_info.get("title", "")
-    wm_class = window_info.get("wm_class", "")
-    return title or wm_class or "unknown"
 
 
 class ConversationDialog(Gtk.ApplicationWindow):
@@ -343,6 +365,11 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         metadata: dict,
         window_info: dict | None = None,
         heading: str = "Raw Transcript",
+        summary: str = "",
+        qa_rounds: list | None = None,
+        action_items: list | None = None,
+        confidence: float = 0.0,
+        prompt: str = "",
     ):
         title = "Analysis Output" if heading != "Raw Transcript" else "Transcript Output"
         super().__init__(application=application, title=title)
@@ -353,6 +380,12 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         self._transcript = transcript
         self._metadata = metadata
         self._window_info = window_info or {}
+        self._summary = summary
+        self._qa_rounds = qa_rounds or []
+        self._action_items = action_items or []
+        self._confidence = confidence
+        self._prompt = prompt
+        self._has_analysis = bool(summary)
 
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.set_child(outer)
@@ -376,8 +409,12 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         text_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
         text_view.set_editable(False)
         text_view.set_cursor_visible(False)
+        display_text = build_combined(
+            self._transcript, summary, self._qa_rounds, self._action_items,
+            self._confidence, self._prompt,
+        )
         text_view.get_buffer().set_text(
-            transcript or "(empty — session may not have produced transcribed chunks)"
+            display_text or "(empty — session may not have produced transcribed chunks)"
         )
         scroll.set_child(text_view)
         content.append(scroll)
@@ -394,8 +431,9 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         btn_box.set_margin_bottom(16)
         outer.append(btn_box)
 
-        copy_btn = Gtk.Button(label="Copy to Clipboard")
+        copy_btn = Gtk.Button(label="Copy All to Clipboard")
         copy_btn.add_css_class("suggested-action")
+        copy_btn.set_tooltip_text("Copy full output (transcript + analysis + Q&A) to clipboard")
         copy_btn.connect("clicked", lambda _: self._do_copy())
         btn_box.append(copy_btn)
 
@@ -412,23 +450,42 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         paste_btn.connect("clicked", lambda _: self._do_paste())
         btn_box.append(paste_btn)
 
-        save_btn = Gtk.Button(label="Save to File...")
-        save_btn.connect("clicked", lambda _: self._do_save())
+        save_btn = Gtk.Button(label="Save Full Output to File...")
+        save_btn.set_tooltip_text("Save transcript + analysis + Q&A as one structured file")
+        save_btn.connect("clicked", lambda _: self._do_save("full"))
         btn_box.append(save_btn)
+
+        if self._has_analysis:
+            save_transcript_btn = Gtk.Button(label="Save Transcript Only...")
+            save_transcript_btn.connect("clicked", lambda _: self._do_save("transcript"))
+            btn_box.append(save_transcript_btn)
+
+            save_analysis_btn = Gtk.Button(label="Save Analysis Only...")
+            save_analysis_btn.set_tooltip_text("Save summary + action items + Q&A (no raw transcript)")
+            save_analysis_btn.connect("clicked", lambda _: self._do_save("analysis"))
+            btn_box.append(save_analysis_btn)
 
         done_btn = Gtk.Button(label="Done")
         done_btn.connect("clicked", lambda _: self.close())
         btn_box.append(done_btn)
 
-    def _do_copy(self) -> None:
-        self._status_label.set_text(_do_transcript_copy(self._transcript))
-
-    def _do_paste(self) -> None:
-        self._status_label.set_text(
-            _do_transcript_paste(self._transcript, self._window_info)
+    def _build_combined(self) -> str:
+        return build_combined(
+            self._transcript, self._summary, self._qa_rounds,
+            self._action_items, self._confidence, self._prompt,
         )
 
-    def _do_save(self) -> None:
+    def _do_copy(self) -> None:
+        from linux_speech_flow.injector import copy_to_clipboard
+        copy_to_clipboard(self._build_combined())
+        self._status_label.set_text("Copied to clipboard.")
+
+    def _do_paste(self) -> None:
+        from linux_speech_flow.injector import paste_text
+        paste_text(self._build_combined(), self._window_info)
+        self._status_label.set_text("Pasted to active window.")
+
+    def _do_save(self, mode: str = "full") -> None:
         from pathlib import Path
         from linux_speech_flow.conversation_pipeline import conv_filename
 
@@ -438,21 +495,23 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         ).expanduser()
         save_dir.mkdir(parents=True, exist_ok=True)
 
+        label_map = {"full": "Save Output", "transcript": "Save Transcript", "analysis": "Save Analysis"}
+        name_map = {"full": "output", "transcript": "transcript", "analysis": "analysis"}
+
         chooser = Gtk.FileChooserNative.new(
-            "Save Transcript", self, Gtk.FileChooserAction.SAVE, "Save", "Cancel"
+            label_map.get(mode, "Save"), self, Gtk.FileChooserAction.SAVE, "Save", "Cancel"
         )
-        chooser.set_current_name(conv_filename("transcript"))
+        chooser.set_current_name(conv_filename(name_map.get(mode, "output")))
         try:
             from gi.repository import Gio
-
             chooser.set_current_folder(Gio.File.new_for_path(str(save_dir)))
         except Exception:
             pass
-        chooser.connect("response", self._on_save_response)
+        chooser.connect("response", lambda c, r: self._on_save_response(c, r, mode))
         chooser.show()
-        self._save_chooser = chooser  # keep reference alive
+        self._save_chooser = chooser
 
-    def _on_save_response(self, chooser, response) -> None:
+    def _on_save_response(self, chooser, response, mode: str) -> None:
         self._save_chooser = None
         if response != Gtk.ResponseType.ACCEPT:
             return
@@ -463,7 +522,20 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         try:
             from linux_speech_flow.conversation_pipeline import coalesce_file
 
-            coalesce_file(path, self._metadata, "", [], self._transcript)
+            if mode == "transcript":
+                coalesce_file(path, self._metadata, "", [], self._transcript)
+            elif mode == "analysis":
+                coalesce_file(
+                    path, self._metadata, self._summary, self._qa_rounds, "",
+                    confidence=self._confidence, action_items=self._action_items,
+                    prompt=self._prompt,
+                )
+            else:
+                coalesce_file(
+                    path, self._metadata, self._summary, self._qa_rounds, self._transcript,
+                    confidence=self._confidence, action_items=self._action_items,
+                    prompt=self._prompt,
+                )
             self._status_label.set_text(f"Saved: {path}")
         except Exception as exc:
             self._status_label.set_text(f"Save failed: {exc}")

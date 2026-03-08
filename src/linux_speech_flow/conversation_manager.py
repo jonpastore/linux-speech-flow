@@ -156,6 +156,11 @@ class ConversationManager:
         )
         self._state = _STATE_IDLE
         self._cancel_all_timers()
+        if self._silence_dialog:
+            self._silence_dialog.close()
+            self._silence_dialog = None
+        if self._status_window:
+            self._status_window.on_recording_stopped()
 
         self._session_ending = True
         if self._recorder:
@@ -364,7 +369,8 @@ class ConversationManager:
 
         dialog = Gtk.Window(title="Still recording?")
         dialog.set_modal(True)
-        dialog.set_transient_for(self._status_window)
+        if self._status_window:
+            dialog.set_transient_for(self._status_window)
         dialog.set_default_size(400, 180)
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -526,28 +532,13 @@ class ConversationManager:
         return False
 
     def _show_wait_dialog(self) -> None:
-        if self._wait_dialog:
-            return
-        dialog = Gtk.Window(title="Please wait")
-        dialog.set_default_size(320, 100)
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        box.set_margin_start(24)
-        box.set_margin_end(24)
-        box.set_margin_top(20)
-        box.set_margin_bottom(20)
-        dialog.set_child(box)
-        spinner = Gtk.Spinner()
-        spinner.start()
-        box.append(spinner)
-        lbl = Gtk.Label(label="Finishing transcription…")
-        box.append(lbl)
-        self._wait_dialog = dialog
-        dialog.present()
+        # Status window already shows "Processing remaining chunks" via on_recording_stopped().
+        # Just ensure it's visible so the user sees the processing state.
+        if self._status_window:
+            self._status_window.present()
 
     def _dismiss_wait_dialog(self) -> None:
-        if self._wait_dialog:
-            self._wait_dialog.close()
-            self._wait_dialog = None
+        pass  # no separate dialog to dismiss; status window closed by _finish_session
 
     def _on_threshold_calibrated(self, value: float) -> bool:
         """GTK main thread: auto-calibration set a new silence threshold."""
