@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: "Completed 09.1-02: DB permissions, app ID correction, 6-page wizard, OnboardingDialog"
-last_updated: "2026-03-04T17:16:35.958Z"
-last_activity: 2026-03-04 -- Completed 08-06; analyze flow + channel picker wired, 5 integration bugs fixed, 259 tests pass
+stopped_at: "09.1-06 ready to execute — 347 tests pass, GitHub push not yet done"
+last_updated: "2026-03-05T04:47:47.577Z"
+last_activity: 2026-03-05 -- Fixed 5 test failures (ConversationManager._try_finish_after_stop, recorder drain frames); 347 tests pass
 progress:
   total_phases: 13
   completed_phases: 10
@@ -251,6 +251,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04T17:16:35.954Z
-Stopped at: Post-phase-8 bugs resolved (hallucination filter, double dialog, VU meter). GitHub Actions CI/CD created. Ready for Phase 9.
-Resume file: None
+Last session: 2026-03-05T04:47:47.577Z
+Stopped at: All 347 tests pass. 09.1-06 is the only remaining plan — GitHub push. See .continue-here.md in 09.1 phase dir.
+Resume file: .planning/phases/09.1-github-launch-and-security/.continue-here.md
