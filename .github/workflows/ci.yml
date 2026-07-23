@@ -64,8 +64,10 @@ jobs:
           VERSION=$(grep -m1 '^version = ' pyproject.toml | sed -E 's/version = "(.*)"/\1/')
           # Staging layout: /opt/linux-speech-flow/venv + /usr/local/bin wrapper
           mkdir -p dist-deb/opt/linux-speech-flow
-          pip install 'PyGObject<3.52'  # 3.52+ needs girepository-2.0; runner has libgirepository1.0-dev
           python3 -m venv --copies dist-deb/opt/linux-speech-flow/venv
+          # Pin PyGObject in the venv first: trayer pulls it unpinned, and 3.52+
+          # needs girepository-2.0 (runner only has libgirepository1.0-dev).
+          dist-deb/opt/linux-speech-flow/venv/bin/pip install --quiet 'PyGObject<3.52'
           dist-deb/opt/linux-speech-flow/venv/bin/pip install --quiet .
           mkdir -p dist-deb/usr/local/bin
           printf '#!/bin/bash\nexec /opt/linux-speech-flow/venv/bin/linux-speech-flow "$@"\n' \
