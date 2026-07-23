@@ -60,7 +60,7 @@ jobs:
 
       - name: Build .deb (bundled venv via fpm)
         run: |
-          gem install fpm --no-document
+          sudo gem install fpm --no-document
           VERSION=$(python3 -c "
           import tomllib
           with open('pyproject.toml', 'rb') as f:
