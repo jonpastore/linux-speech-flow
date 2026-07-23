@@ -6,6 +6,7 @@ from datetime import datetime
 
 from groq import Groq
 
+from linux_speech_flow import llm_router
 from linux_speech_flow.config import load_config
 
 logger = logging.getLogger(__name__)
@@ -101,10 +102,15 @@ class ConversationPipeline:
         Confidence is derived from avg_logprob across segments; 0.0 if no segments.
         """
         config = load_config()
+        if llm_router.is_litellm(config):
+            client, model = llm_router.transcription_client_model(config)
+        else:
+            client = self._groq
+            model = config.get("whisper_model", "whisper-large-v3-turbo")
         with open(wav_path, "rb") as f:
-            response = self._groq.audio.transcriptions.create(
+            response = client.audio.transcriptions.create(
                 file=("chunk.wav", f),
-                model=config.get("whisper_model", "whisper-large-v3-turbo"),
+                model=model,
                 response_format="verbose_json",
             )
         text = (response.text or "").strip()
@@ -227,11 +233,11 @@ class ConversationPipeline:
         )
         return self.analyze(transcript, updated_prompt, qa_context, models)
 
-    def _call_groq(self, system: str, content: str, config: dict) -> dict:
-        response = self._groq.chat.completions.create(
-            model=config.get(
-                "conv_groq_model", "meta-llama/llama-4-scout-17b-16e-instruct"
-            ),
+    def _call_openai_chat_json(
+        self, client, model: str, system: str, content: str
+    ) -> dict:
+        response = client.chat.completions.create(
+            model=model,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": content},
@@ -242,26 +248,47 @@ class ConversationPipeline:
         )
         return self._parse_result(response.choices[0].message.content)
 
+    def _call_groq(self, system: str, content: str, config: dict) -> dict:
+        if llm_router.is_litellm(config):
+            return self._call_openai_chat_json(
+                llm_router.litellm_client(config),
+                llm_router.synthesis_alias(config, "groq"),
+                system,
+                content,
+            )
+        return self._call_openai_chat_json(
+            self._groq,
+            config.get("conv_groq_model", "meta-llama/llama-4-scout-17b-16e-instruct"),
+            system,
+            content,
+        )
+
     def _call_grok(self, system: str, content: str, config: dict) -> dict:
+        if llm_router.is_litellm(config):
+            return self._call_openai_chat_json(
+                llm_router.litellm_client(config),
+                llm_router.synthesis_alias(config, "grok"),
+                system,
+                content,
+            )
         from openai import OpenAI
 
         client = OpenAI(
             api_key=config.get("grok_api_key", ""),
             base_url="https://api.x.ai/v1",
         )
-        response = client.chat.completions.create(
-            model=config.get("grok_model", "grok-3-mini"),
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": content},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.3,
-            max_tokens=4096,
+        return self._call_openai_chat_json(
+            client, config.get("grok_model", "grok-3-mini"), system, content
         )
-        return self._parse_result(response.choices[0].message.content)
 
     def _call_gemini(self, system: str, content: str, config: dict) -> dict:
+        if llm_router.is_litellm(config):
+            return self._call_openai_chat_json(
+                llm_router.litellm_client(config),
+                llm_router.synthesis_alias(config, "gemini"),
+                system,
+                content,
+            )
         from google import genai
         from google.genai import types
 

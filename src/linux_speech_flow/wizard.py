@@ -243,9 +243,11 @@ def _block_scroll(combo: Gtk.ComboBoxText) -> None:
 
 class WizardWindow(Gtk.ApplicationWindow):
     PAGES = [
+        "provider",
         "api_key",
         "grok_key",
         "gemini_key",
+        "litellm",
         "slack_key",
         "microphone",
         "vocabulary",
@@ -255,6 +257,7 @@ class WizardWindow(Gtk.ApplicationWindow):
         super().__init__(application=application, title="linux-speech-flow Setup")
         self._config = config if config is not None else load_config()
         self._api_key_valid = False
+        self._provider_mode = self._config.get("provider_mode", "cloud")
         self._current_page = 0
         self._mics = []
 
@@ -269,12 +272,15 @@ class WizardWindow(Gtk.ApplicationWindow):
         self._stack.set_vexpand(True)
         outer.append(self._stack)
 
+        self._stack.add_named(self._build_provider_page(), "provider")
         self._stack.add_named(self._build_api_key_page(), "api_key")
         self._stack.add_named(self._build_grok_key_page(), "grok_key")
         self._stack.add_named(self._build_gemini_key_page(), "gemini_key")
+        self._stack.add_named(self._build_litellm_page(), "litellm")
         self._stack.add_named(self._build_slack_key_page(), "slack_key")
         self._stack.add_named(self._build_microphone_page(), "microphone")
         self._stack.add_named(self._build_vocabulary_page(), "vocabulary")
+        self._stack.set_visible_child_name("provider")
 
         nav = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         nav.set_margin_start(12)
@@ -298,6 +304,149 @@ class WizardWindow(Gtk.ApplicationWindow):
         nav.append(self._next_btn)
 
         self._update_navigation()
+
+    def _build_provider_page(self) -> Gtk.Widget:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.set_margin_start(24)
+        box.set_margin_end(24)
+        box.set_margin_top(24)
+        box.set_margin_bottom(12)
+
+        title = Gtk.Label(label="How do you want to connect?")
+        title.add_css_class("title-2")
+        title.set_xalign(0)
+        box.append(title)
+
+        desc = Gtk.Label(
+            label="Choose how transcription and conversation analysis are routed."
+        )
+        desc.set_xalign(0)
+        desc.set_wrap(True)
+        box.append(desc)
+
+        self._provider_cloud_radio = Gtk.CheckButton(
+            label="Cloud APIs (Groq/Grok/Gemini keys)"
+        )
+        self._provider_litellm_radio = Gtk.CheckButton(
+            label="Local LiteLLM endpoint (free, self-hosted)"
+        )
+        self._provider_litellm_radio.set_group(self._provider_cloud_radio)
+        if self._provider_mode == "litellm":
+            self._provider_litellm_radio.set_active(True)
+        else:
+            self._provider_cloud_radio.set_active(True)
+        self._provider_cloud_radio.connect("toggled", self._on_provider_changed)
+        box.append(self._provider_cloud_radio)
+        box.append(self._provider_litellm_radio)
+
+        return box
+
+    def _on_provider_changed(self, _btn):
+        self._provider_mode = (
+            "litellm" if self._provider_litellm_radio.get_active() else "cloud"
+        )
+
+    def _build_litellm_page(self) -> Gtk.Widget:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.set_margin_start(24)
+        box.set_margin_end(24)
+        box.set_margin_top(24)
+        box.set_margin_bottom(12)
+
+        title = Gtk.Label(label="Local LiteLLM Endpoint")
+        title.add_css_class("title-2")
+        title.set_xalign(0)
+        box.append(title)
+
+        desc = Gtk.Label(
+            label="OpenAI-compatible endpoint used for both transcription and analysis."
+        )
+        desc.set_xalign(0)
+        desc.set_wrap(True)
+        box.append(desc)
+
+        url_label = Gtk.Label(label="Base URL")
+        url_label.set_xalign(0)
+        box.append(url_label)
+        self._litellm_url_entry = Gtk.Entry()
+        self._litellm_url_entry.set_text(
+            self._config.get("litellm_base_url", "http://cerberus-ai:4000/v1")
+        )
+        box.append(self._litellm_url_entry)
+
+        key_label = Gtk.Label(label="API key")
+        key_label.set_xalign(0)
+        box.append(key_label)
+        self._litellm_key_entry = Gtk.PasswordEntry()
+        self._litellm_key_entry.set_show_peek_icon(True)
+        if self._config.get("litellm_api_key"):
+            self._litellm_key_entry.set_text(self._config["litellm_api_key"])
+        box.append(self._litellm_key_entry)
+
+        whisper_label = Gtk.Label(label="Whisper model")
+        whisper_label.set_xalign(0)
+        box.append(whisper_label)
+        self._litellm_whisper_entry = Gtk.Entry()
+        self._litellm_whisper_entry.set_text(
+            self._config.get("litellm_whisper_model", "whisper-turbo")
+        )
+        box.append(self._litellm_whisper_entry)
+
+        chat_label = Gtk.Label(label="Chat model")
+        chat_label.set_xalign(0)
+        box.append(chat_label)
+        self._litellm_chat_entry = Gtk.Entry()
+        self._litellm_chat_entry.set_text(
+            self._config.get("litellm_chat_model", "gemini")
+        )
+        box.append(self._litellm_chat_entry)
+
+        test_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        test_btn = Gtk.Button(label="Test connection")
+        test_btn.connect("clicked", self._on_test_litellm)
+        test_row.append(test_btn)
+        self._litellm_spinner = Gtk.Spinner()
+        test_row.append(self._litellm_spinner)
+        box.append(test_row)
+
+        self._litellm_status = Gtk.Label(label="")
+        self._litellm_status.set_xalign(0)
+        self._litellm_status.set_wrap(True)
+        box.append(self._litellm_status)
+
+        return box
+
+    def _on_test_litellm(self, _btn):
+        base_url = self._litellm_url_entry.get_text().strip().rstrip("/")
+        key = self._litellm_key_entry.get_text().strip()
+        self._litellm_status.set_text("")
+        self._litellm_spinner.start()
+
+        def run():
+            import requests
+
+            try:
+                resp = requests.get(
+                    f"{base_url}/models",
+                    headers={"Authorization": f"Bearer {key}"},
+                    timeout=10,
+                )
+                ok = resp.status_code == 200
+                msg = "✓ Connection OK" if ok else f"Failed — HTTP {resp.status_code}"
+                GLib.idle_add(self._on_test_litellm_done, ok, msg)
+            except Exception as exc:
+                GLib.idle_add(self._on_test_litellm_done, False, f"Failed — {exc}")
+            return False
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _on_test_litellm_done(self, ok: bool, message: str):
+        self._litellm_spinner.stop()
+        self._litellm_status.remove_css_class("error")
+        self._litellm_status.remove_css_class("success")
+        self._litellm_status.add_css_class("success" if ok else "error")
+        self._litellm_status.set_text(message)
+        return False
 
     def _build_api_key_page(self) -> Gtk.Widget:
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -769,35 +918,55 @@ class WizardWindow(Gtk.ApplicationWindow):
             self._next_btn.set_sensitive(False)
         return False
 
+    def _is_skipped(self, page: str) -> bool:
+        if self._provider_mode == "litellm":
+            return page in ("api_key", "grok_key", "gemini_key")
+        return page == "litellm"
+
+    def _next_visible(self, index: int) -> int | None:
+        for i in range(index + 1, len(self.PAGES)):
+            if not self._is_skipped(self.PAGES[i]):
+                return i
+        return None
+
+    def _prev_visible(self, index: int) -> int | None:
+        for i in range(index - 1, -1, -1):
+            if not self._is_skipped(self.PAGES[i]):
+                return i
+        return None
+
     def _update_navigation(self):
-        self._back_btn.set_sensitive(self._current_page > 0)
-        is_last = self._current_page == len(self.PAGES) - 1
+        self._back_btn.set_sensitive(self._prev_visible(self._current_page) is not None)
+        is_last = self._next_visible(self._current_page) is None
         self._next_btn.set_label("Finish" if is_last else "Next")
 
-        if self._current_page == 0:
+        if self.PAGES[self._current_page] == "api_key":
             self._next_btn.set_sensitive(self._api_key_valid)
         else:
             self._next_btn.set_sensitive(True)
 
     def _on_back(self, _btn):
-        if self._current_page > 0:
-            if self.PAGES[self._current_page] == "microphone":
-                self._stop_vu_meter()
-            self._current_page -= 1
-            self._stack.set_visible_child_name(self.PAGES[self._current_page])
-            self._update_navigation()
+        prev = self._prev_visible(self._current_page)
+        if prev is None:
+            return
+        if self.PAGES[self._current_page] == "microphone":
+            self._stop_vu_meter()
+        self._current_page = prev
+        self._stack.set_visible_child_name(self.PAGES[prev])
+        self._update_navigation()
 
     def _on_next(self, _btn):
-        if self._current_page < len(self.PAGES) - 1:
-            self._current_page += 1
-            self._stack.set_visible_child_name(self.PAGES[self._current_page])
-            if self.PAGES[self._current_page] == "microphone":
-                self._enumerate_microphones()
-            else:
-                self._stop_vu_meter()
-            self._update_navigation()
-        else:
+        nxt = self._next_visible(self._current_page)
+        if nxt is None:
             self._finish()
+            return
+        self._current_page = nxt
+        self._stack.set_visible_child_name(self.PAGES[nxt])
+        if self.PAGES[nxt] == "microphone":
+            self._enumerate_microphones()
+        else:
+            self._stop_vu_meter()
+        self._update_navigation()
 
     def _finish(self):
         self._stop_vu_meter()
@@ -809,6 +978,11 @@ class WizardWindow(Gtk.ApplicationWindow):
         mic_name = self._mics[active]["name"] if self._mics and active >= 0 else ""
 
         config = load_config()
+        config["provider_mode"] = self._provider_mode
+        config["litellm_base_url"] = self._litellm_url_entry.get_text().strip()
+        config["litellm_api_key"] = self._litellm_key_entry.get_text().strip()
+        config["litellm_whisper_model"] = self._litellm_whisper_entry.get_text().strip()
+        config["litellm_chat_model"] = self._litellm_chat_entry.get_text().strip()
         config["groq_api_key"] = self._api_key_entry.get_text().strip()
         grok_key = self._grok_key_entry.get_text().strip()
         if grok_key:

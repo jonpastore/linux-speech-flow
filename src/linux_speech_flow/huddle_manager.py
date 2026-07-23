@@ -9,6 +9,7 @@ from datetime import datetime
 
 from gi.repository import GLib
 
+from linux_speech_flow import llm_router
 from linux_speech_flow.config import load_config
 from linux_speech_flow.huddle_recorder import HuddleRecorder
 from linux_speech_flow.notify import send_notification
@@ -431,15 +432,12 @@ class HuddleManager:
                 )
                 return
 
-            from groq import Groq
-
-            api_key = config.get("groq_api_key", "")
-            groq_client = Groq(api_key=api_key, max_retries=0, timeout=60.0)
+            client, model = llm_router.transcription_client_model(config)
 
             with open(wav_path, "rb") as f:
-                response = groq_client.audio.transcriptions.create(
+                response = client.audio.transcriptions.create(
                     file=("chunk.wav", f),
-                    model="whisper-large-v3-turbo",
+                    model=model,
                     response_format="verbose_json",
                 )
             text = response.text or ""
@@ -715,13 +713,14 @@ class HuddleManager:
     def _call_llm_summary(self, transcript: str, config: dict) -> str:
         """Worker thread: call Groq LLM to summarize the transcript."""
         try:
-            from groq import Groq
-
-            client = Groq(api_key=config.get("groq_api_key", ""), max_retries=0)
-            resp = client.chat.completions.create(
-                model=config.get(
+            client, model = llm_router.chat_client_model(
+                config,
+                config.get(
                     "conv_groq_model", "meta-llama/llama-4-scout-17b-16e-instruct"
                 ),
+            )
+            resp = client.chat.completions.create(
+                model=model,
                 messages=[
                     {
                         "role": "system",
@@ -738,13 +737,14 @@ class HuddleManager:
     def _call_llm_action_items(self, transcript: str, config: dict) -> str:
         """Worker thread: call Groq LLM to extract action items."""
         try:
-            from groq import Groq
-
-            client = Groq(api_key=config.get("groq_api_key", ""), max_retries=0)
-            resp = client.chat.completions.create(
-                model=config.get(
+            client, model = llm_router.chat_client_model(
+                config,
+                config.get(
                     "conv_groq_model", "meta-llama/llama-4-scout-17b-16e-instruct"
                 ),
+            )
+            resp = client.chat.completions.create(
+                model=model,
                 messages=[
                     {
                         "role": "system",

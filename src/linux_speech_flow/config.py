@@ -48,6 +48,12 @@ def _migrate_legacy_config() -> None:
 
 DEFAULT_CONFIG = {
     "groq_api_key": "",
+    # Provider routing: "cloud" (paid direct APIs) | "litellm" (local endpoint)
+    "provider_mode": "cloud",
+    "litellm_base_url": "http://cerberus-ai:4000/v1",
+    "litellm_api_key": "",
+    "litellm_whisper_model": "whisper-turbo",
+    "litellm_chat_model": "gemini",
     "microphone": "",
     "vocabulary": [],
     "setup_complete": False,

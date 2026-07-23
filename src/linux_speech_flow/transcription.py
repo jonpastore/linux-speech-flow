@@ -11,6 +11,7 @@ from uuid import uuid4
 import groq
 from gi.repository import GLib
 
+from linux_speech_flow import llm_router
 from linux_speech_flow.config import load_config
 from linux_speech_flow.injector import paste_text
 from linux_speech_flow.notify import send_notification
@@ -197,26 +198,25 @@ class TranscriptionPipeline:
 
     def _process(self, wav_path: str, window_info: dict, config: dict):
         started_at = datetime.utcnow()
-        api_key = config.get("groq_api_key", "")
         sounds_enabled = config.get("sounds_enabled", True)
         output_device = config.get("sounds_output_device", "")
         processing_enabled = config.get("processing_sound_enabled", True)
         success_enabled = config.get("success_sound_enabled", True)
         processing_sound_file = config.get("processing_sound_file", "") or None
         success_sound_file = config.get("success_sound_file", "") or None
-        whisper_model = config.get("whisper_model", "whisper-large-v3-turbo")
         llm_model = config.get("llm_model", "meta-llama/llama-4-scout-17b-16e-instruct")
         system_prompt = config.get("llm_system_prompt", "")
         vocabulary = config.get("vocabulary", [])
+
+        whisper_client, whisper_model = llm_router.transcription_client_model(config)
+        chat_client, chat_model = llm_router.chat_client_model(config, llm_model)
 
         logger.info(
             "processing wav=%s whisper_model=%s llm_model=%s",
             wav_path,
             whisper_model,
-            llm_model,
+            chat_model,
         )
-
-        client = groq.Groq(api_key=api_key, max_retries=0, timeout=120.0)
 
         _slow_timer = threading.Timer(
             15.0,
@@ -239,12 +239,12 @@ class TranscriptionPipeline:
                 processing_sound_file,
             )
 
-        retryable_errors = (groq.APIConnectionError, groq.RateLimitError)
+        retryable_errors = llm_router.retryable_errors(config)
         try:
             logger.info("calling Whisper API...")
             raw_transcript = _call_with_retry(
                 self._transcribe,
-                client,
+                whisper_client,
                 wav_path,
                 whisper_model,
                 retryable=retryable_errors,
@@ -293,14 +293,14 @@ class TranscriptionPipeline:
         final_text = raw_transcript
         llm_failed = False
         try:
-            logger.info("calling LLM post-process (model=%s)...", llm_model)
+            logger.info("calling LLM post-process (model=%s)...", chat_model)
             user_message = _build_user_message(raw_transcript, window_info, vocabulary)
             final_text = _call_with_retry(
                 self._postprocess,
-                client,
+                chat_client,
                 user_message,
                 system_prompt,
-                llm_model,
+                chat_model,
                 retryable=retryable_errors,
             )
             logger.info("LLM result (%d chars): %r", len(final_text), final_text[:120])

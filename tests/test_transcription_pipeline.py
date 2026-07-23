@@ -85,7 +85,7 @@ class TestProcessHappyPath:
         pipeline = _make_pipeline()
         client = _mock_groq_client(transcript="hello world", llm_result="Hello world.")
 
-        with patch("linux_speech_flow.transcription.groq.Groq", return_value=client):
+        with patch("linux_speech_flow.llm_router.groq.Groq", return_value=client):
             pipeline._process(str(wav), _window_info(), _config())
 
         mock_paste.assert_called_once()
@@ -99,7 +99,7 @@ class TestProcessHappyPath:
         pipeline = _make_pipeline()
 
         with patch(
-            "linux_speech_flow.transcription.groq.Groq",
+            "linux_speech_flow.llm_router.groq.Groq",
             return_value=_mock_groq_client(),
         ):
             pipeline._process(str(wav), _window_info(), _config())
@@ -116,7 +116,7 @@ class TestProcessHappyPath:
         mock_glib.idle_add.side_effect = lambda fn, *a: fn(*a)
 
         with patch(
-            "linux_speech_flow.transcription.groq.Groq",
+            "linux_speech_flow.llm_router.groq.Groq",
             return_value=_mock_groq_client(),
         ):
             pipeline._process(str(wav), _window_info(), _config())
@@ -142,7 +142,7 @@ class TestProcessWhisperErrors:
         pipeline = _make_pipeline()
 
         with (
-            patch("linux_speech_flow.transcription.groq.Groq"),
+            patch("linux_speech_flow.llm_router.groq.Groq"),
             patch.object(pipeline, "_transcribe", side_effect=_auth_exc()),
             patch("linux_speech_flow.transcription.shutil.move"),
         ):
@@ -158,7 +158,7 @@ class TestProcessWhisperErrors:
         pipeline = _make_pipeline()
 
         with (
-            patch("linux_speech_flow.transcription.groq.Groq"),
+            patch("linux_speech_flow.llm_router.groq.Groq"),
             patch.object(pipeline, "_transcribe", side_effect=_auth_exc()),
             patch("linux_speech_flow.transcription.shutil.move") as mock_move,
         ):
@@ -175,7 +175,7 @@ class TestProcessWhisperErrors:
         pipeline = _make_pipeline()
 
         with (
-            patch("linux_speech_flow.transcription.groq.Groq"),
+            patch("linux_speech_flow.llm_router.groq.Groq"),
             patch.object(
                 pipeline, "_transcribe", side_effect=OSError("disk read failed")
             ),
@@ -206,7 +206,7 @@ class TestProcessShortTranscript:
         assert len(short.strip()) < MIN_TRANSCRIPT_LEN
 
         with patch(
-            "linux_speech_flow.transcription.groq.Groq",
+            "linux_speech_flow.llm_router.groq.Groq",
             return_value=_mock_groq_client(transcript=short),
         ):
             pipeline._process(str(wav), _window_info(), _config())
@@ -222,7 +222,7 @@ class TestProcessShortTranscript:
         mock_glib.idle_add.side_effect = lambda fn, *a: fn(*a)
 
         with patch(
-            "linux_speech_flow.transcription.groq.Groq",
+            "linux_speech_flow.llm_router.groq.Groq",
             return_value=_mock_groq_client(transcript="hi"),
         ):
             pipeline._process(str(wav), _window_info(), _config())
@@ -250,7 +250,7 @@ class TestProcessLlmFailure:
         client = _mock_groq_client(transcript="raw whisper output")
         client.chat.completions.create.side_effect = Exception("LLM timeout")
 
-        with patch("linux_speech_flow.transcription.groq.Groq", return_value=client):
+        with patch("linux_speech_flow.llm_router.groq.Groq", return_value=client):
             pipeline._process(str(wav), _window_info(), _config())
 
         mock_paste.assert_called_once()
@@ -266,7 +266,7 @@ class TestProcessLlmFailure:
         client = _mock_groq_client(transcript="raw whisper output")
         client.chat.completions.create.side_effect = Exception("LLM timeout")
 
-        with patch("linux_speech_flow.transcription.groq.Groq", return_value=client):
+        with patch("linux_speech_flow.llm_router.groq.Groq", return_value=client):
             pipeline._process(str(wav), _window_info(), _config())
 
         all_args = [str(c) for c in mock_notify.call_args_list]
@@ -295,7 +295,7 @@ class TestProcessBatchPath:
 
         with (
             patch(
-                "linux_speech_flow.transcription.groq.Groq",
+                "linux_speech_flow.llm_router.groq.Groq",
                 return_value=_mock_groq_client(),
             ),
             patch("subprocess.Popen"),
@@ -318,7 +318,7 @@ class TestProcessBatchPath:
         )
 
         with (
-            patch("linux_speech_flow.transcription.groq.Groq", return_value=client),
+            patch("linux_speech_flow.llm_router.groq.Groq", return_value=client),
             patch("subprocess.Popen"),
         ):
             pipeline._process(str(wav), info, _config())

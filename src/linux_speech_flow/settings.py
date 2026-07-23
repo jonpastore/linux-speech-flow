@@ -101,6 +101,29 @@ class SettingsWindow(Gtk.ApplicationWindow):
         api_title.set_xalign(0)
         content.append(api_title)
 
+        provider_sub = Gtk.Label(label="Provider Mode")
+        provider_sub.set_xalign(0)
+        _attrs_p = Pango.AttrList()
+        _attrs_p.insert(
+            Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold"))
+        )
+        provider_sub.set_attributes(_attrs_p)
+        content.append(provider_sub)
+
+        self._provider_cloud_radio = Gtk.CheckButton(
+            label="Cloud APIs (Groq/Grok/Gemini)"
+        )
+        self._provider_litellm_radio = Gtk.CheckButton(
+            label="Local LiteLLM endpoint (free, self-hosted)"
+        )
+        self._provider_litellm_radio.set_group(self._provider_cloud_radio)
+        if self._config.get("provider_mode", "cloud") == "litellm":
+            self._provider_litellm_radio.set_active(True)
+        else:
+            self._provider_cloud_radio.set_active(True)
+        content.append(self._provider_cloud_radio)
+        content.append(self._provider_litellm_radio)
+
         groq_sub = Gtk.Label(label="Groq")
         groq_sub.set_xalign(0)
         _attrs = Pango.AttrList()
@@ -190,6 +213,66 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._gemini_status.set_wrap(True)
         self._gemini_status.add_css_class("error")
         content.append(self._gemini_status)
+
+        litellm_sub = Gtk.Label(label="LiteLLM (local)")
+        litellm_sub.set_xalign(0)
+        litellm_sub.set_margin_top(8)
+        _attrs4 = Pango.AttrList()
+        _attrs4.insert(
+            Pango.AttrFontDesc.new(Pango.FontDescription.from_string("bold"))
+        )
+        litellm_sub.set_attributes(_attrs4)
+        content.append(litellm_sub)
+
+        litellm_url_label = Gtk.Label(label="Base URL")
+        litellm_url_label.set_xalign(0)
+        content.append(litellm_url_label)
+        self._litellm_url_entry = Gtk.Entry()
+        self._litellm_url_entry.set_text(
+            self._config.get("litellm_base_url", "http://cerberus-ai:4000/v1")
+        )
+        content.append(self._litellm_url_entry)
+
+        litellm_key_label = Gtk.Label(label="API key")
+        litellm_key_label.set_xalign(0)
+        content.append(litellm_key_label)
+        self._litellm_key_entry = Gtk.PasswordEntry()
+        self._litellm_key_entry.set_show_peek_icon(True)
+        if self._config.get("litellm_api_key"):
+            self._litellm_key_entry.set_text(self._config["litellm_api_key"])
+        content.append(self._litellm_key_entry)
+
+        litellm_whisper_label = Gtk.Label(label="Whisper model")
+        litellm_whisper_label.set_xalign(0)
+        content.append(litellm_whisper_label)
+        self._litellm_whisper_entry = Gtk.Entry()
+        self._litellm_whisper_entry.set_text(
+            self._config.get("litellm_whisper_model", "whisper-turbo")
+        )
+        content.append(self._litellm_whisper_entry)
+
+        litellm_chat_label = Gtk.Label(label="Chat model")
+        litellm_chat_label.set_xalign(0)
+        content.append(litellm_chat_label)
+        self._litellm_chat_entry = Gtk.Entry()
+        self._litellm_chat_entry.set_text(
+            self._config.get("litellm_chat_model", "gemini")
+        )
+        content.append(self._litellm_chat_entry)
+
+        litellm_test_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self._litellm_test_btn = Gtk.Button(label="Test connection")
+        self._litellm_test_btn.connect("clicked", self._on_test_litellm)
+        litellm_test_row.append(self._litellm_test_btn)
+        self._litellm_spinner = Gtk.Spinner()
+        litellm_test_row.append(self._litellm_spinner)
+        content.append(litellm_test_row)
+
+        self._litellm_status = Gtk.Label(label="")
+        self._litellm_status.set_xalign(0)
+        self._litellm_status.set_wrap(True)
+        self._litellm_status.add_css_class("error")
+        content.append(self._litellm_status)
 
         content = _make_tab("Hotkeys")
 
@@ -1053,6 +1136,48 @@ class SettingsWindow(Gtk.ApplicationWindow):
             )
         return False
 
+    def _on_test_litellm(self, _btn):
+        base_url = self._litellm_url_entry.get_text().strip().rstrip("/")
+        key = self._litellm_key_entry.get_text().strip()
+        self._litellm_status.set_text("")
+        self._litellm_spinner.start()
+        self._litellm_test_btn.set_sensitive(False)
+
+        def run():
+            import requests
+
+            try:
+                resp = requests.get(
+                    f"{base_url}/models",
+                    headers={"Authorization": f"Bearer {key}"},
+                    timeout=10,
+                )
+                if resp.status_code == 200:
+                    GLib.idle_add(self._on_test_litellm_done, {"ok": True})
+                else:
+                    GLib.idle_add(
+                        self._on_test_litellm_done,
+                        {"ok": False, "message": f"HTTP {resp.status_code}"},
+                    )
+            except Exception as exc:
+                GLib.idle_add(
+                    self._on_test_litellm_done, {"ok": False, "message": str(exc)}
+                )
+            return False
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _on_test_litellm_done(self, result: dict):
+        self._litellm_spinner.stop()
+        self._litellm_test_btn.set_sensitive(True)
+        if result["ok"]:
+            self._set_status(self._litellm_status, True, "Connection OK.")
+        else:
+            self._set_status(
+                self._litellm_status, False, result.get("message", "Test failed")
+            )
+        return False
+
     def _on_save(self, _btn):
         self._stop_vu_meter()
         buf = self._vocab_view.get_buffer()
@@ -1085,6 +1210,13 @@ class SettingsWindow(Gtk.ApplicationWindow):
         config["history_max_entries"] = int(self._history_max_entries_spin.get_value())
         config["grok_api_key"] = self._grok_key_entry.get_text().strip()
         config["gemini_api_key"] = self._gemini_key_entry.get_text().strip()
+        config["provider_mode"] = (
+            "litellm" if self._provider_litellm_radio.get_active() else "cloud"
+        )
+        config["litellm_base_url"] = self._litellm_url_entry.get_text().strip()
+        config["litellm_api_key"] = self._litellm_key_entry.get_text().strip()
+        config["litellm_whisper_model"] = self._litellm_whisper_entry.get_text().strip()
+        config["litellm_chat_model"] = self._litellm_chat_entry.get_text().strip()
         config["conv_silence_rms_threshold"] = self._conv_threshold_scale.get_value()
         config["conv_silence_warn_sec"] = int(self._conv_warn_spin.get_value())
         config["conv_silence_stop_sec"] = int(self._conv_stop_spin.get_value())
@@ -1197,6 +1329,11 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._history_max_entries_spin.connect("value-changed", md)
         self._grok_key_entry.connect("changed", md)
         self._gemini_key_entry.connect("changed", md)
+        self._provider_cloud_radio.connect("toggled", md)
+        self._litellm_url_entry.connect("changed", md)
+        self._litellm_key_entry.connect("changed", md)
+        self._litellm_whisper_entry.connect("changed", md)
+        self._litellm_chat_entry.connect("changed", md)
         self._conv_warn_spin.connect("value-changed", md)
         self._conv_stop_spin.connect("value-changed", md)
         self._conv_save_entry.connect("changed", md)
