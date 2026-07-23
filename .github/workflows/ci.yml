@@ -66,8 +66,7 @@ jobs:
         run: pip-audit
 
       - name: Ruff lint (report-only)
-        run: ruff check src/ tests/
-        continue-on-error: true
+        run: ruff check --exit-zero src/ tests/
 
   build:
     name: Build
