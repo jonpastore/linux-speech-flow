@@ -138,9 +138,16 @@ class TestSlackSocketCallbackRegistration:
 
 
 class TestWizardPageCount:
-    def test_wizard_has_six_pages(self):
+    def test_wizard_pages(self):
         from linux_speech_flow.wizard import WizardWindow
 
-        assert len(WizardWindow.PAGES) == 6, (
-            f"Expected 6 wizard pages, got {len(WizardWindow.PAGES)}: {WizardWindow.PAGES}"
-        )
+        assert WizardWindow.PAGES == [
+            "provider",
+            "api_key",
+            "grok_key",
+            "gemini_key",
+            "litellm",
+            "slack_key",
+            "microphone",
+            "vocabulary",
+        ], f"Unexpected wizard pages: {WizardWindow.PAGES}"
