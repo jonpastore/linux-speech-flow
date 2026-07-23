@@ -1,7 +1,0 @@
-{
-  "tool_name": "mcp__gmail-enhanced__gmail_search_messages",
-  "tool_input_preview": "{\"account\":\"jpastore79@gmail.com\",\"q\":\"from:github.com (Run failed OR \\\"Actions run\\\" OR workflow) newer_than:1d\",\"maxResults\":30}",
-  "error": "MCP error -32602: Unknown account: jpastore79@gmail.com. Available: none",
-  "timestamp": "2026-07-23T21:08:49.476Z",
-  "retry_count": 1
-}

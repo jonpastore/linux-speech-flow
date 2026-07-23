@@ -74,6 +74,10 @@ config.json
 .planning/
 .claude/
 
+# ─── OMC operational state (runtime only; project skills are the exception) ──
+/.omc/*
+!/.omc/skills/
+
 # ─── USER DATA — never commit ──────────────────────────────────────────────────
 # SQLite history lives at ~/.local/share/linux-speech-flow/history.db
 *.db

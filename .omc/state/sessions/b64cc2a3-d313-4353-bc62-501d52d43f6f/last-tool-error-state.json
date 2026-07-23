@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"echo \\\"=== hooks block in settings.json ===\\\"; python3 -c \\\"\\nimport json\\ns=json.load(open('/home/jon/.claude/settings.json'))\\nh=s.get('hooks',{})\\nfor evt,arr in h.items():\\n    for g i...",
-  "error": "Exit code 2\n=== hooks block in settings.json ===\nPreToolUse: /home/jon/projects/morpheus/scripts/morpheus-ai-hook\nPreToolUse: /home/jon/projects/morpheus/scripts/morpheus-ai-hook\nSessionStart: python /home/jon/projects/gmail-enhanced-mcp/scripts/refresh-mail-hud.py\nStop: MEMORY_API_URL=http://cerberus-ai:9030 timeout 12 python3 /home/jon/projects/jarvis/memory-mcp/server.py sync >> /home/j\nStop: /home/jon/.claude/hooks/jarvis-activity.sh stop claude\nUserPromptSubmit: /home/jon/.claude/hooks/jarv...",
-  "timestamp": "2026-07-23T18:14:29.965Z",
-  "retry_count": 1
-}
