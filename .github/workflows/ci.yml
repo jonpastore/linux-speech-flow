@@ -12,7 +12,7 @@ jobs:
       matrix:
         python-version: ["3.10", "3.12"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # full history so setuptools-scm can derive the version
 
@@ -41,7 +41,7 @@ jobs:
     name: Security scan
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install system dependencies
         run: |
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # full history so setuptools-scm can derive the version
       - uses: actions/setup-python@v5
@@ -126,7 +126,7 @@ jobs:
             ruby ruby-dev build-essential
           gem install --no-document fpm
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
