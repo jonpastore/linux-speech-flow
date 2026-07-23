@@ -29,7 +29,7 @@ jobs:
 
       - name: Install package and test deps
         run: |
-          pip install PyGObject
+          pip install 'PyGObject<3.52'  # 3.52+ needs girepository-2.0; runner has libgirepository1.0-dev
           pip install -e . pytest
 
       - name: Run tests
@@ -68,7 +68,7 @@ jobs:
           ")
           # Staging layout: /opt/linux-speech-flow/venv + /usr/local/bin wrapper
           mkdir -p dist-deb/opt/linux-speech-flow
-          pip install PyGObject
+          pip install 'PyGObject<3.52'  # 3.52+ needs girepository-2.0; runner has libgirepository1.0-dev
           python3 -m venv --copies dist-deb/opt/linux-speech-flow/venv
           dist-deb/opt/linux-speech-flow/venv/bin/pip install --quiet .
           mkdir -p dist-deb/usr/local/bin
