@@ -37,6 +37,38 @@ jobs:
       - name: Run tests
         run: xvfb-run -a pytest --tb=short -q
 
+  security:
+    name: Security scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y \
+            libgirepository1.0-dev libcairo2-dev pkg-config python3-dev \
+            libpulse-dev libdbus-1-dev
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install app + scanners
+        run: |
+          pip install 'PyGObject<3.52'  # girepository-1.0 boundary
+          pip install . 'bandit[toml]' pip-audit ruff
+
+      - name: Bandit — static security analysis (fail on medium+)
+        run: bandit -r src/ -c pyproject.toml --severity-level medium
+
+      - name: pip-audit — dependency vulnerabilities (fail on any CVE)
+        run: pip-audit
+
+      - name: Ruff lint (report-only)
+        run: ruff check src/ tests/
+        continue-on-error: true
+
   build:
     name: Build
     runs-on: ubuntu-24.04

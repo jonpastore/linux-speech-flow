@@ -24,7 +24,16 @@ sudo apt install python3-gi gir1.2-gtk-4.0 libgirepository1.0-dev xdotool
 pytest --tb=short -q
 ```
 
-## Code Style
+## Code Style & Static Analysis
+
+Install the pre-commit hooks once — they run ruff (lint + format) and bandit on the files you touch:
+
+```bash
+pip install pre-commit && pre-commit install
+```
+
+CI additionally hard-gates every push/PR with **bandit** (security static analysis) and **pip-audit**
+(dependency vulnerabilities); a merge fails if either finds an issue.
 
 - Follow existing code conventions
 - No new dependencies without discussion

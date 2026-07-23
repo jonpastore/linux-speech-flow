@@ -47,6 +47,13 @@ Repository = "https://github.com/jonpastore/linux-speech-flow"
 Issues = "https://github.com/jonpastore/linux-speech-flow/issues"
 Changelog = "https://github.com/jonpastore/linux-speech-flow/blob/main/CHANGELOG.md"
 
+[tool.ruff]
+src = ["src"]
+target-version = "py310"
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+
 [tool.setuptools_scm]
 # Version from git tags (e.g. v0.2.0 -> 0.2.0). Untagged builds get a dev
 # version; fallback covers sdist/no-git builds where scm metadata is absent.
