@@ -20,7 +20,7 @@ jobs:
           sudo apt-get install -y \
             libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gtk-3.0 \
             libcairo2-dev pkg-config python3-dev \
-            libpulse-dev \
+            libpulse-dev libdbus-1-dev \
             xdotool xclip libnotify-bin
 
       - uses: actions/setup-python@v5
@@ -47,7 +47,7 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y \
             libgirepository1.0-dev libcairo2-dev pkg-config python3-dev \
-            libpulse-dev ruby
+            libpulse-dev libdbus-1-dev ruby
 
       - uses: actions/setup-python@v5
         with:
