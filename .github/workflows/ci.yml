@@ -18,7 +18,7 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y \
-            libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gtk-3.0 \
+            libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gtk-4.0 \
             libcairo2-dev pkg-config python3-dev \
             libpulse-dev libdbus-1-dev \
             xdotool xclip libnotify-bin
