@@ -21,7 +21,7 @@ jobs:
             libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gtk-4.0 \
             libcairo2-dev pkg-config python3-dev \
             libpulse-dev libdbus-1-dev \
-            xdotool xclip libnotify-bin
+            xdotool xclip libnotify-bin xvfb
 
       - uses: actions/setup-python@v5
         with:
@@ -33,7 +33,7 @@ jobs:
           pip install -e . pytest
 
       - name: Run tests
-        run: pytest --tb=short -q
+        run: xvfb-run -a pytest --tb=short -q
 
   build:
     name: Build
