@@ -25,7 +25,7 @@ jobs:
             libpulse-dev libdbus-1-dev \
             xdotool xclip libnotify-bin xvfb
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -50,7 +50,7 @@ jobs:
             libgirepository1.0-dev libcairo2-dev pkg-config python3-dev \
             libpulse-dev libdbus-1-dev
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -79,7 +79,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0   # full history so setuptools-scm can derive the version
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Build wheel
