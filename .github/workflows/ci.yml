@@ -201,14 +201,14 @@ jobs:
       id-token: write   # for PyPI trusted publishing (OIDC — no API token needed)
     steps:
       - name: Download all .deb artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: deb-*
           path: debs
           merge-multiple: true
 
       - name: Download wheel artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: wheel
           path: dist/
