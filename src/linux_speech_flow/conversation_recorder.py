@@ -1,13 +1,13 @@
 import logging
 import math
 import os
-import pasimple
 import shutil
 import struct
 import tempfile
 import threading
 import wave
 
+import pasimple
 from gi.repository import GLib
 
 logger = logging.getLogger(__name__)
@@ -236,7 +236,9 @@ class ConversationRecorder:
                         sorted_rms = sorted(calib_rms_values)
                         quartile_idx = max(0, len(sorted_rms) // 4 - 1)
                         ambient = sorted_rms[quartile_idx]
-                        calibrated = max(CALIB_MIN, min(CALIB_MAX, ambient * CALIB_FACTOR))
+                        calibrated = max(
+                            CALIB_MIN, min(CALIB_MAX, ambient * CALIB_FACTOR)
+                        )
                         logger.info(
                             "auto_calibrate: ambient_25pct=%.5f -> threshold=%.5f (%.1fx)",
                             ambient,
@@ -259,12 +261,17 @@ class ConversationRecorder:
                                 silence_frames % RECALIB_SILENCE_FRAMES == 0
                                 and len(recalib_buffer) >= RECALIB_SILENCE_FRAMES
                             ):
-                                recent = sorted(recalib_buffer[-RECALIB_SILENCE_FRAMES:])
+                                recent = sorted(
+                                    recalib_buffer[-RECALIB_SILENCE_FRAMES:]
+                                )
                                 ambient = recent[len(recent) // 4]
                                 recalibrated = max(
                                     CALIB_MIN, min(CALIB_MAX, ambient * CALIB_FACTOR)
                                 )
-                                if abs(recalibrated - self._silence_rms_threshold) > 0.001:
+                                if (
+                                    abs(recalibrated - self._silence_rms_threshold)
+                                    > 0.001
+                                ):
                                     logger.info(
                                         "recalibrate: silence_25pct=%.5f -> threshold %.5f -> %.5f",
                                         ambient,
@@ -314,7 +321,11 @@ class ConversationRecorder:
                         )
                         break
 
-                    if max_chunk_frames > 0 and frames_written >= max_chunk_frames and had_audio:
+                    if (
+                        max_chunk_frames > 0
+                        and frames_written >= max_chunk_frames
+                        and had_audio
+                    ):
                         logger.info(
                             "chunk %d: time boundary reached at frame=%d (%.1fs) had_audio=%s",
                             chunk_index,
@@ -326,7 +337,11 @@ class ConversationRecorder:
 
             # Drain remaining speech after stop so last words aren't truncated.
             # Continue reading until 1s of natural silence or 10s max.
-            if self._stop_event.is_set() and had_audio and silence_frames < silence_limit_frames:
+            if (
+                self._stop_event.is_set()
+                and had_audio
+                and silence_frames < silence_limit_frames
+            ):
                 drain_silence_frames = int(1.0 / CHUNK_DURATION)
                 drain_max_frames = int(10.0 / CHUNK_DURATION)
                 drained = 0
@@ -345,7 +360,9 @@ class ConversationRecorder:
                     frames_written += 1
                     drained += 1
                     samples = struct.unpack(f"{len(raw) // SAMPLE_WIDTH}h", raw)
-                    rms = math.sqrt(sum(s * s for s in samples) / len(samples)) / 32768.0
+                    rms = (
+                        math.sqrt(sum(s * s for s in samples) / len(samples)) / 32768.0
+                    )
                     if rms < self._silence_rms_threshold:
                         silence_frames += 1
                     else:

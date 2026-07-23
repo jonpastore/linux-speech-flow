@@ -2,11 +2,12 @@
 
 pasimple and GLib are mocked throughout — no audio hardware or GTK required.
 """
+
 import math
 import os
 import struct
 import wave
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -254,7 +255,9 @@ class TestRecordOneChunk:
             for c in mock_glib.idle_add.call_args_list
             if c[0][0] == rec._on_audio_level
         ]
-        assert len(level_calls) == 5  # frames >= MIN_GUARD_FRAMES: last guard + 3 + stop
+        assert (
+            len(level_calls) == 5
+        )  # frames >= MIN_GUARD_FRAMES: last guard + 3 + stop
         rec.cleanup()
 
     def test_frames_written_counts_all_frames(self, mock_glib, tmp_path):
@@ -300,7 +303,9 @@ class TestAutoCalibration:
         assert rec._silence_rms_threshold == pytest.approx(0.005)
         rec.cleanup()
 
-    def test_calibration_raises_threshold_for_noisy_environment(self, mock_glib, tmp_path):
+    def test_calibration_raises_threshold_for_noisy_environment(
+        self, mock_glib, tmp_path
+    ):
         """Loud ambient (restaurant music) → calibration fires and raises threshold.
 
         Previously calibration was skipped when ambient > initial threshold, which
@@ -319,7 +324,9 @@ class TestAutoCalibration:
         assert rec._silence_rms_threshold > 0.005  # must be higher than default
         rec.cleanup()
 
-    def test_calibration_fires_on_threshold_calibrated_callback(self, mock_glib, tmp_path):
+    def test_calibration_fires_on_threshold_calibrated_callback(
+        self, mock_glib, tmp_path
+    ):
         """on_threshold_calibrated called via GLib.idle_add when calib succeeds."""
         rec = _make_rec(silence_rms_threshold=0.005)
         frames = [_audio_frame(0.0003)] * (CALIB_FRAMES + 2)

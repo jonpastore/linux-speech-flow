@@ -1,6 +1,7 @@
 import gi
+
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, GLib
+from gi.repository import Gtk
 
 
 class OnboardingDialog(Gtk.ApplicationWindow):
@@ -71,7 +72,11 @@ class OnboardingDialog(Gtk.ApplicationWindow):
         rows = [
             ("Groq", "Required — transcription", "https://console.groq.com/"),
             ("Grok (xAI)", "Optional — conversation AI", "https://console.x.ai/"),
-            ("Gemini", "Optional — conversation AI", "https://aistudio.google.com/apikey"),
+            (
+                "Gemini",
+                "Optional — conversation AI",
+                "https://aistudio.google.com/apikey",
+            ),
             ("Slack", "Optional — Slack integration", "https://api.slack.com/apps"),
         ]
         for row_idx, (service, req, url) in enumerate(rows, 1):

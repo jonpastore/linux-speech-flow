@@ -1,9 +1,11 @@
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, Gdk, Pango, GLib
 from datetime import datetime
 from pathlib import Path
+
+from gi.repository import Gdk, Gtk, Pango
+
 from linux_speech_flow.config import load_config, save_config
 from linux_speech_flow.history import HistoryStore
 
@@ -73,9 +75,9 @@ class HistoryRow(Gtk.ListBoxRow):
         copy_processed_btn = Gtk.Button(label="Copy")
         copy_processed_btn.connect(
             "clicked",
-            lambda _btn, t=processed_text: Gdk.Display.get_default()
-            .get_clipboard()
-            .set(t),
+            lambda _btn, t=processed_text: (
+                Gdk.Display.get_default().get_clipboard().set(t)
+            ),
         )
         self._detail.append(copy_processed_btn)
 

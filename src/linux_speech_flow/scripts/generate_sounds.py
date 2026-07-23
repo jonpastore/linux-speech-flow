@@ -2,6 +2,7 @@
 """Dev script: generate bundled WAV sound files for linux-speech-flow.
 Run from the repo root: python src/linux_speech_flow/scripts/generate_sounds.py
 """
+
 import math
 import struct
 import wave

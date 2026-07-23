@@ -1,0 +1,351 @@
+{
+  "version": 1,
+  "jobId": "55f139a8-d7e9-4286-9d5e-0548070c35c4",
+  "sessionId": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+  "scopeKey": "ca36fa2004515bf2c429a9850994d94332f9deb792b878f17a59300c2e0b8e54",
+  "revision": 41,
+  "createdAt": "2026-07-23T18:25:45.813Z",
+  "updatedAt": "2026-07-23T18:25:46.672Z",
+  "producerGraceExpiresAt": "2026-07-23T18:26:15.814Z",
+  "bestEffortDeadlineAt": "2026-07-23T18:27:06.814Z",
+  "producers": {
+    "core": {
+      "state": "sealed",
+      "intentKey": "5a9bf8fcfaf4e55ce5eb7809ef812fb3d48bb04afe70ad2411537f46fc44d550",
+      "payloadDigest": "5a9bf8fcfaf4e55ce5eb7809ef812fb3d48bb04afe70ad2411537f46fc44d550",
+      "sealedAt": "2026-07-23T18:25:45.834Z",
+      "sealedBy": "foreground"
+    },
+    "wiki": {
+      "state": "no-op",
+      "sealedAt": "2026-07-23T18:25:45.828Z",
+      "sealedBy": "wiki-producer"
+    }
+  },
+  "actions": {
+    "foreground-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 0,
+      "idempotencyKey": "31258130b5487d3ade39dbf0fc46df59d99f09b150c5d6fb382ae5ca057229cf",
+      "payload": {
+        "transcriptPath": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+        "cwd": "/home/jon/projects/linux-speech-flow",
+        "reason": "prompt_input_exit",
+        "input": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "transcript_path": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+          "cwd": "/home/jon/projects/linux-speech-flow",
+          "prompt_id": "9a7a4a95-6664-4944-af7d-9a07f7c9b3db",
+          "hook_event_name": "SessionEnd",
+          "reason": "prompt_input_exit"
+        },
+        "metrics": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "ended_at": "2026-07-23T18:25:45.811Z",
+          "reason": "prompt_input_exit",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {},
+        "foregroundResult": {
+          "removedTransientFiles": 3,
+          "completedAt": "2026-07-23T18:25:45.830Z"
+        }
+      },
+      "budgetMs": 9000,
+      "completedAt": "2026-07-23T18:25:45.834Z",
+      "lastOutcomeCode": "completed"
+    },
+    "wiki-capture": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 0,
+      "idempotencyKey": "1c12c04528f50fa931523730ec3f5d522ba2ebe6f53f2617179363f934778d3b",
+      "payload": {
+        "transcriptPath": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+        "cwd": "/home/jon/projects/linux-speech-flow",
+        "reason": "prompt_input_exit",
+        "input": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "transcript_path": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+          "cwd": "/home/jon/projects/linux-speech-flow",
+          "prompt_id": "9a7a4a95-6664-4944-af7d-9a07f7c9b3db",
+          "hook_event_name": "SessionEnd",
+          "reason": "prompt_input_exit"
+        },
+        "metrics": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "ended_at": "2026-07-23T18:25:45.811Z",
+          "reason": "prompt_input_exit",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {}
+      },
+      "budgetMs": 9000,
+      "completedAt": "2026-07-23T18:25:45.828Z"
+    },
+    "team-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "2831eb952febd94f7f4e879ba3e5b7eecb152184ee612b19c862f33f2b08fea9",
+      "payload": {
+        "transcriptPath": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+        "cwd": "/home/jon/projects/linux-speech-flow",
+        "reason": "prompt_input_exit",
+        "input": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "transcript_path": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+          "cwd": "/home/jon/projects/linux-speech-flow",
+          "prompt_id": "9a7a4a95-6664-4944-af7d-9a07f7c9b3db",
+          "hook_event_name": "SessionEnd",
+          "reason": "prompt_input_exit"
+        },
+        "metrics": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "ended_at": "2026-07-23T18:25:45.811Z",
+          "reason": "prompt_input_exit",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {}
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-07-23T18:25:45.901Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "6aedfc4f-6659-42ab-acd1-979cb8976faf",
+        "phase": "terminal",
+        "deadlineAt": "2026-07-23T18:25:55.885Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-07-23T18:25:46.022Z"
+    },
+    "python-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "90d05e73462150fd7b57cb0eeaa623336463dc01565ca9f0a777921c37e2b7f3",
+      "payload": {
+        "transcriptPath": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+        "cwd": "/home/jon/projects/linux-speech-flow",
+        "reason": "prompt_input_exit",
+        "input": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "transcript_path": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+          "cwd": "/home/jon/projects/linux-speech-flow",
+          "prompt_id": "9a7a4a95-6664-4944-af7d-9a07f7c9b3db",
+          "hook_event_name": "SessionEnd",
+          "reason": "prompt_input_exit"
+        },
+        "metrics": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "ended_at": "2026-07-23T18:25:45.811Z",
+          "reason": "prompt_input_exit",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {}
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-07-23T18:25:46.030Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "4d948055-fd6c-41fa-a936-a4f77cf8ffe1",
+        "phase": "terminal",
+        "deadlineAt": "2026-07-23T18:25:55.885Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-07-23T18:25:46.172Z"
+    },
+    "reply-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "84dc4cf042ec2c0e89c9a76467ba8716081f4984a9b831d3ad58dda57307591e",
+      "payload": {
+        "transcriptPath": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+        "cwd": "/home/jon/projects/linux-speech-flow",
+        "reason": "prompt_input_exit",
+        "input": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "transcript_path": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+          "cwd": "/home/jon/projects/linux-speech-flow",
+          "prompt_id": "9a7a4a95-6664-4944-af7d-9a07f7c9b3db",
+          "hook_event_name": "SessionEnd",
+          "reason": "prompt_input_exit"
+        },
+        "metrics": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "ended_at": "2026-07-23T18:25:45.811Z",
+          "reason": "prompt_input_exit",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {}
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-07-23T18:25:46.179Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "804d2e98-b922-4f19-8b10-0e103c173492",
+        "phase": "terminal",
+        "deadlineAt": "2026-07-23T18:25:55.885Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-07-23T18:25:46.287Z"
+    },
+    "callback": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "fbfbbb08c48c5520285a479327bdda2cd8f2f72087ab3166818f8a5c9160aba2",
+      "payload": {
+        "transcriptPath": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+        "cwd": "/home/jon/projects/linux-speech-flow",
+        "reason": "prompt_input_exit",
+        "input": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "transcript_path": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+          "cwd": "/home/jon/projects/linux-speech-flow",
+          "prompt_id": "9a7a4a95-6664-4944-af7d-9a07f7c9b3db",
+          "hook_event_name": "SessionEnd",
+          "reason": "prompt_input_exit"
+        },
+        "metrics": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "ended_at": "2026-07-23T18:25:45.811Z",
+          "reason": "prompt_input_exit",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {}
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-07-23T18:25:46.294Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "c5b0ac4f-bb51-487c-9a76-fbb366d381fc",
+        "phase": "terminal",
+        "deadlineAt": "2026-07-23T18:25:55.885Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-07-23T18:25:46.424Z"
+    },
+    "notification": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "b203b46869534f703cfb816d342e825f2082d8bcf93e92d9e5ed19bc1661bdcb",
+      "payload": {
+        "transcriptPath": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+        "cwd": "/home/jon/projects/linux-speech-flow",
+        "reason": "prompt_input_exit",
+        "input": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "transcript_path": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+          "cwd": "/home/jon/projects/linux-speech-flow",
+          "prompt_id": "9a7a4a95-6664-4944-af7d-9a07f7c9b3db",
+          "hook_event_name": "SessionEnd",
+          "reason": "prompt_input_exit"
+        },
+        "metrics": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "ended_at": "2026-07-23T18:25:45.811Z",
+          "reason": "prompt_input_exit",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {}
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-07-23T18:25:46.432Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "14c05769-7995-4d3f-9dcb-e3f31fd2e47e",
+        "phase": "terminal",
+        "deadlineAt": "2026-07-23T18:25:55.885Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-07-23T18:25:46.551Z"
+    },
+    "openclaw": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "8642ba7e9cbb4bd8fc7bfbe9ccdd0435c8fd72ee025f4b25dd1e7dd18727edce",
+      "payload": {
+        "transcriptPath": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+        "cwd": "/home/jon/projects/linux-speech-flow",
+        "reason": "prompt_input_exit",
+        "input": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "transcript_path": "/home/jon/.claude/projects/-home-jon-projects-linux-speech-flow/b64cc2a3-d313-4353-bc62-501d52d43f6f.jsonl",
+          "cwd": "/home/jon/projects/linux-speech-flow",
+          "prompt_id": "9a7a4a95-6664-4944-af7d-9a07f7c9b3db",
+          "hook_event_name": "SessionEnd",
+          "reason": "prompt_input_exit"
+        },
+        "metrics": {
+          "session_id": "b64cc2a3-d313-4353-bc62-501d52d43f6f",
+          "ended_at": "2026-07-23T18:25:45.811Z",
+          "reason": "prompt_input_exit",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {}
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-07-23T18:25:46.558Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "e5485581-fd5c-429c-8639-1a22573c888c",
+        "phase": "terminal",
+        "deadlineAt": "2026-07-23T18:25:55.885Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-07-23T18:25:46.658Z"
+    }
+  },
+  "owner": null,
+  "phase": "complete",
+  "completion": {
+    "completedAt": "2026-07-23T18:25:46.665Z",
+    "terminalDigest": "30005d2fb7eadd00736bc2f378fff017059bb27c8a25c15cc65e955c611e6ac8",
+    "terminalRevision": 40
+  }
+}

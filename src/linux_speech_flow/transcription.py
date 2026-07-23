@@ -12,7 +12,6 @@ import groq
 from gi.repository import GLib
 
 from linux_speech_flow.config import load_config
-from linux_speech_flow.history import HistoryStore
 from linux_speech_flow.injector import paste_text
 from linux_speech_flow.notify import send_notification
 from linux_speech_flow.sounds import play_sound
@@ -60,7 +59,7 @@ def _call_with_retry(fn, *args, retryable, **kwargs):
     for i, delay in enumerate(FIBONACCI_DELAYS):
         try:
             return fn(*args, **kwargs)
-        except retryable as exc:
+        except retryable:
             if i == len(FIBONACCI_DELAYS) - 1:
                 raise
             time.sleep(delay)

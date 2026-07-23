@@ -105,7 +105,7 @@ DEFAULT_CONFIG = {
     "conv_silence_stop_sec": 60,  # seconds of silence before auto-stop (after warn dismissed)
     "conv_hard_limit_sec": 14400,  # 4 hours in seconds; hard recording limit
     "conv_chunk_silence_sec": 3,  # intra-session chunk boundary silence (ConversationRecorder)
-    "conv_chunk_max_sec": 20,    # force chunk boundary after N seconds even without silence
+    "conv_chunk_max_sec": 20,  # force chunk boundary after N seconds even without silence
     "conv_silence_rms_threshold": 0.005,  # RMS amplitude below which audio is classified as silence (0.0–0.05)
     "conv_save_dir": "~/Documents/conversations",  # expanded at use time via Path.expanduser()
     "conv_feedback_mode": "status_window",  # "tray_only" or "status_window"

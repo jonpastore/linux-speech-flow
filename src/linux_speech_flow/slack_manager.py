@@ -1,7 +1,9 @@
 import logging
+
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-from linux_speech_flow.config import load_config, save_config, CONFIG_PATH
+
+from linux_speech_flow.config import CONFIG_PATH, load_config, save_config
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +63,7 @@ class SlackManager:
         text: str,
         blocks: list | None = None,
         *,
-        _path=CONFIG_PATH
+        _path=CONFIG_PATH,
     ) -> bool:
         """Post a message to a Slack channel. Returns True on success."""
         workspaces = self.get_workspaces(_path=_path)
@@ -111,7 +113,7 @@ class SlackManager:
         file_path: str,
         title: str,
         *,
-        _path=CONFIG_PATH
+        _path=CONFIG_PATH,
     ) -> bool:
         """Upload a file to a Slack channel. Returns True on success.
 

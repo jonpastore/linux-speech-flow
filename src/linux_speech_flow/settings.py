@@ -2,18 +2,18 @@ import math
 import struct
 import subprocess
 import threading
+
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, Gdk, GLib, GObject, Gio, Pango
+from gi.repository import Gdk, Gio, GLib, GObject, Gtk, Pango
 
 from linux_speech_flow.hotkey import (
-    parse_combo,
-    combo_display,
-    HOTKEY_DEFAULTS,
-    HOTKEY_CONFIG_KEYS,
-    HOTKEY_ACTION_LABELS,
     DANGEROUS_COMBOS,
+    HOTKEY_ACTION_LABELS,
+    HOTKEY_CONFIG_KEYS,
+    HOTKEY_DEFAULTS,
+    combo_display,
 )
 
 _GTK_MODIFIER_KEYSYMS: frozenset
@@ -27,13 +27,13 @@ LLM_MODELS = [
     "mixtral-8x7b-32768",
 ]
 
+import pulsectl
+
 from linux_speech_flow.audio import list_microphones
 from linux_speech_flow.config import load_config, save_config
 from linux_speech_flow.groq_client import validate_api_key
-from linux_speech_flow.history import HistoryStore, DB_PATH
+from linux_speech_flow.history import HistoryStore
 from linux_speech_flow.transcription import FAILED_DIR
-
-import pulsectl
 
 
 def _block_scroll(combo: Gtk.ComboBoxText) -> None:
@@ -1125,9 +1125,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         config["slack_huddle_auto_detect"] = (
             self._huddle_auto_detect_combo.get_active_id() or "prompt"
         )
-        config[
-            "slack_activation_word"
-        ] = self._slack_activation_entry.get_text().strip()
+        config["slack_activation_word"] = (
+            self._slack_activation_entry.get_text().strip()
+        )
         config["slack_confidence_threshold"] = self._slack_confidence_spin.get_value()
         save_config(config)
         self._closing = True
@@ -1242,7 +1242,7 @@ class SettingsWindow(Gtk.ApplicationWindow):
 
         global _GTK_MODIFIER_KEYSYMS
         try:
-            _GTK_MODIFIER_KEYSYMS
+            _GTK_MODIFIER_KEYSYMS  # noqa: B018 — probe: reference to trigger NameError on first use
         except NameError:
             _GTK_MODIFIER_KEYSYMS = frozenset(
                 {

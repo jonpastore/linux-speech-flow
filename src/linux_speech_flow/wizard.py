@@ -223,16 +223,16 @@ TECH_STACKS = {
 import struct
 import subprocess
 import threading
+
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, GLib
+import pulsectl
+from gi.repository import GLib, Gtk
 
 from linux_speech_flow.audio import list_microphones
 from linux_speech_flow.config import load_config, save_config
 from linux_speech_flow.groq_client import validate_api_key
-
-import pulsectl
 
 
 def _block_scroll(combo: Gtk.ComboBoxText) -> None:
@@ -242,9 +242,16 @@ def _block_scroll(combo: Gtk.ComboBoxText) -> None:
 
 
 class WizardWindow(Gtk.ApplicationWindow):
-    PAGES = ["api_key", "grok_key", "gemini_key", "slack_key", "microphone", "vocabulary"]
+    PAGES = [
+        "api_key",
+        "grok_key",
+        "gemini_key",
+        "slack_key",
+        "microphone",
+        "vocabulary",
+    ]
 
-    def __init__(self, application, config: dict = None):
+    def __init__(self, application, config: dict | None = None):
         super().__init__(application=application, title="linux-speech-flow Setup")
         self._config = config if config is not None else load_config()
         self._api_key_valid = False
@@ -353,7 +360,9 @@ class WizardWindow(Gtk.ApplicationWindow):
         title.set_xalign(0)
         box.append(title)
 
-        desc = Gtk.Label(label="Required only for conversation analysis with Grok by xAI.")
+        desc = Gtk.Label(
+            label="Required only for conversation analysis with Grok by xAI."
+        )
         desc.set_xalign(0)
         desc.set_wrap(True)
         box.append(desc)
@@ -364,7 +373,9 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.append(self._grok_key_entry)
 
         link = Gtk.Label()
-        link.set_markup('<a href="https://console.x.ai/">Get API key at console.x.ai</a>')
+        link.set_markup(
+            '<a href="https://console.x.ai/">Get API key at console.x.ai</a>'
+        )
         link.set_xalign(0)
         box.append(link)
 
@@ -380,7 +391,10 @@ class WizardWindow(Gtk.ApplicationWindow):
         validate_btn.connect("clicked", self._on_validate_grok)
         btn_row.append(validate_btn)
         skip_btn = Gtk.Button(label="Skip")
-        skip_btn.connect("clicked", lambda _: (self._grok_key_entry.set_text(""), self._on_next(None)))
+        skip_btn.connect(
+            "clicked",
+            lambda _: (self._grok_key_entry.set_text(""), self._on_next(None)),
+        )
         btn_row.append(skip_btn)
         box.append(btn_row)
 
@@ -407,7 +421,9 @@ class WizardWindow(Gtk.ApplicationWindow):
         title.set_xalign(0)
         box.append(title)
 
-        desc = Gtk.Label(label="Required only for conversation analysis with Google Gemini.")
+        desc = Gtk.Label(
+            label="Required only for conversation analysis with Google Gemini."
+        )
         desc.set_xalign(0)
         desc.set_wrap(True)
         box.append(desc)
@@ -418,7 +434,9 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.append(self._gemini_key_entry)
 
         link = Gtk.Label()
-        link.set_markup('<a href="https://aistudio.google.com/apikey">Get API key at aistudio.google.com</a>')
+        link.set_markup(
+            '<a href="https://aistudio.google.com/apikey">Get API key at aistudio.google.com</a>'
+        )
         link.set_xalign(0)
         box.append(link)
 
@@ -434,7 +452,10 @@ class WizardWindow(Gtk.ApplicationWindow):
         validate_btn.connect("clicked", self._on_validate_gemini)
         btn_row.append(validate_btn)
         skip_btn = Gtk.Button(label="Skip")
-        skip_btn.connect("clicked", lambda _: (self._gemini_key_entry.set_text(""), self._on_next(None)))
+        skip_btn.connect(
+            "clicked",
+            lambda _: (self._gemini_key_entry.set_text(""), self._on_next(None)),
+        )
         btn_row.append(skip_btn)
         box.append(btn_row)
 
@@ -474,7 +495,9 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.append(desc)
 
         link = Gtk.Label()
-        link.set_markup('<a href="https://api.slack.com/apps">Create a Slack App at api.slack.com</a>')
+        link.set_markup(
+            '<a href="https://api.slack.com/apps">Create a Slack App at api.slack.com</a>'
+        )
         link.set_xalign(0)
         box.append(link)
 
@@ -482,7 +505,9 @@ class WizardWindow(Gtk.ApplicationWindow):
         validate_btn = Gtk.Button(label="Validate")
         validate_btn.connect("clicked", lambda _: None)
         validate_btn.set_sensitive(False)
-        validate_btn.set_tooltip_text("Slack setup must be completed via Settings > Integrations after wizard")
+        validate_btn.set_tooltip_text(
+            "Slack setup must be completed via Settings > Integrations after wizard"
+        )
         btn_row.append(validate_btn)
         skip_btn = Gtk.Button(label="Skip")
         skip_btn.connect("clicked", lambda _: self._on_next(None))

@@ -246,7 +246,11 @@ class HuddleManager:
         if team_id and channel_id:
             threading.Thread(
                 target=self._slack_manager.post_message,
-                args=(team_id, channel_id, "\u23f8\ufe0f Recording paused (transcript collection suspended)"),
+                args=(
+                    team_id,
+                    channel_id,
+                    "\u23f8\ufe0f Recording paused (transcript collection suspended)",
+                ),
                 daemon=True,
             ).start()
         self._debug_post("paused via UI button", "medium")
@@ -312,7 +316,11 @@ class HuddleManager:
         self._status_window.set_on_pause(self._on_ui_pause)
         self._status_window.set_on_resume(self._on_ui_resume)
         self._status_window.set_on_stop(self.stop_session)
-        self._status_window.set_on_exit(lambda: self._debug_post("status window dismissed — session continues", "medium"))
+        self._status_window.set_on_exit(
+            lambda: self._debug_post(
+                "status window dismissed — session continues", "medium"
+            )
+        )
         self._status_window.present()
         self._status_window.start_elapsed_timer()
 
@@ -370,9 +378,18 @@ class HuddleManager:
                 self._session_ending = False
                 self._finish_session()
             return False
-        if self._drain_start and time.monotonic() - self._drain_start > self._DRAIN_TIMEOUT_SEC:
-            logger.warning("Drain timeout — forcing session finish with %d in-flight chunks", self._in_flight)
-            self._debug_post(f"drain timeout — forcing finish ({self._in_flight} chunk(s) still in flight)", "medium")
+        if (
+            self._drain_start
+            and time.monotonic() - self._drain_start > self._DRAIN_TIMEOUT_SEC
+        ):
+            logger.warning(
+                "Drain timeout — forcing session finish with %d in-flight chunks",
+                self._in_flight,
+            )
+            self._debug_post(
+                f"drain timeout — forcing finish ({self._in_flight} chunk(s) still in flight)",
+                "medium",
+            )
             self._in_flight = 0
             self._session_ending = False
             self._finish_session()
@@ -533,7 +550,13 @@ class HuddleManager:
 
         elif cmd_key == "pause":
             self._paused = True
-            GLib.idle_add(lambda: self._status_window.update_pause_state(True) if self._status_window else None)
+            GLib.idle_add(
+                lambda: (
+                    self._status_window.update_pause_state(True)
+                    if self._status_window
+                    else None
+                )
+            )
             self._slack_manager.post_message(
                 team_id,
                 channel_id,
@@ -549,7 +572,13 @@ class HuddleManager:
 
         elif cmd_key == "resume":
             self._paused = False
-            GLib.idle_add(lambda: self._status_window.update_pause_state(False) if self._status_window else None)
+            GLib.idle_add(
+                lambda: (
+                    self._status_window.update_pause_state(False)
+                    if self._status_window
+                    else None
+                )
+            )
             self._slack_manager.post_message(
                 team_id, channel_id, "\u25b6\ufe0f Recording resumed"
             )
@@ -800,6 +829,7 @@ class HuddleManager:
         regardless of Slack post success (caller handles save, we only post).
         """
         from datetime import datetime
+
         from linux_speech_flow.notify import send_notification
 
         title = result.get("title") or "Huddle"

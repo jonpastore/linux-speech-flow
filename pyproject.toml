@@ -51,6 +51,22 @@ Changelog = "https://github.com/jonpastore/linux-speech-flow/blob/main/CHANGELOG
 src = ["src"]
 target-version = "py310"
 
+[tool.ruff.lint]
+# Deliberate patterns in a GTK/subprocess desktop app — not defects:
+ignore = [
+    "BLE001",   # blind `except Exception` around GLib callbacks / best-effort cleanup
+    "S110",     # try/except/pass on best-effort UI + teardown paths
+    "E722",     # bare `except` in those same best-effort paths
+    "DTZ003",   # naive UTC timestamps for local history records
+    "DTZ005",   # naive local datetime.now() for history records
+    "PLW1510",  # subprocess.run without check= is intentional (returncode inspected)
+    "SIM115",   # NamedTemporaryFile(delete=False) + short-lived test handles are valid
+    "RUF012",   # GObject __gsignals__ dict is a framework convention, not mutable state
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # asserts are the point of a test
+
 [tool.bandit]
 exclude_dirs = ["tests"]
 

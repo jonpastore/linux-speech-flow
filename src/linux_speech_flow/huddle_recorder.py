@@ -1,7 +1,9 @@
 import atexit
 import logging
 import subprocess
+
 import pulsectl
+
 from linux_speech_flow.conversation_recorder import ConversationRecorder
 
 logger = logging.getLogger(__name__)

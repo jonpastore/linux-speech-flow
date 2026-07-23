@@ -2,14 +2,11 @@ import json
 import os
 import stat
 
-import pytest
-
-import linux_speech_flow.config as config_module
 from linux_speech_flow.config import (
+    CONFIG_PATH,
+    DEFAULT_CONFIG,
     load_config,
     save_config,
-    DEFAULT_CONFIG,
-    CONFIG_PATH,
 )
 
 
@@ -118,6 +115,7 @@ class TestHotkeyConfigDefaults:
 
     def test_load_config_backfills_missing_hotkey_keys(self, tmp_path):
         import json
+
         from linux_speech_flow.config import load_config
 
         cfg_path = tmp_path / "config.json"
@@ -139,6 +137,7 @@ class TestHotkeyConfigDefaults:
 
     def test_load_config_preserves_custom_hotkey_values(self, tmp_path):
         import json
+
         from linux_speech_flow.config import load_config
 
         cfg_path = tmp_path / "config.json"

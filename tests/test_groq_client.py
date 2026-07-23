@@ -1,5 +1,5 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import requests
 
 from linux_speech_flow.groq_client import validate_api_key

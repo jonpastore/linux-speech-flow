@@ -4,6 +4,7 @@ Tests _on_huddle_end_detected, _on_huddle_event_detected, and SlackSocket
 callback registration logic. Uses App.__new__() to skip GTK __init__ while
 keeping the real class methods under test.
 """
+
 from unittest.mock import MagicMock, patch
 
 from linux_speech_flow.app import App
@@ -60,9 +61,10 @@ class TestOnHuddleEventDetected:
         event = {"team_id": "T001", "huddle_state": {"channel_id": "C123"}}
         config = {"slack_huddle_auto_detect": "always"}
 
-        with patch(
-            "linux_speech_flow.app.load_config", return_value=config
-        ), patch.object(app, "_on_huddle_start_for") as mock_start:
+        with (
+            patch("linux_speech_flow.app.load_config", return_value=config),
+            patch.object(app, "_on_huddle_start_for") as mock_start,
+        ):
             app._on_huddle_event_detected(event)
 
         mock_start.assert_called_once_with("T001", "C123")
@@ -75,9 +77,10 @@ class TestOnHuddleEventDetected:
             "slack_workspaces": {"T001": {"channel_id": "C999"}},
         }
 
-        with patch(
-            "linux_speech_flow.app.load_config", return_value=config
-        ), patch.object(app, "_on_huddle_start_for") as mock_start:
+        with (
+            patch("linux_speech_flow.app.load_config", return_value=config),
+            patch.object(app, "_on_huddle_start_for") as mock_start,
+        ):
             app._on_huddle_event_detected(event)
 
         mock_start.assert_called_once_with("T001", "C999")
@@ -87,9 +90,10 @@ class TestOnHuddleEventDetected:
         event = {"team_id": "T001", "huddle_state": {"channel_id": "C123"}}
         config = {"slack_huddle_auto_detect": "manual"}
 
-        with patch(
-            "linux_speech_flow.app.load_config", return_value=config
-        ), patch.object(app, "_on_huddle_start_for") as mock_start:
+        with (
+            patch("linux_speech_flow.app.load_config", return_value=config),
+            patch.object(app, "_on_huddle_start_for") as mock_start,
+        ):
             app._on_huddle_event_detected(event)
 
         mock_start.assert_not_called()
@@ -99,11 +103,11 @@ class TestOnHuddleEventDetected:
         event = {"team_id": "T001", "huddle_state": {"channel_id": "C123"}}
         config = {"slack_huddle_auto_detect": "prompt"}
 
-        with patch(
-            "linux_speech_flow.app.load_config", return_value=config
-        ), patch.object(app, "_on_huddle_start_for") as mock_start, patch(
-            "linux_speech_flow.app.send_notification"
-        ) as mock_notify:
+        with (
+            patch("linux_speech_flow.app.load_config", return_value=config),
+            patch.object(app, "_on_huddle_start_for") as mock_start,
+            patch("linux_speech_flow.app.send_notification") as mock_notify,
+        ):
             app._on_huddle_event_detected(event)
 
         mock_start.assert_not_called()
@@ -136,6 +140,7 @@ class TestSlackSocketCallbackRegistration:
 class TestWizardPageCount:
     def test_wizard_has_six_pages(self):
         from linux_speech_flow.wizard import WizardWindow
+
         assert len(WizardWindow.PAGES) == 6, (
             f"Expected 6 wizard pages, got {len(WizardWindow.PAGES)}: {WizardWindow.PAGES}"
         )

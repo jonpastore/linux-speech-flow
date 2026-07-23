@@ -1,23 +1,25 @@
 """Tests for ConversationPipeline, coalesce_file, and conv_filename."""
+
 import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 
 def _make_pipeline():
     """ConversationPipeline with mocked Groq client (no API calls)."""
-    with patch(
-        "linux_speech_flow.conversation_pipeline.load_config",
-        return_value={"groq_api_key": "test-key"},
+    with (
+        patch(
+            "linux_speech_flow.conversation_pipeline.load_config",
+            return_value={"groq_api_key": "test-key"},
+        ),
+        patch("linux_speech_flow.conversation_pipeline.Groq"),
     ):
-        with patch("linux_speech_flow.conversation_pipeline.Groq"):
-            from linux_speech_flow.conversation_pipeline import ConversationPipeline
+        from linux_speech_flow.conversation_pipeline import ConversationPipeline
 
-            return ConversationPipeline()
+        return ConversationPipeline()
 
 
 _META = {
@@ -336,6 +338,7 @@ class TestTranscribeChunkVerbose:
             text, confidence = p.transcribe_chunk_verbose(str(wav))
         assert text == "Hello world"
         import math
+
         assert confidence == pytest.approx(math.exp(-0.1), abs=1e-6)
 
     def test_empty_segments_returns_zero_confidence(self, tmp_path):
@@ -399,12 +402,14 @@ class TestTranscribeChunkVerbose:
         wav = tmp_path / "chunk.wav"
         wav.write_bytes(b"fake")
         p._groq.audio.transcriptions.create.side_effect = Exception("API down")
-        with patch(
-            "linux_speech_flow.conversation_pipeline.load_config",
-            return_value={},
+        with (
+            patch(
+                "linux_speech_flow.conversation_pipeline.load_config",
+                return_value={},
+            ),
+            pytest.raises(Exception, match="API down"),
         ):
-            with pytest.raises(Exception, match="API down"):
-                p.transcribe_chunk_verbose(str(wav))
+            p.transcribe_chunk_verbose(str(wav))
 
 
 # ── continue_qa ───────────────────────────────────────────────────────────────

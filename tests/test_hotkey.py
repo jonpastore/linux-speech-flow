@@ -11,6 +11,7 @@ Default bindings under test:
   Ctrl+Alt+P  — reprocess failed
   ESC         — stop recording
 """
+
 from unittest.mock import MagicMock, patch
 
 
@@ -453,8 +454,8 @@ class TestHotkeyStateMachine:
         mgr.apply_binding_override("stop", "ctrl+alt+esc")
         mgr._modifiers_held = {"ctrl", "alt"}
         esc_key = mock_kb.Key.esc
-        mock_kb.Key.__getitem__ = (
-            lambda self_inner, k: esc_key if k == "esc" else MagicMock()
+        mock_kb.Key.__getitem__ = lambda self_inner, k: (
+            esc_key if k == "esc" else MagicMock()
         )
         assert mgr._matches_binding(esc_key, "stop")
 
@@ -544,9 +545,9 @@ class TestSettingsCaptureStateMachine:
     def _make_sim(self, initial_values=None):
         """Build a simple state-machine simulation dict."""
         from linux_speech_flow.hotkey import (
-            HOTKEY_DEFAULTS,
-            HOTKEY_ACTION_LABELS,
             DANGEROUS_COMBOS,
+            HOTKEY_ACTION_LABELS,
+            HOTKEY_DEFAULTS,
             combo_display,
         )
 
@@ -589,9 +590,9 @@ class TestSettingsCaptureStateMachine:
                 return
             for other, other_combo in values.items():
                 if other != action and other_combo == combo_str:
-                    state[
-                        "error"
-                    ] = f"{combo_display(combo_str)} is already used for {HOTKEY_ACTION_LABELS[other]}"
+                    state["error"] = (
+                        f"{combo_display(combo_str)} is already used for {HOTKEY_ACTION_LABELS[other]}"
+                    )
                     cancel()
                     return
             state["error"] = ""
@@ -602,20 +603,20 @@ class TestSettingsCaptureStateMachine:
         return state, values, start_capture, cancel, accept
 
     def test_capture_enters_mode_and_shows_press_keys(self):
-        state, values, start, cancel, accept = self._make_sim()
+        state, _values, start, _cancel, _accept = self._make_sim()
         start("record")
         assert state["capture_action"] == "record"
         assert state["labels"]["record"] == "Press keys..."
 
     def test_cancel_restores_previous_label(self):
-        state, values, start, cancel, accept = self._make_sim()
+        state, _values, start, cancel, _accept = self._make_sim()
         start("record")
         cancel()
         assert state["capture_action"] is None
         assert state["labels"]["record"] == "Ctrl+Alt+R"
 
     def test_accept_valid_combo_updates_binding(self):
-        state, values, start, cancel, accept = self._make_sim()
+        state, values, start, _cancel, accept = self._make_sim()
         start("record")
         accept("ctrl+alt+t")
         assert state["capture_action"] is None
@@ -624,7 +625,7 @@ class TestSettingsCaptureStateMachine:
         assert state["error"] == ""
 
     def test_accept_dangerous_combo_rejects_with_error(self):
-        state, values, start, cancel, accept = self._make_sim()
+        state, values, start, _cancel, accept = self._make_sim()
         start("record")
         accept("ctrl+alt+delete")
         assert state["capture_action"] is None
@@ -632,7 +633,7 @@ class TestSettingsCaptureStateMachine:
         assert "reserved by the system" in state["error"]
 
     def test_accept_conflicting_combo_rejects_with_error(self):
-        state, values, start, cancel, accept = self._make_sim()
+        state, values, start, _cancel, accept = self._make_sim()
         start("record")
         accept("ctrl+alt+c")
         assert values["record"] == "ctrl+alt+r"
@@ -640,7 +641,7 @@ class TestSettingsCaptureStateMachine:
 
     def test_accept_same_action_no_conflict(self):
         """Re-setting an action to its own current value is not a conflict."""
-        state, values, start, cancel, accept = self._make_sim()
+        state, values, start, _cancel, accept = self._make_sim()
         start("feedback")
         accept("ctrl+alt+f")
         assert values["feedback"] == "ctrl+alt+f"
@@ -649,7 +650,7 @@ class TestSettingsCaptureStateMachine:
     def test_reset_to_default_restores_correct_value(self):
         from linux_speech_flow.hotkey import HOTKEY_DEFAULTS
 
-        state, values, start, cancel, accept = self._make_sim(
+        state, values, start, _cancel, accept = self._make_sim(
             initial_values={
                 "record": "ctrl+alt+r",
                 "stop": "ctrl+alt+r",
@@ -665,7 +666,7 @@ class TestSettingsCaptureStateMachine:
 
     def test_esc_during_capture_calls_cancel(self):
         """ESC key during capture must cancel, not close the window."""
-        state, values, start, cancel, accept = self._make_sim()
+        state, _values, start, cancel, _accept = self._make_sim()
         start("record")
         cancel()
         assert state["capture_action"] is None
@@ -684,6 +685,6 @@ def test_history_window_empty_hint_uses_combo_display():
         "history_window.py must import and call combo_display to display the "
         "configured hotkey in the empty-history hint label"
     )
-    assert (
-        "'F9'" not in src or src.count("'F9'") == 0
-    ), "history_window.py must not contain hardcoded 'F9' default"
+    assert "'F9'" not in src or src.count("'F9'") == 0, (
+        "history_window.py must not contain hardcoded 'F9' default"
+    )

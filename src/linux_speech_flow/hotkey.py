@@ -1,12 +1,12 @@
 import logging
 
-from pynput import keyboard
 from gi.repository import GLib
+from pynput import keyboard
 
 from linux_speech_flow.config import load_config
+from linux_speech_flow.notify import send_notification
 from linux_speech_flow.recorder import AudioRecorder
 from linux_speech_flow.sounds import play_sound
-from linux_speech_flow.notify import send_notification
 
 logger = logging.getLogger(__name__)
 
@@ -251,7 +251,9 @@ class HotkeyManager:
             (a for a in HOTKEY_DEFAULTS if self._matches_binding(key, a)), None
         )
         if matched_action:
-            logger.debug("hotkey detected: action=%s state=%s", matched_action, self._state)
+            logger.debug(
+                "hotkey detected: action=%s state=%s", matched_action, self._state
+            )
 
         if self._matches_binding(key, "record"):
             if self._state == self._STATE_IDLE:

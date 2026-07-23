@@ -1,5 +1,5 @@
-import logging
 import importlib.resources
+import logging
 import shutil
 import subprocess
 from pathlib import Path

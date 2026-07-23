@@ -2,16 +2,15 @@ import logging
 import os
 import threading
 import time
-from pathlib import Path
 
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, GLib
+from gi.repository import GLib, Gtk
 
 from linux_speech_flow.config import load_config
-from linux_speech_flow.conversation_recorder import ConversationRecorder
 from linux_speech_flow.conversation_pipeline import ConversationPipeline
+from linux_speech_flow.conversation_recorder import ConversationRecorder
 from linux_speech_flow.sounds import play_sound
 
 logger = logging.getLogger(__name__)
@@ -244,7 +243,9 @@ class ConversationManager:
                 pass
             GLib.idle_add(self._on_thread_done)
 
-    def _on_chunk_transcribed(self, text: str, chunk_num: int, confidence: float = 0.0) -> bool:
+    def _on_chunk_transcribed(
+        self, text: str, chunk_num: int, confidence: float = 0.0
+    ) -> bool:
         """GTK main thread: store transcribed text."""
         if text:
             self._chunk_texts.append(text)

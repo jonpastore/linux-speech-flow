@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"bash \\\"${OMC_SETUP_PLUGIN_ROOT:-/home/jon/.claude/plugins/cache/omc/oh-my-claudecode/4.15.4}/scripts/setup-claude-md.sh\\\" global\",\"description\":\"Update global OMC CLAUDE.md to 4.15.4\"}",
+  "error": "Exit code 1\nERROR: Active plugin root lacks the required coordinator artifact and canonical source; refusing setup.",
+  "timestamp": "2026-07-22T19:30:51.717Z",
+  "retry_count": 2
+}

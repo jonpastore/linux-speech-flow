@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"claude plugin marketplace update omc 2>&1; claude plugin update oh-my-claudecode 2>&1\",\"description\":\"Update omc marketplace and plugin to latest\"}",
+  "error": "Exit code 1\nUpdating marketplace: omc...Refreshing marketplace cache (timeout: 120s)…\n✔ Successfully updated marketplace: omc\nChecking for updates for plugin \"oh-my-claudecode\" at user scope…\n✘ Failed to update plugin \"oh-my-claudecode\": Plugin \"oh-my-claudecode\" not found",
+  "timestamp": "2026-07-22T19:49:26.970Z",
+  "retry_count": 1
+}

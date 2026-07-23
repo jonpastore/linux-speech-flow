@@ -1,9 +1,10 @@
-import math
 import time
+
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, GLib
+from gi.repository import GLib, Gtk
+
 from linux_speech_flow.config import load_config
 
 
@@ -235,7 +236,7 @@ class ConversationStatusWindow(Gtk.ApplicationWindow):
 
         # Time label inside bar
         elapsed_int = int(elapsed)
-        remaining = max(0, self._stop_sec - elapsed_int)
+        max(0, self._stop_sec - elapsed_int)
         self._silence_time_label.set_text(
             f"{elapsed_int}s / warn {self._warn_sec}s / stop {self._stop_sec}s"
         )

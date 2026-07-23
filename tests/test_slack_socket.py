@@ -1,16 +1,17 @@
 """Tests for SlackSocket in slack_socket.py."""
-import threading
-from unittest.mock import MagicMock, patch, call
+
+from unittest.mock import MagicMock, patch
 
 
 def test_slack_socket_connect_in_daemon_thread():
     """SlackSocket.start() calls SocketModeClient.connect() in a daemon thread."""
     from linux_speech_flow.slack_socket import SlackSocket
 
-    with patch("linux_speech_flow.slack_socket.SocketModeClient") as MockClient, patch(
-        "linux_speech_flow.slack_socket.WebClient"
-    ), patch("linux_speech_flow.slack_socket.threading") as mock_threading:
-
+    with (
+        patch("linux_speech_flow.slack_socket.SocketModeClient") as MockClient,
+        patch("linux_speech_flow.slack_socket.WebClient"),
+        patch("linux_speech_flow.slack_socket.threading") as mock_threading,
+    ):
         mock_client_instance = MagicMock()
         MockClient.return_value = mock_client_instance
         mock_client_instance.socket_mode_request_listeners = []
@@ -33,10 +34,11 @@ def test_slack_socket_connect_called_as_target():
     """The thread target is client.connect (not client.start which blocks)."""
     from linux_speech_flow.slack_socket import SlackSocket
 
-    with patch("linux_speech_flow.slack_socket.SocketModeClient") as MockClient, patch(
-        "linux_speech_flow.slack_socket.WebClient"
-    ), patch("linux_speech_flow.slack_socket.threading") as mock_threading:
-
+    with (
+        patch("linux_speech_flow.slack_socket.SocketModeClient") as MockClient,
+        patch("linux_speech_flow.slack_socket.WebClient"),
+        patch("linux_speech_flow.slack_socket.threading") as mock_threading,
+    ):
         mock_client_instance = MagicMock()
         MockClient.return_value = mock_client_instance
         mock_client_instance.socket_mode_request_listeners = []
@@ -156,8 +158,8 @@ def test_listener_ignores_non_huddle_event():
 
 def test_listener_always_acks():
     """SocketModeResponse ACK always sent, even for non-huddle events."""
+
     from linux_speech_flow.slack_socket import SlackSocket
-    from slack_sdk.socket_mode.response import SocketModeResponse
 
     with patch("linux_speech_flow.slack_socket.GLib"):
         sock = SlackSocket()

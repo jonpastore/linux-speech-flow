@@ -3,9 +3,9 @@
 Uses a temporary file-based DB for each test (tmp_path fixture) so
 tests are hermetic and don't touch the real ~/.local/share database.
 """
+
 import os
 import sqlite3
-from pathlib import Path
 
 import pytest
 
@@ -39,7 +39,7 @@ def store(tmp_path):
 
 class TestSchema:
     def test_creates_history_table(self, store, tmp_path):
-        db = list(tmp_path.glob("*.db"))[0]
+        db = next(iter(tmp_path.glob("*.db")))
         conn = sqlite3.connect(db)
         tables = [
             r[0]
@@ -106,7 +106,7 @@ class TestMaxEntries:
         for i in range(25):
             store.insert(
                 _make_entry(
-                    created_at=f"2024-01-{i+1:02d}T12:00:00",
+                    created_at=f"2024-01-{i + 1:02d}T12:00:00",
                     raw_text=f"entry {i}",
                 ),
                 max_entries=20,
@@ -118,7 +118,7 @@ class TestMaxEntries:
         for i in range(10):
             store.insert(
                 _make_entry(
-                    created_at=f"2024-01-{i+1:02d}T12:00:00",
+                    created_at=f"2024-01-{i + 1:02d}T12:00:00",
                     raw_text=f"entry {i}",
                 ),
                 max_entries=5,

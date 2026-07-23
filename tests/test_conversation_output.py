@@ -1,8 +1,7 @@
 """Tests for transcript output functions (copy/paste/save) and ConversationManager silence logic."""
-import time
-from unittest.mock import MagicMock, patch, call
-import pytest
 
+import time
+from unittest.mock import MagicMock, patch
 
 # ── TranscriptOutputWindow action functions ──────────────────────────────────
 
@@ -358,7 +357,8 @@ class TestAutoCalibration:
 
     def _make_pa_stub(self, rms_values):
         """PA stub that returns frames with given RMS levels."""
-        import struct, math
+        import struct
+
         from linux_speech_flow.conversation_recorder import CHUNK_BYTES, SAMPLE_WIDTH
 
         frames = []
@@ -376,15 +376,17 @@ class TestAutoCalibration:
 
     def test_calibration_sets_threshold(self, mock_glib):
         """Calibrated threshold = ambient_25pct_rms * CALIB_FACTOR, clamped."""
-        import threading, struct
+        import struct
+        import threading
+
         from linux_speech_flow.conversation_recorder import (
-            ConversationRecorder,
-            CALIB_FRAMES,
             CALIB_FACTOR,
-            CALIB_MIN,
+            CALIB_FRAMES,
             CALIB_MAX,
+            CALIB_MIN,
             CHUNK_BYTES,
             SAMPLE_WIDTH,
+            ConversationRecorder,
         )
 
         rec = ConversationRecorder(device_name=None)
@@ -427,7 +429,8 @@ class TestAutoCalibration:
         rec._on_audio_level = None
         rec._on_threshold_calibrated = lambda v: captured.append(v)
 
-        import tempfile, os
+        import os
+        import tempfile
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             wav_path = f.name
@@ -446,9 +449,10 @@ class TestAutoCalibration:
     def test_calibration_skipped_for_non_first_chunk(self, mock_glib):
         """chunk_index != 0 skips calibration to preserve threshold from chunk 0."""
         import threading
+
         from linux_speech_flow.conversation_recorder import (
-            ConversationRecorder,
             MIN_GUARD_FRAMES,
+            ConversationRecorder,
         )
 
         rec = ConversationRecorder(device_name=None)
@@ -467,7 +471,8 @@ class TestAutoCalibration:
         rec._on_audio_level = None
         rec._on_threshold_calibrated = MagicMock()
 
-        import tempfile, os
+        import os
+        import tempfile
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             wav_path = f.name
@@ -489,15 +494,17 @@ class TestAutoCalibration:
         Previously, ambient > initial threshold caused calibration to be skipped,
         leaving threshold at 0.005 and treating background music as continuous speech.
         """
-        import threading, struct
+        import struct
+        import threading
+
         from linux_speech_flow.conversation_recorder import (
-            ConversationRecorder,
-            CALIB_FRAMES,
             CALIB_FACTOR,
-            CALIB_MIN,
+            CALIB_FRAMES,
             CALIB_MAX,
+            CALIB_MIN,
             CHUNK_BYTES,
             SAMPLE_WIDTH,
+            ConversationRecorder,
         )
 
         rec = ConversationRecorder(device_name=None)
@@ -529,7 +536,8 @@ class TestAutoCalibration:
         rec._on_audio_level = None
         rec._on_threshold_calibrated = MagicMock()
 
-        import tempfile, os
+        import os
+        import tempfile
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             wav_path = f.name

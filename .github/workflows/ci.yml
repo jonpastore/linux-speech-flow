@@ -65,8 +65,11 @@ jobs:
       - name: pip-audit — dependency vulnerabilities (fail on any CVE)
         run: pip-audit
 
-      - name: Ruff lint (report-only)
-        run: ruff check --exit-zero src/ tests/
+      - name: Ruff lint
+        run: ruff check src/ tests/
+
+      - name: Ruff format check
+        run: ruff format --check src/ tests/
 
   build:
     name: Build

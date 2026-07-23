@@ -1,11 +1,9 @@
 """Tests for detect_activation and _wav_avg_rms in huddle_manager.py."""
-import math
+
 import os
 import struct
 import tempfile
 import wave
-
-import pytest
 
 
 def test_detect_activation_stop_recording():
@@ -107,14 +105,14 @@ def test_detect_activation_calibrate():
 def test_detect_activation_punctuation_after_word():
     from linux_speech_flow.huddle_manager import detect_activation
 
-    cmd, rest = detect_activation("Lucifer, stop recording.", "lucifer")
+    cmd, _rest = detect_activation("Lucifer, stop recording.", "lucifer")
     assert cmd == "stop recording"
 
 
 def test_detect_activation_mid_chunk():
     from linux_speech_flow.huddle_manager import detect_activation
 
-    cmd, rest = detect_activation(
+    cmd, _rest = detect_activation(
         "we were talking about the project then lucifer stop recording", "lucifer"
     )
     assert cmd == "stop recording"
@@ -123,21 +121,21 @@ def test_detect_activation_mid_chunk():
 def test_detect_activation_alias_stop():
     from linux_speech_flow.huddle_manager import detect_activation
 
-    cmd, rest = detect_activation("conyo stop", "conyo")
+    cmd, _rest = detect_activation("conyo stop", "conyo")
     assert cmd == "stop recording"
 
 
 def test_detect_activation_alias_start():
     from linux_speech_flow.huddle_manager import detect_activation
 
-    cmd, rest = detect_activation("conyo start", "conyo")
+    cmd, _rest = detect_activation("conyo start", "conyo")
     assert cmd == "start recording"
 
 
 def test_detect_activation_punctuation_mid_chunk():
     from linux_speech_flow.huddle_manager import detect_activation
 
-    cmd, rest = detect_activation("blah blah blah. Lucifer, summarize!", "lucifer")
+    cmd, _rest = detect_activation("blah blah blah. Lucifer, summarize!", "lucifer")
     assert cmd == "summarize"
 
 

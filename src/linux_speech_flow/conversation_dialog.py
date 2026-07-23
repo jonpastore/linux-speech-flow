@@ -1,7 +1,7 @@
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, GLib, Pango
+from gi.repository import Gtk
 
 from linux_speech_flow.config import load_config
 
@@ -42,12 +42,14 @@ def _window_label(window_info: dict) -> str:
 
 def _do_transcript_copy(transcript: str) -> str:
     from linux_speech_flow.injector import copy_to_clipboard
+
     copy_to_clipboard(transcript)
     return "Copied to clipboard."
 
 
 def _do_transcript_paste(transcript: str, window_info: dict) -> str:
     from linux_speech_flow.injector import paste_text
+
     paste_text(transcript, window_info)
     return "Pasted to active window."
 
@@ -55,7 +57,8 @@ def _do_transcript_paste(transcript: str, window_info: dict) -> str:
 def _do_transcript_save(transcript: str, metadata: dict) -> str:
     try:
         from pathlib import Path
-        from linux_speech_flow.conversation_pipeline import conv_filename, coalesce_file
+
+        from linux_speech_flow.conversation_pipeline import coalesce_file, conv_filename
 
         config = load_config()
         save_dir = Path(
@@ -332,6 +335,7 @@ class ConversationDialog(Gtk.ApplicationWindow):
             selected_models = ["groq"]
         meta_model = self._coalesce_combo.get_active_id() or "groq"
         from linux_speech_flow.config import save_config
+
         cfg = load_config()
         cfg["conv_meta_model"] = meta_model
         save_config(cfg)
@@ -371,7 +375,9 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         confidence: float = 0.0,
         prompt: str = "",
     ):
-        title = "Analysis Output" if heading != "Raw Transcript" else "Transcript Output"
+        title = (
+            "Analysis Output" if heading != "Raw Transcript" else "Transcript Output"
+        )
         super().__init__(application=application, title=title)
         self.set_default_size(520, 480)
         self.set_resizable(True)
@@ -410,8 +416,12 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         text_view.set_editable(False)
         text_view.set_cursor_visible(False)
         display_text = build_combined(
-            self._transcript, summary, self._qa_rounds, self._action_items,
-            self._confidence, self._prompt,
+            self._transcript,
+            summary,
+            self._qa_rounds,
+            self._action_items,
+            self._confidence,
+            self._prompt,
         )
         text_view.get_buffer().set_text(
             display_text or "(empty — session may not have produced transcribed chunks)"
@@ -433,7 +443,9 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
 
         copy_btn = Gtk.Button(label="Copy All to Clipboard")
         copy_btn.add_css_class("suggested-action")
-        copy_btn.set_tooltip_text("Copy full output (transcript + analysis + Q&A) to clipboard")
+        copy_btn.set_tooltip_text(
+            "Copy full output (transcript + analysis + Q&A) to clipboard"
+        )
         copy_btn.connect("clicked", lambda _: self._do_copy())
         btn_box.append(copy_btn)
 
@@ -451,17 +463,23 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         btn_box.append(paste_btn)
 
         save_btn = Gtk.Button(label="Save Full Output to File...")
-        save_btn.set_tooltip_text("Save transcript + analysis + Q&A as one structured file")
+        save_btn.set_tooltip_text(
+            "Save transcript + analysis + Q&A as one structured file"
+        )
         save_btn.connect("clicked", lambda _: self._do_save("full"))
         btn_box.append(save_btn)
 
         if self._has_analysis:
             save_transcript_btn = Gtk.Button(label="Save Transcript Only...")
-            save_transcript_btn.connect("clicked", lambda _: self._do_save("transcript"))
+            save_transcript_btn.connect(
+                "clicked", lambda _: self._do_save("transcript")
+            )
             btn_box.append(save_transcript_btn)
 
             save_analysis_btn = Gtk.Button(label="Save Analysis Only...")
-            save_analysis_btn.set_tooltip_text("Save summary + action items + Q&A (no raw transcript)")
+            save_analysis_btn.set_tooltip_text(
+                "Save summary + action items + Q&A (no raw transcript)"
+            )
             save_analysis_btn.connect("clicked", lambda _: self._do_save("analysis"))
             btn_box.append(save_analysis_btn)
 
@@ -471,22 +489,29 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
 
     def _build_combined(self) -> str:
         return build_combined(
-            self._transcript, self._summary, self._qa_rounds,
-            self._action_items, self._confidence, self._prompt,
+            self._transcript,
+            self._summary,
+            self._qa_rounds,
+            self._action_items,
+            self._confidence,
+            self._prompt,
         )
 
     def _do_copy(self) -> None:
         from linux_speech_flow.injector import copy_to_clipboard
+
         copy_to_clipboard(self._build_combined())
         self._status_label.set_text("Copied to clipboard.")
 
     def _do_paste(self) -> None:
         from linux_speech_flow.injector import paste_text
+
         paste_text(self._build_combined(), self._window_info)
         self._status_label.set_text("Pasted to active window.")
 
     def _do_save(self, mode: str = "full") -> None:
         from pathlib import Path
+
         from linux_speech_flow.conversation_pipeline import conv_filename
 
         config = load_config()
@@ -495,15 +520,28 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
         ).expanduser()
         save_dir.mkdir(parents=True, exist_ok=True)
 
-        label_map = {"full": "Save Output", "transcript": "Save Transcript", "analysis": "Save Analysis"}
-        name_map = {"full": "output", "transcript": "transcript", "analysis": "analysis"}
+        label_map = {
+            "full": "Save Output",
+            "transcript": "Save Transcript",
+            "analysis": "Save Analysis",
+        }
+        name_map = {
+            "full": "output",
+            "transcript": "transcript",
+            "analysis": "analysis",
+        }
 
         chooser = Gtk.FileChooserNative.new(
-            label_map.get(mode, "Save"), self, Gtk.FileChooserAction.SAVE, "Save", "Cancel"
+            label_map.get(mode, "Save"),
+            self,
+            Gtk.FileChooserAction.SAVE,
+            "Save",
+            "Cancel",
         )
         chooser.set_current_name(conv_filename(name_map.get(mode, "output")))
         try:
             from gi.repository import Gio
+
             chooser.set_current_folder(Gio.File.new_for_path(str(save_dir)))
         except Exception:
             pass
@@ -526,14 +564,24 @@ class TranscriptOutputWindow(Gtk.ApplicationWindow):
                 coalesce_file(path, self._metadata, "", [], self._transcript)
             elif mode == "analysis":
                 coalesce_file(
-                    path, self._metadata, self._summary, self._qa_rounds, "",
-                    confidence=self._confidence, action_items=self._action_items,
+                    path,
+                    self._metadata,
+                    self._summary,
+                    self._qa_rounds,
+                    "",
+                    confidence=self._confidence,
+                    action_items=self._action_items,
                     prompt=self._prompt,
                 )
             else:
                 coalesce_file(
-                    path, self._metadata, self._summary, self._qa_rounds, self._transcript,
-                    confidence=self._confidence, action_items=self._action_items,
+                    path,
+                    self._metadata,
+                    self._summary,
+                    self._qa_rounds,
+                    self._transcript,
+                    confidence=self._confidence,
+                    action_items=self._action_items,
                     prompt=self._prompt,
                 )
             self._status_label.set_text(f"Saved: {path}")

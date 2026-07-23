@@ -110,7 +110,9 @@ class ConversationPipeline:
         text = (response.text or "").strip()
         segments = getattr(response, "segments", None) or []
         if segments:
-            avg_lp = sum(getattr(s, "avg_logprob", -1.0) for s in segments) / len(segments)
+            avg_lp = sum(getattr(s, "avg_logprob", -1.0) for s in segments) / len(
+                segments
+            )
             confidence = max(0.0, min(1.0, math.exp(avg_lp)))
         else:
             confidence = 0.0
@@ -140,13 +142,13 @@ class ConversationPipeline:
         with concurrent.futures.ThreadPoolExecutor() as pool:
             futures = {}
             if "groq" in models:
-                futures[
-                    pool.submit(self._call_groq, system, full_content, config)
-                ] = "groq"
+                futures[pool.submit(self._call_groq, system, full_content, config)] = (
+                    "groq"
+                )
             if "grok" in models:
-                futures[
-                    pool.submit(self._call_grok, system, full_content, config)
-                ] = "grok"
+                futures[pool.submit(self._call_grok, system, full_content, config)] = (
+                    "grok"
+                )
             if "gemini" in models:
                 futures[
                     pool.submit(self._call_gemini, system, full_content, config)

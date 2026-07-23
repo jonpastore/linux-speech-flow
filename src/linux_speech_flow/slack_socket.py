@@ -1,5 +1,6 @@
 import logging
 import threading
+
 from gi.repository import GLib
 from slack_sdk.socket_mode import SocketModeClient
 from slack_sdk.socket_mode.response import SocketModeResponse

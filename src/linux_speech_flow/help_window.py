@@ -3,7 +3,6 @@ import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Pango
 
-
 HOTKEYS = [
     ("Ctrl+Alt+R", "Start / stop transcription"),
     ("ESC", "Stop recording (keeps audio)"),

@@ -1,10 +1,11 @@
 import math
 import os
-import pasimple
 import struct
 import tempfile
 import threading
 import wave
+
+import pasimple
 
 SAMPLE_RATE = 16000
 CHANNELS = 1
@@ -87,46 +88,46 @@ class AudioRecorder:
         chunks_recorded = 0
 
         try:
-            with pasimple.PaSimple(
-                pasimple.PA_STREAM_RECORD,
-                pasimple.PA_SAMPLE_S16LE,
-                CHANNELS,
-                SAMPLE_RATE,
-                app_name="linux-speech-flow",
-                stream_name="recording",
-                device_name=self._device_name,
-            ) as pa:
-                with wave.open(self._wav_path, "wb") as wf:
-                    wf.setnchannels(CHANNELS)
-                    wf.setsampwidth(SAMPLE_WIDTH)
-                    wf.setframerate(SAMPLE_RATE)
+            with (
+                pasimple.PaSimple(
+                    pasimple.PA_STREAM_RECORD,
+                    pasimple.PA_SAMPLE_S16LE,
+                    CHANNELS,
+                    SAMPLE_RATE,
+                    app_name="linux-speech-flow",
+                    stream_name="recording",
+                    device_name=self._device_name,
+                ) as pa,
+                wave.open(self._wav_path, "wb") as wf,
+            ):
+                wf.setnchannels(CHANNELS)
+                wf.setsampwidth(SAMPLE_WIDTH)
+                wf.setframerate(SAMPLE_RATE)
 
-                    while not self._stop_event.is_set():
-                        chunk = pa.read(CHUNK_BYTES)
-                        wf.writeframes(chunk)
-                        chunks_recorded += 1
+                while not self._stop_event.is_set():
+                    chunk = pa.read(CHUNK_BYTES)
+                    wf.writeframes(chunk)
+                    chunks_recorded += 1
 
-                        if chunks_recorded >= MIN_SILENCE_GUARD_CHUNKS:
-                            samples = struct.unpack(
-                                f"{len(chunk) // SAMPLE_WIDTH}h", chunk
-                            )
-                            rms = (
-                                math.sqrt(sum(s * s for s in samples) / len(samples))
-                                / 32768.0
-                            )
-                            if rms < SILENCE_RMS_THRESHOLD:
-                                silence_chunks += 1
-                            else:
-                                silence_chunks = 0
-                            if silence_chunks >= silence_limit:
-                                break
-
-                        if chunks_recorded >= max_chunks:
+                    if chunks_recorded >= MIN_SILENCE_GUARD_CHUNKS:
+                        samples = struct.unpack(f"{len(chunk) // SAMPLE_WIDTH}h", chunk)
+                        rms = (
+                            math.sqrt(sum(s * s for s in samples) / len(samples))
+                            / 32768.0
+                        )
+                        if rms < SILENCE_RMS_THRESHOLD:
+                            silence_chunks += 1
+                        else:
+                            silence_chunks = 0
+                        if silence_chunks >= silence_limit:
                             break
 
-                    if self._stop_event.is_set() and not self._cancel_flag:
-                        for _ in range(3):
-                            wf.writeframes(pa.read(CHUNK_BYTES))
+                    if chunks_recorded >= max_chunks:
+                        break
+
+                if self._stop_event.is_set() and not self._cancel_flag:
+                    for _ in range(3):
+                        wf.writeframes(pa.read(CHUNK_BYTES))
 
         except pasimple.PaSimpleError as exc:
             self._cleanup_wav()

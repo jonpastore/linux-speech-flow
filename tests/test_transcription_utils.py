@@ -4,18 +4,18 @@ These tests cover text processing logic that requires no API calls,
 no GTK, and no PulseAudio. The TranscriptionPipeline class itself
 is not instantiated here — only the module-level helpers are tested.
 """
-import pytest
+
 from unittest.mock import MagicMock, patch
 
 import groq
+import pytest
 
 from linux_speech_flow.transcription import (
-    _strip_hallucinations,
     _build_user_message,
-    _classify_groq_error,
     _call_with_retry,
+    _classify_groq_error,
+    _strip_hallucinations,
 )
-
 
 # ---------------------------------------------------------------------------
 # _strip_hallucinations

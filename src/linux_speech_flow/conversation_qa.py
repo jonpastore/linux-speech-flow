@@ -5,7 +5,7 @@ from pathlib import Path
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, GLib
+from gi.repository import GLib, Gtk
 
 from linux_speech_flow.config import load_config
 
@@ -371,8 +371,8 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
         dialog.present()
 
     def _finalise(self) -> None:
-        from linux_speech_flow.conversation_pipeline import coalesce_file, conv_filename
         from linux_speech_flow.conversation_dialog import TranscriptOutputWindow
+        from linux_speech_flow.conversation_pipeline import coalesce_file, conv_filename
 
         self._metadata["models_used"] = ", ".join(
             m.capitalize() for m in self._selected_models
@@ -411,9 +411,20 @@ class ConversationQAWindow(Gtk.ApplicationWindow):
         window_info = self._window_info
 
         if self._inject_to_window and window_info.get("window_id"):
-            from linux_speech_flow.injector import paste_text
             from linux_speech_flow.conversation_dialog import build_combined
-            paste_text(build_combined(self._transcript, summary, self._qa_rounds, action_items, confidence, prompt), window_info)
+            from linux_speech_flow.injector import paste_text
+
+            paste_text(
+                build_combined(
+                    self._transcript,
+                    summary,
+                    self._qa_rounds,
+                    action_items,
+                    confidence,
+                    prompt,
+                ),
+                window_info,
+            )
 
         self.close()
 

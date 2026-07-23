@@ -2,10 +2,8 @@
 
 Complements test_conversation_output.py (which covers silence/heartbeat logic).
 """
+
 from unittest.mock import MagicMock, patch
-
-import pytest
-
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -56,7 +54,9 @@ class TestStartSession:
 
         assert mgr._state == _STATE_CONVERSATION
 
-    def test_ignores_duplicate_start(self, mock_cfg, mock_sound, MockRecorder, mock_glib):
+    def test_ignores_duplicate_start(
+        self, mock_cfg, mock_sound, MockRecorder, mock_glib
+    ):
         mgr = _make_manager(mock_glib)
         mgr.start_session()
         mgr.start_session()  # second call ignored
@@ -91,9 +91,7 @@ class TestStartSession:
     def test_plays_start_sound(self, mock_cfg, mock_sound, MockRecorder, mock_glib):
         mgr = _make_manager(mock_glib)
         mgr.start_session()
-        mock_sound.assert_called_once_with(
-            "start.wav", output_device="", enabled=False
-        )
+        mock_sound.assert_called_once_with("start.wav", output_device="", enabled=False)
 
 
 # ── stop_session ──────────────────────────────────────────────────────────────
@@ -199,7 +197,9 @@ class TestFinishSession:
         mgr._on_session_complete = None
         mgr._finish_session()  # should not raise
 
-    def test_empty_chunks_produces_empty_transcript(self, mock_cfg, mock_sound, mock_glib):
+    def test_empty_chunks_produces_empty_transcript(
+        self, mock_cfg, mock_sound, mock_glib
+    ):
         mgr = self._primed_manager(mock_glib)
         mgr._chunk_texts = []
         mgr._finish_session()

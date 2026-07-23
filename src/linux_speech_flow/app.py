@@ -1,27 +1,28 @@
 import logging
 import sys
 import threading
+
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, Gio, GLib
-
 from pathlib import Path
+
+from gi.repository import Gio, GLib, Gtk
 
 from linux_speech_flow.config import load_config
 from linux_speech_flow.conversation_manager import ConversationManager
 from linux_speech_flow.debug_window import DebugWindow
-from linux_speech_flow.history import HistoryStore, DB_PATH
+from linux_speech_flow.history import HistoryStore
 from linux_speech_flow.history_window import HistoryWindow
+from linux_speech_flow.hotkey import HotkeyManager
+from linux_speech_flow.huddle_manager import HuddleManager
 from linux_speech_flow.notify import send_notification
-from linux_speech_flow.transcription import TranscriptionPipeline, FAILED_DIR
+from linux_speech_flow.settings import SettingsWindow
+from linux_speech_flow.slack_manager import SlackManager
+from linux_speech_flow.slack_socket import SlackSocket
+from linux_speech_flow.transcription import FAILED_DIR, TranscriptionPipeline
 from linux_speech_flow.tray import TrayManager, install_icons
 from linux_speech_flow.wizard import WizardWindow
-from linux_speech_flow.settings import SettingsWindow
-from linux_speech_flow.hotkey import HotkeyManager
-from linux_speech_flow.slack_manager import SlackManager
-from linux_speech_flow.huddle_manager import HuddleManager
-from linux_speech_flow.slack_socket import SlackSocket
 
 
 class App(Gtk.Application):
@@ -90,9 +91,9 @@ class App(Gtk.Application):
         self._conv_manager = ConversationManager(
             application=self,
             on_session_complete=self._on_conv_session_complete,
-            on_tray_state=lambda state: self._tray.set_state(state)
-            if self._tray
-            else None,
+            on_tray_state=lambda state: (
+                self._tray.set_state(state) if self._tray else None
+            ),
         )
         self._conv_window_info: dict = {}
 
@@ -101,13 +102,13 @@ class App(Gtk.Application):
             application=self,
             slack_manager=self._slack_manager,
             on_session_complete=self._on_huddle_session_complete,
-            on_tray_state=lambda state: self._tray.set_state(state)
-            if self._tray
-            else None,
+            on_tray_state=lambda state: (
+                self._tray.set_state(state) if self._tray else None
+            ),
             on_analyze=self._on_huddle_analyze,
         )
         workspaces = self._slack_manager.get_workspaces()
-        for team_id, ws in workspaces.items():
+        for ws in workspaces.values():
             app_token = ws.get("app_token", "")
             bot_token = ws.get("bot_token", "")
             authed_user_id = ws.get("authed_user_id", "")
@@ -139,6 +140,7 @@ class App(Gtk.Application):
         if not config.get("setup_complete", False):
             if self._onboarding is None:
                 from linux_speech_flow.onboarding_dialog import OnboardingDialog
+
                 self._onboarding = OnboardingDialog(
                     application=self,
                     on_continue=self._on_onboarding_continue,
@@ -396,11 +398,15 @@ class App(Gtk.Application):
         from linux_speech_flow.conversation_dialog import ConversationDialog
 
         if self._huddle_dialog is not None:
-            logger.warning("_on_huddle_session_complete: dialog already open — closing it first")
+            logger.warning(
+                "_on_huddle_session_complete: dialog already open — closing it first"
+            )
             self._huddle_dialog.close()
 
         if self._huddle_manager:
-            self._huddle_manager.debug_post("analysis dialog presented to user", "medium")
+            self._huddle_manager.debug_post(
+                "analysis dialog presented to user", "medium"
+            )
 
         dialog = ConversationDialog(
             application=self,
@@ -423,7 +429,9 @@ class App(Gtk.Application):
         from linux_speech_flow.conversation_dialog import ConversationDialog
 
         if self._huddle_dialog is not None:
-            logger.warning("_on_huddle_analyze: dialog already open — ignoring duplicate")
+            logger.warning(
+                "_on_huddle_analyze: dialog already open — ignoring duplicate"
+            )
             return
 
         def _on_resume():
@@ -470,7 +478,9 @@ class App(Gtk.Application):
 
         if not selected_models:
             if self._huddle_manager:
-                self._huddle_manager.debug_post("analysis skipped — no models selected", "medium")
+                self._huddle_manager.debug_post(
+                    "analysis skipped — no models selected", "medium"
+                )
             return
 
         if self._huddle_manager:
@@ -635,6 +645,7 @@ class App(Gtk.Application):
         window_info=None,
     ):
         import logging
+
         from linux_speech_flow.conversation_qa import ConversationQAWindow
 
         logger = logging.getLogger(__name__)
