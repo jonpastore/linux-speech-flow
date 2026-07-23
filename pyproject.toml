@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=68", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "linux-speech-flow"
-version = "0.1.0"
+dynamic = ["version"]
 requires-python = ">=3.10"
 description = "Speech-to-text Linux desktop app — hold a key, speak, text appears where you're typing"
 license = "MIT"
@@ -46,6 +46,11 @@ Homepage = "https://github.com/jonpastore/linux-speech-flow"
 Repository = "https://github.com/jonpastore/linux-speech-flow"
 Issues = "https://github.com/jonpastore/linux-speech-flow/issues"
 Changelog = "https://github.com/jonpastore/linux-speech-flow/blob/main/CHANGELOG.md"
+
+[tool.setuptools_scm]
+# Version from git tags (e.g. v0.2.0 -> 0.2.0). Untagged builds get a dev
+# version; fallback covers sdist/no-git builds where scm metadata is absent.
+fallback_version = "0.1.0"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -45,10 +45,11 @@ sudo apt install ./linux-speech-flow_*.deb
 pip install linux-speech-flow
 ```
 
-System dependencies must be installed separately:
+System dependencies must be installed separately (the `.deb` pulls these in automatically; the pip path does not):
 
 ```bash
-sudo apt install python3-gi gir1.2-gtk-4.0 libgirepository1.0-dev xdotool
+sudo apt install python3-gi gir1.2-gtk-4.0 libgirepository1.0-dev \
+  libpulse-dev xdotool xclip libnotify-bin
 ```
 
 ## Quick Start
@@ -58,6 +59,10 @@ sudo apt install python3-gi gir1.2-gtk-4.0 libgirepository1.0-dev xdotool
 3. Enter your Groq API key ([get one free](https://console.groq.com/))
 4. Select your microphone
 5. Press the hotkey (default: `Ctrl+Alt+R`) to start recording — release to transcribe
+
+**Autostart at login** is enabled automatically — the app writes
+`~/.config/autostart/linux-speech-flow.desktop` on first run, so it starts with your
+desktop session. Remove that file to disable it.
 
 ## Privacy
 

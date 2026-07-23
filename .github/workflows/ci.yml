@@ -13,6 +13,8 @@ jobs:
         python-version: ["3.10", "3.12"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so setuptools-scm can derive the version
 
       - name: Install system dependencies
         run: |
@@ -41,6 +43,8 @@ jobs:
     needs: test
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so setuptools-scm can derive the version
 
       - name: Install system dependencies
         run: |
@@ -61,7 +65,8 @@ jobs:
       - name: Build .deb (bundled venv via fpm)
         run: |
           sudo gem install fpm --no-document
-          VERSION=$(grep -m1 '^version = ' pyproject.toml | sed -E 's/version = "(.*)"/\1/')
+          pip install setuptools-scm
+          VERSION=$(python -m setuptools_scm)
           # Staging layout: /opt/linux-speech-flow/venv + /usr/local/bin wrapper
           mkdir -p dist-deb/opt/linux-speech-flow
           python3 -m venv --copies dist-deb/opt/linux-speech-flow/venv
@@ -76,6 +81,8 @@ jobs:
           fpm -s dir -t deb \
             -n linux-speech-flow \
             -v "$VERSION" \
+            --after-install scripts/postinst.sh \
+            --after-remove scripts/postrm.sh \
             --depends xdotool \
             --depends xclip \
             --depends libnotify-bin \
