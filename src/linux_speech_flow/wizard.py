@@ -642,8 +642,8 @@ class WizardWindow(Gtk.ApplicationWindow):
                 "Slack integration lets linux-speech-flow post transcriptions to Slack "
                 "and record Slack huddle sessions.\n\n"
                 "Slack requires creating a Slack App with a bot token and an app-level token — "
-                "see docs/slack-setup.md for the step-by-step guide. You can connect Slack at "
-                "any time via Settings > Integrations."
+                "see docs/slack-setup.md for the step-by-step guide. Connect a workspace below, "
+                "or later via Settings > Integrations."
             )
         )
         desc.set_xalign(0)
@@ -658,19 +658,40 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.append(link)
 
         btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        validate_btn = Gtk.Button(label="Validate")
-        validate_btn.connect("clicked", lambda _: None)
-        validate_btn.set_sensitive(False)
-        validate_btn.set_tooltip_text(
-            "Slack setup must be completed via Settings > Integrations after wizard"
-        )
-        btn_row.append(validate_btn)
+        connect_btn = Gtk.Button(label="Connect Slack Workspace")
+        connect_btn.connect("clicked", self._on_wizard_connect_slack)
+        btn_row.append(connect_btn)
         skip_btn = Gtk.Button(label="Skip")
         skip_btn.connect("clicked", lambda _: self._on_next(None))
         btn_row.append(skip_btn)
         box.append(btn_row)
 
+        self._slack_status = Gtk.Label(label="")
+        self._slack_status.set_xalign(0)
+        self._slack_status.set_wrap(True)
+        box.append(self._slack_status)
+
         return box
+
+    def _on_wizard_connect_slack(self, _btn):
+        # Reuse the Settings dialog: two tokens, auth.test verification, and it
+        # persists the workspace to config itself (emits "workspace-added").
+        from linux_speech_flow.settings import AddWorkspaceDialog
+
+        dialog = AddWorkspaceDialog(self)
+        dialog.connect("workspace-added", self._on_wizard_slack_added)
+        dialog.present()
+
+    def _on_wizard_slack_added(self, _dialog):
+        from linux_speech_flow.slack_manager import SlackManager
+
+        names = [
+            w.get("team_name") or w.get("bot_name") or "workspace"
+            for w in SlackManager().get_workspaces().values()
+        ]
+        self._slack_status.set_text(
+            "Connected: " + ", ".join(names) if names else "Workspace connected."
+        )
 
     def _build_microphone_page(self) -> Gtk.Widget:
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
