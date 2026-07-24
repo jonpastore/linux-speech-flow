@@ -313,6 +313,9 @@ class SettingsWindow(Gtk.ApplicationWindow):
         content.append(reset_all_btn)
 
         content = _make_tab("Recording")
+        # Re-scan input/output devices each time this tab is shown so devices
+        # hot-plugged after the window opened (e.g. Bluetooth headsets) appear.
+        content.connect("map", self._on_recording_tab_shown)
 
         vocab_title = Gtk.Label(label="Vocabulary (optional)")
         vocab_title.add_css_class("title-4")
@@ -897,6 +900,20 @@ class SettingsWindow(Gtk.ApplicationWindow):
         self._enumerate_microphones()
         self._enumerate_sinks()
         self._connect_change_signals()
+
+    def _on_recording_tab_shown(self, _widget):
+        # Re-scan devices, preserving the current (possibly unsaved) selection.
+        idx = self._mic_combo.get_active()
+        prev = self._mics[idx]["name"] if 0 <= idx < len(self._mics) else ""
+        self._enumerate_microphones()
+        self._enumerate_sinks()
+        if prev:
+            for i, mic in enumerate(self._mics):
+                if mic["name"] == prev:
+                    self._mic_combo.handler_block(self._mic_changed_id)
+                    self._mic_combo.set_active(i)
+                    self._mic_combo.handler_unblock(self._mic_changed_id)
+                    break
 
     def _enumerate_microphones(self):
         self._mic_combo.handler_block(self._mic_changed_id)
