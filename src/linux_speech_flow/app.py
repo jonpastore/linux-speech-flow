@@ -66,6 +66,7 @@ class App(Gtk.Application):
 
         install_icons()
         self._install_autostart()
+        self._install_desktop_entry()
 
         self._hotkey_manager = HotkeyManager(
             on_recording_start=self._on_recording_start,
@@ -259,6 +260,54 @@ class App(Gtk.Application):
         )
         desktop_path.write_text(content)
         logger.info("autostart installed: %s", desktop_path)
+
+    def _install_desktop_entry(self) -> None:
+        """Install an application-menu launcher so the app appears in the start
+        menu (win+type) and can be pinned. Written per-user each launch, so it
+        works for both the .deb and pip installs."""
+        import importlib.resources
+        import shutil
+        import subprocess
+
+        icon_dir = (
+            Path.home() / ".local" / "share" / "icons" / "hicolor" / "scalable" / "apps"
+        )
+        icon_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            ref = importlib.resources.files("linux_speech_flow.icons").joinpath(
+                "linux-speech-flow-idle.svg"
+            )
+            with importlib.resources.as_file(ref) as src:
+                shutil.copy2(src, icon_dir / "linux-speech-flow.svg")
+        except Exception as exc:
+            logger.warning("app icon install failed: %s", exc)
+
+        apps_dir = Path.home() / ".local" / "share" / "applications"
+        apps_dir.mkdir(parents=True, exist_ok=True)
+        desktop_path = apps_dir / "linux-speech-flow.desktop"
+        content = (
+            "[Desktop Entry]\n"
+            "Name=Linux Speech Flow\n"
+            "GenericName=Speech to Text\n"
+            "Comment=Hold a key, speak, release — text appears where you're typing\n"
+            f"Exec={sys.executable} -m linux_speech_flow\n"
+            "Icon=linux-speech-flow\n"
+            "Terminal=false\n"
+            "Type=Application\n"
+            "Categories=Utility;Accessibility;\n"
+            "Keywords=speech;dictation;transcription;voice;stt;whisper;\n"
+            "StartupNotify=true\n"
+        )
+        desktop_path.write_text(content)
+        try:
+            subprocess.run(
+                ["update-desktop-database", str(apps_dir)],
+                check=False,
+                capture_output=True,
+            )
+        except FileNotFoundError:
+            pass
+        logger.info("desktop entry installed: %s", desktop_path)
 
     def _on_reprocess_hotkey(self) -> None:
         """Called from HotkeyManager when Ctrl+Alt+P is pressed."""
