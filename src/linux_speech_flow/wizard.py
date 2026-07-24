@@ -294,9 +294,10 @@ class WizardWindow(Gtk.ApplicationWindow):
         self._back_btn.set_sensitive(False)
         nav.append(self._back_btn)
 
-        spacer = Gtk.Box()
-        spacer.set_hexpand(True)
-        nav.append(spacer)
+        self._progress_label = Gtk.Label(label="")
+        self._progress_label.add_css_class("dim-label")
+        self._progress_label.set_hexpand(True)
+        nav.append(self._progress_label)
 
         self._next_btn = Gtk.Button(label="Next")
         self._next_btn.connect("clicked", self._on_next)
@@ -335,7 +336,12 @@ class WizardWindow(Gtk.ApplicationWindow):
             self._provider_litellm_radio.set_active(True)
         else:
             self._provider_cloud_radio.set_active(True)
+        # Connect BOTH radios: on a grouped toggle GTK fires the deactivating
+        # button's handler before the activating one's `active` flips true, so a
+        # handler on only the cloud radio reads a stale state and never sees
+        # "litellm". Both connected → the last-firing handler settles the mode.
         self._provider_cloud_radio.connect("toggled", self._on_provider_changed)
+        self._provider_litellm_radio.connect("toggled", self._on_provider_changed)
         box.append(self._provider_cloud_radio)
         box.append(self._provider_litellm_radio)
 
@@ -397,7 +403,7 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.append(chat_label)
         self._litellm_chat_entry = Gtk.Entry()
         self._litellm_chat_entry.set_text(
-            self._config.get("litellm_chat_model", "gemini")
+            self._config.get("litellm_chat_model", "gpt-oss-120b-think")
         )
         box.append(self._litellm_chat_entry)
 
@@ -455,7 +461,7 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.set_margin_top(24)
         box.set_margin_bottom(12)
 
-        title = Gtk.Label(label="Step 1 of 6: Groq API Key")
+        title = Gtk.Label(label="Groq API Key")
         title.add_css_class("title-2")
         title.set_xalign(0)
         box.append(title)
@@ -504,7 +510,7 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.set_margin_top(24)
         box.set_margin_bottom(12)
 
-        title = Gtk.Label(label="Step 2 of 6: Grok API Key (optional)")
+        title = Gtk.Label(label="Grok API Key (optional)")
         title.add_css_class("title-2")
         title.set_xalign(0)
         box.append(title)
@@ -565,7 +571,7 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.set_margin_top(24)
         box.set_margin_bottom(12)
 
-        title = Gtk.Label(label="Step 3 of 6: Gemini API Key (optional)")
+        title = Gtk.Label(label="Gemini API Key (optional)")
         title.add_css_class("title-2")
         title.set_xalign(0)
         box.append(title)
@@ -626,7 +632,7 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.set_margin_top(24)
         box.set_margin_bottom(12)
 
-        title = Gtk.Label(label="Step 4 of 6: Slack Integration (optional)")
+        title = Gtk.Label(label="Slack Integration (optional)")
         title.add_css_class("title-2")
         title.set_xalign(0)
         box.append(title)
@@ -635,8 +641,9 @@ class WizardWindow(Gtk.ApplicationWindow):
             label=(
                 "Slack integration lets linux-speech-flow post transcriptions to Slack "
                 "and record Slack huddle sessions.\n\n"
-                "Slack requires creating a Slack App with specific permissions — see the README "
-                "for the full setup guide. You can connect Slack at any time via Settings > Integrations."
+                "Slack requires creating a Slack App with a bot token and an app-level token — "
+                "see docs/slack-setup.md for the step-by-step guide. You can connect Slack at "
+                "any time via Settings > Integrations."
             )
         )
         desc.set_xalign(0)
@@ -672,7 +679,7 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.set_margin_top(24)
         box.set_margin_bottom(12)
 
-        title = Gtk.Label(label="Step 5 of 6: Microphone")
+        title = Gtk.Label(label="Microphone")
         title.add_css_class("title-2")
         title.set_xalign(0)
         box.append(title)
@@ -722,7 +729,7 @@ class WizardWindow(Gtk.ApplicationWindow):
         box.set_margin_top(24)
         box.set_margin_bottom(12)
 
-        title = Gtk.Label(label="Step 6 of 6: Vocabulary (optional)")
+        title = Gtk.Label(label="Vocabulary (optional)")
         title.add_css_class("title-2")
         title.set_xalign(0)
         box.append(title)
@@ -939,6 +946,14 @@ class WizardWindow(Gtk.ApplicationWindow):
         self._back_btn.set_sensitive(self._prev_visible(self._current_page) is not None)
         is_last = self._next_visible(self._current_page) is None
         self._next_btn.set_label("Finish" if is_last else "Next")
+
+        visible = [
+            i for i in range(len(self.PAGES)) if not self._is_skipped(self.PAGES[i])
+        ]
+        if self._current_page in visible:
+            self._progress_label.set_text(
+                f"Step {visible.index(self._current_page) + 1} of {len(visible)}"
+            )
 
         if self.PAGES[self._current_page] == "api_key":
             self._next_btn.set_sensitive(self._api_key_valid)

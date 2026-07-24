@@ -53,7 +53,7 @@ DEFAULT_CONFIG = {
     "litellm_base_url": "http://cerberus-ai:4000/v1",
     "litellm_api_key": "",
     "litellm_whisper_model": "whisper-turbo",
-    "litellm_chat_model": "gemini",
+    "litellm_chat_model": "gpt-oss-120b-think",  # cleanup + "groq"-role synthesis; grok/gemini/chatgpt/perplexity also reachable
     "microphone": "",
     "vocabulary": [],
     "setup_complete": False,

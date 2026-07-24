@@ -88,7 +88,8 @@ See [config.example.json](config.example.json) for all available options with pl
 
 ## Slack Setup
 
-Slack integration requires creating a Slack App with specific bot scopes. See the
+Slack integration requires creating a Slack App with a bot token (`xoxb-`) and an
+app-level token (`xapp-`, for Socket Mode). See the
 [Slack setup guide](docs/slack-setup.md) for step-by-step instructions.
 
 ## Contributing
